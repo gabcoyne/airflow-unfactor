@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Node / docs-site
+node_modules/
+docs-site/node_modules/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local env and runtime state
+.env
+.env.*
+mcp.external.json
+mcp_agent_mail/
+.claude/
