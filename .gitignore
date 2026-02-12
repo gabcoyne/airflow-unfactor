@@ -38,4 +38,5 @@ docs-site/node_modules/
 mcp.external.json
 mcp_agent_mail/
 .claude/
+.codex/
 .beads/
