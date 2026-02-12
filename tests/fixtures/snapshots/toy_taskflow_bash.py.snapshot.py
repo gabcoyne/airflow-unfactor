@@ -1,4 +1,4 @@
-"""Prefect flow converted from Airflow DAG: unknown
+"""Prefect flow converted from Airflow DAG: toy_taskflow_bash
 
 ✨ Converted by airflow-unfactor
 
@@ -15,11 +15,11 @@ from prefect import flow, task
 # No DAG class, no context managers, no >> operators.
 # Just call tasks in order — Prefect tracks dependencies automatically.
 
-@flow(name="unknown")
-def unknown():
+@flow(name="toy_taskflow_bash")
+def toy_taskflow_bash():
     """Main flow - converted from Airflow DAG."""
     pass
 
 
 if __name__ == "__main__":
-    unknown()
+    toy_taskflow_bash()

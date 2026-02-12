@@ -59,6 +59,7 @@ async def convert_dag(
             operators=dag_info.get("operators", []),
             warnings=result.get("warnings", []),
             dataset_conversion=result["dataset_conversion"],
+            dag_settings=dag_info.get("dag_settings", {}),
         )
 
         # Generate tests alongside the flow
@@ -99,8 +100,10 @@ def _build_conversion_runbook(
     operators: list[dict[str, str | int | None]],
     warnings: list[str],
     dataset_conversion: dict[str, object],
+    dag_settings: dict[str, object] | None = None,
 ) -> str:
     """Build an operational migration runbook for post-conversion steps."""
+    dag_settings = dag_settings or {}
     operator_types = sorted({str(op.get("type", "Unknown")) for op in operators})
     operators_line = ", ".join(operator_types) if operator_types else "None detected"
 
@@ -119,6 +122,71 @@ def _build_conversion_runbook(
         f"- Dataset/Asset events detected: {event_count}",
         f"- Airflow assets detected: {asset_count}",
         "",
+    ]
+
+    # Add DAG Configuration section if settings are present
+    if dag_settings:
+        lines.append("## DAG Configuration")
+        lines.append("")
+
+        # Schedule information
+        schedule = dag_settings.get("schedule") or dag_settings.get("schedule_interval")
+        if schedule:
+            lines.append(f"**Schedule**: `{schedule}`")
+            lines.append("  - Configure via deployment schedule or `flow.serve(cron=...)`")
+            lines.append("")
+
+        # Catchup setting
+        if "catchup" in dag_settings:
+            catchup = dag_settings["catchup"]
+            lines.append(f"**Catchup**: `{catchup}`")
+            if not catchup:
+                lines.append("  - Catchup disabled - Prefect deployments skip past schedule times by default")
+            lines.append("")
+
+        # Concurrency settings
+        if "max_active_runs" in dag_settings:
+            max_runs = dag_settings["max_active_runs"]
+            lines.append(f"**Max Active Runs**: `{max_runs}`")
+            lines.append("  - Configure concurrency limit in deployment settings")
+            lines.append("")
+
+        # Auto-pause settings
+        if "max_consecutive_failed_dag_runs" in dag_settings:
+            max_failed = dag_settings["max_consecutive_failed_dag_runs"]
+            lines.append(f"**Auto-pause**: `max_consecutive_failed_dag_runs={max_failed}`")
+            lines.append(f"  - Airflow 2.9+ auto-pauses DAG after {max_failed} consecutive failures")
+            lines.append("  - In Prefect: Create automation to pause deployment after consecutive failures")
+            lines.append("")
+
+        # Retry configuration
+        default_args = dag_settings.get("default_args", {})
+        if isinstance(default_args, dict) and ("retries" in default_args or "retry_delay" in default_args):
+            lines.append("**Retry Configuration**:")
+            if "retries" in default_args:
+                lines.append(f"  - Retries: `{default_args['retries']}`")
+            if "retry_delay" in default_args:
+                lines.append(f"  - Retry delay: `{default_args['retry_delay']}`")
+            lines.append("  - Configure via `@flow(retries=...)` and `@task(retries=...)` decorators")
+            lines.append("")
+
+        # Tags
+        tags = dag_settings.get("tags", [])
+        if tags:
+            tags_str = ", ".join([f"`{tag}`" for tag in tags])
+            lines.append(f"**Tags**: {tags_str}")
+            lines.append("  - Add tags via `@flow(tags=[...])` decorator")
+            lines.append("")
+
+        # Callbacks
+        callbacks = dag_settings.get("callbacks", [])
+        if callbacks:
+            lines.append("**Callbacks Detected**:")
+            for callback in callbacks:
+                lines.append(f"  - `{callback}`: Use Prefect state handlers or notification blocks")
+            lines.append("")
+
+    lines.extend([
         "## Server/API Configuration Checklist",
         "- Configure deployment schedules and pause state in Prefect server/cloud.",
         "- Configure retries, concurrency, and execution infrastructure at deployment/work pool level.",
@@ -134,7 +202,7 @@ def _build_conversion_runbook(
         "- `dataset_conversion.materialization_code`: asset materialization scaffold",
         "",
         "## Migration Notes",
-    ]
+    ])
 
     if has_deployment_triggers:
         lines.append(

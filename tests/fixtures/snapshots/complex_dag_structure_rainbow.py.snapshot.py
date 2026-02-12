@@ -1,4 +1,4 @@
-"""Prefect flow converted from Airflow DAG: unknown
+"""Prefect flow converted from Airflow DAG: complex_dag_structure_rainbow
 
 ✨ Converted by airflow-unfactor
 
@@ -19,11 +19,11 @@ from prefect import flow, task
 # No DAG class, no context managers, no >> operators.
 # Just call tasks in order — Prefect tracks dependencies automatically.
 
-@flow(name="unknown")
-def unknown():
+@flow(name="complex_dag_structure_rainbow")
+def complex_dag_structure_rainbow():
     """Main flow - converted from Airflow DAG."""
     pass
 
 
 if __name__ == "__main__":
-    unknown()
+    complex_dag_structure_rainbow()

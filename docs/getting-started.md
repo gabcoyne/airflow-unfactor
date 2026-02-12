@@ -114,12 +114,22 @@ Inputs:
   - content: DAG code (alternative to path)
   - include_comments: Add educational comments (default: true)
   - generate_tests: Generate pytest tests (default: true)
+  - include_external_context: Enrich with external MCP context (default: true)
 
 Returns:
   - flow_code: Converted Prefect flow
   - test_code: pytest tests for the flow
   - warnings: Conversion warnings
-  - task mapping: Original → converted task names
+  - original_to_new_mapping: Original → converted task names
+  - dataset_conversion: Dataset/asset conversion outputs
+    - events: List of detected dataset events
+    - producer_code: Event emission helpers
+    - deployment_yaml: Trigger snippets for deployment config
+    - materialization_code: Asset materialization scaffolds
+  - conversion_runbook_md: Step-by-step migration guide with:
+    - DAG-specific configuration mapping (schedule, retries, tags, etc.)
+    - Server/API configuration checklist
+    - Deployment guidance based on extracted DAG settings
 ```
 
 ### `validate`

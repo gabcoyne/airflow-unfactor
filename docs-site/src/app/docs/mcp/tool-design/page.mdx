@@ -30,8 +30,11 @@ We design tools that are safe, deterministic, and easy for agents to use.
   "dataset_conversion": {
     "events": ["dataset.s3.bucket.data"],
     "deployment_yaml": "triggers: ...",
-    "materialization_code": "@materialize(\"s3://bucket/data\") ..."
+    "materialization_code": "@materialize(\"s3://bucket/data\") ...",
+    "producer_code": "..."
   },
-  "conversion_runbook_md": "# Conversion Runbook: ..."
+  "conversion_runbook_md": "# Conversion Runbook: my_etl\n\n## Summary\n...\n\n## DAG Configuration\n\n**Schedule**: `@daily`\n- Configure via deployment schedule or `flow.serve(cron=...)`\n\n**Max Active Runs**: `3`\n- Configure concurrency limit in deployment settings\n\n**Retry Configuration**:\n- Retries: `3`\n- Retry delay: `300`\n- Configure via `@flow(retries=...)` and `@task(retries=...)` decorators\n\n**Tags**: `production`, `etl`\n- Add tags via `@flow(tags=[...])` decorator\n\n## Server/API Configuration Checklist\n..."
 }
 ```
+
+The `conversion_runbook_md` field now includes DAG-specific configuration guidance extracted from the original DAG settings, providing targeted migration instructions for schedule, concurrency, retries, tags, and callbacks.
