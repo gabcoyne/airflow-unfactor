@@ -187,7 +187,8 @@ def build_sales():
         assert len(result["assets"]) == 1
         assert result["assets"][0]["name"] == "sales_asset"
         assert result["assets"][0]["uri"] == "s3://sales/daily"
-        assert "materialize_sales_asset" in result["materialization_code"]
+        assert '@materialize("s3://sales/daily")' in result["materialization_code"]
+        assert "def materialize_sales_asset" in result["materialization_code"]
         assert "emit_sales_asset_updated" in result["producer_code"]
 
 

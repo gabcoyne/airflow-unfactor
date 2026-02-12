@@ -289,10 +289,10 @@ triggers:"""
             materialization_lines.append(
                 "# Exact Prefect asset APIs may vary by Prefect version."
             )
-        materialization_lines.append("from prefect import flow")
+        materialization_lines.append("from prefect.assets import materialize")
         materialization_lines.append("")
         for asset in analysis.assets:
-            materialization_lines.append(f"@flow(name=\"materialize_{asset.name}\")")
+            materialization_lines.append(f"@materialize(\"{asset.uri}\")")
             materialization_lines.append(f"def materialize_{asset.name}() -> str:")
             materialization_lines.append(f"    \"\"\"Materialize asset '{asset.name}'.\"\"\"")
             materialization_lines.append(f"    # TODO: replace with your concrete Prefect asset API usage")

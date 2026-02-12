@@ -65,9 +65,9 @@ def emit_sales_asset_updated():
 ```
 
 ```python
-from prefect import flow
+from prefect.assets import materialize
 
-@flow(name="materialize_sales_asset")
+@materialize("s3://sales/daily")
 def materialize_sales_asset() -> str:
     # TODO: replace with concrete Prefect asset API usage
     return "s3://sales/daily"

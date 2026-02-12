@@ -50,15 +50,12 @@ def produce_data():
 
 **Asset materialization (Airflow 3.x):**
 ```python
-# Pseudocode-level target pattern (exact API may vary by Prefect version):
-# from prefect.assets import materialize
-#
-# @flow
-# def refresh_assets():
-#     materialize("s3://bucket/data")
-#
-# Use materialization to represent production of an Asset and
-# keep emit_event for automation/trigger compatibility.
+from prefect.assets import materialize
+
+@materialize("s3://bucket/data")
+def refresh_assets():
+    # ... produce/update the asset ...
+    return "s3://bucket/data"
 ```
 
 ### R4: Output Structure
