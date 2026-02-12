@@ -1,34 +1,45 @@
 # Datasets → Prefect Events
 
-Airflow Datasets (2.4+) and Assets (3.x) map to Prefect Events and Automations.
+Convert Airflow Dataset/Asset dependencies into Prefect-friendly outputs.
 
-- `Dataset("s3://bucket/data")` → `dataset.s3.bucket.data.updated`
-- `Asset("s3://bucket/data")` → Prefect asset materialization scaffold + event emission
-- `schedule=[dataset]` → deployment trigger
-- `outlets=[dataset]` → emit_event in task
+## What We Detect
 
-## Migration Delta: Dataset vs Asset
+- `Dataset("...")` and `Asset("...")` definitions
+- `@task(outlets=[...])` producers
+- `@dag(schedule=[...])` consumers
 
-- Airflow `Dataset` represents update-driven dependencies.
-- Airflow `Asset` (3.x) replaces dataset semantics and introduces stronger asset identity.
-- In this project, both produce events so existing automation triggers keep working.
-- For Airflow 3.x assets, we also generate materialization scaffolding to make asset production explicit.
+## What We Generate
 
-## Why Event + Materialization
+- `producer_code`: `emit_event(...)` helper functions for produced datasets/assets
+- `deployment_yaml`: trigger stanzas for consumer DAGs
+- `events`: normalized event names (for example, `dataset.s3.my_bucket.data`)
+- `assets`: detected Airflow assets with metadata (`name`, `uri`, `event_name`, `line_number`)
+- `materialization_code`: asset materialization scaffold when assets are detected
 
-- Events preserve deployment-trigger compatibility (`schedule=[dataset|asset]` style workflows).
-- Materialization code gives a dedicated place to model asset production in Prefect.
-- This dual output avoids losing trigger behavior while enabling richer asset modeling.
+## Mapping Summary
 
-## Manual Steps Still Required
+| Airflow pattern | Generated output |
+|---|---|
+| `Dataset("s3://bucket/data.csv")` | Event base: `dataset.s3.bucket.data` |
+| `Asset("s3://bucket/data.csv")` | Event base + materialization scaffold |
+| `@task(outlets=[dataset_or_asset])` | `emit_event(..., resource={"prefect.resource.id": ...})` helper |
+| `@dag(schedule=[dataset_or_asset])` | Deployment trigger in `deployment_yaml` |
 
-- Finalize asset naming conventions and ownership metadata.
-- Align storage and lineage metadata with your platform standards.
-- Replace scaffold placeholders with concrete Prefect asset API usage for your Prefect runtime version.
+## Behavior Delta: Datasets vs Assets
 
-## Before / After
+- Both Datasets and Assets are converted into event-based automation outputs.
+- Assets additionally produce `materialization_code`.
+- `materialization_code` is intentionally a scaffold and must be finalized for your Prefect runtime.
 
-Airflow:
+## Manual Follow-Up Required
+
+- Replace materialization placeholders with your concrete Prefect asset implementation.
+- Finalize naming/ownership/lineage conventions for assets.
+- Validate trigger patterns in `deployment_yaml` against your deployment topology.
+
+## Example
+
+Airflow input:
 
 ```python
 from airflow.assets import Asset
@@ -41,7 +52,7 @@ def build_sales():
     ...
 ```
 
-Generated Prefect outputs (simplified):
+Generated output (simplified):
 
 ```python
 from prefect.events import emit_event
