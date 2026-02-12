@@ -1,0 +1,9 @@
+# TaskFlow Conversion
+
+TaskFlow DAGs map cleanly to Prefect:
+
+- `@dag` → `@flow`
+- `@task` → `@task`
+- Return values replace XCom
+
+We preserve task bodies and generate placeholders for task calls when arguments are required.

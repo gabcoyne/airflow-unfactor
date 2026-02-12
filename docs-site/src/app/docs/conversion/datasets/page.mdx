@@ -1,0 +1,7 @@
+# Datasets → Prefect Events
+
+Airflow Datasets (2.4+) map to Prefect Events and Automations.
+
+- `Dataset("s3://bucket/data")` → `dataset.s3.bucket.data.updated`
+- `schedule=[dataset]` → deployment trigger
+- `outlets=[dataset]` → emit_event in task

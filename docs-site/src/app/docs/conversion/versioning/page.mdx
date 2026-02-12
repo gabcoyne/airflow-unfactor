@@ -1,0 +1,15 @@
+# Airflow Version Detection
+
+We detect 1.x / 2.x / 3.x by imports and patterns.
+
+- `airflow.operators.python_operator` → 1.x
+- `airflow.decorators` → 2.x+
+- `airflow.datasets` → 2.4+
+- `airflow.assets` → 3.x
+
+Feature flags returned:
+
+- TaskFlow
+- Datasets
+- Assets
+- Dynamic task mapping

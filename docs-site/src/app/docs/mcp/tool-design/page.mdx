@@ -1,0 +1,31 @@
+# Tool Design
+
+We design tools that are safe, deterministic, and easy for agents to use.
+
+## Principles
+
+- **Single responsibility** per tool
+- **Structured outputs** (JSON) for predictable parsing
+- **Explicit error handling** with hints and warnings
+- **Composable**: tools can be chained cleanly
+
+## Example: convert
+
+```json
+{
+  "path": "dags/my_etl.py",
+  "include_comments": true,
+  "generate_tests": true
+}
+```
+
+**Returns**
+
+```json
+{
+  "flow_code": "...",
+  "test_code": "...",
+  "warnings": ["Schedule not converted; use deployments"],
+  "mapping": {"extract": "extract"}
+}
+```

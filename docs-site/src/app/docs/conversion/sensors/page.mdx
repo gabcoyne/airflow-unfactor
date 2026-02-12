@@ -1,0 +1,8 @@
+# Sensors → Triggers
+
+Sensors convert to polling tasks with retries and event-driven suggestions.
+
+Examples:
+- `S3KeySensor` → polling with boto3 or S3 event trigger
+- `ExternalTaskSensor` → Prefect events
+- `HttpSensor` → polling task or webhook

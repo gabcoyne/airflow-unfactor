@@ -1,0 +1,25 @@
+# Schemas & Validation
+
+Every tool includes a JSON Schema input contract. This enables deterministic tool use by agents.
+
+## Example schema (analyze)
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": { "type": "string" },
+    "content": { "type": "string" }
+  },
+  "oneOf": [
+    { "required": ["path"] },
+    { "required": ["content"] }
+  ]
+}
+```
+
+## Validation philosophy
+
+- **Fail fast** on malformed input
+- **Return warnings** for partial conversions
+- **Include line numbers** where possible

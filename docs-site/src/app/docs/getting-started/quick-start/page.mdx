@@ -1,0 +1,23 @@
+# Quick Start
+
+## Analyze a DAG
+
+```json
+{
+  "tool": "analyze",
+  "args": { "path": "dags/my_etl.py" }
+}
+```
+
+## Convert a DAG
+
+```json
+{
+  "tool": "convert",
+  "args": {
+    "path": "dags/my_etl.py",
+    "include_comments": true,
+    "generate_tests": true
+  }
+}
+```

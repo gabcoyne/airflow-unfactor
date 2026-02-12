@@ -1,0 +1,42 @@
+# Prefect MCP Alignment
+
+Our MCP server aligns with **Prefect’s MCP guidance** and tooling conventions.
+
+## Prefect MCP server profile
+
+According to the Prefect MCP registry endpoint, the Prefect MCP server exposes a search tool with the following shape:
+
+```json
+{
+  "server": {
+    "name": "Prefect",
+    "version": "1.0.0",
+    "transport": "http"
+  },
+  "capabilities": {
+    "tools": {
+      "SearchPrefect": {
+        "description": "Search across the Prefect knowledge base...",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "query": { "type": "string" } },
+          "required": ["query"]
+        }
+      }
+    }
+  }
+}
+```
+
+We model our tool descriptions and schemas to match this standard.
+
+## Design goals
+
+- **Precise schemas**: All tools publish JSON Schema for inputs
+- **Clear descriptions**: Tools describe intent and when to use them
+- **Deterministic output**: Structured output for downstream agents
+- **Error transparency**: Conversion warnings returned inline
+
+## Next: Tool design
+
+See **MCP → Tool Design** for practical conventions and examples.
