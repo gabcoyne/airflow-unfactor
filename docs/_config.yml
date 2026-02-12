@@ -1,0 +1,17 @@
+title: airflow-unfactor
+description: Convert Apache Airflow DAGs to Prefect flows with confidence
+baseurl: "/airflow-unfactor"
+url: "https://prefect.github.io"
+
+theme: minima
+
+plugins:
+  - jekyll-seo-tag
+
+# Navigation
+header_pages:
+  - index.md
+  - getting-started.md
+  - examples.md
+  - operator-mapping.md
+  - testing.md
