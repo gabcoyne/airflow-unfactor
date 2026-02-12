@@ -78,7 +78,10 @@ def extract_dependencies(content: str) -> list[list[str]]:
 
     # Also check for set_upstream/set_downstream calls
     # This is a simpler regex-based approach
-    set_upstream = re.findall(r'\.set_upstream\(["']?(\w+)["']?\)', content)
-    set_downstream = re.findall(r'\.set_downstream\(["']?(\w+)["']?\)', content)
+    set_upstream_pattern = r"\.set_upstream\([\"\']?(\w+)[\"\']?\)"
+    set_downstream_pattern = r"\.set_downstream\([\"\']?(\w+)[\"\']?\)"
+    
+    set_upstream = re.findall(set_upstream_pattern, content)
+    set_downstream = re.findall(set_downstream_pattern, content)
 
     return visitor.dependencies

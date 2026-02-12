@@ -16,7 +16,7 @@ from airflow_unfactor.tools.batch import batch_convert
 
 mcp = FastMCP(
     "airflow-unfactor",
-    description="Convert Apache Airflow DAGs to Prefect flows with confidence",
+    instructions="Convert Apache Airflow DAGs to Prefect flows with confidence",
 )
 
 

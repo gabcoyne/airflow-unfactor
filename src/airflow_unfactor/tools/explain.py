@@ -14,10 +14,10 @@ CONCEPT_EXPLANATIONS = {
             "Automatic serialization of complex objects",
         ],
         "code_example": {
-            "airflow": "ti.xcom_push(key='data', value=result)
-data = ti.xcom_pull(task_ids='extract', key='data')",
-            "prefect": "return result  # Just return it!
-data = extract()  # Call returns the value directly",
+            "airflow": """ti.xcom_push(key='data', value=result)
+data = ti.xcom_pull(task_ids='extract', key='data')""",
+            "prefect": """return result  # Just return it!
+data = extract()  # Call returns the value directly""",
         },
     },
     "sensor": {
@@ -32,14 +32,13 @@ data = extract()  # Call returns the value directly",
         ],
         "code_example": {
             "airflow": "S3KeySensor(task_id='wait_for_file', bucket='my-bucket', key='data.csv')",
-            "prefect": "# Option 1: Polling flow
+            "prefect": """# Option 1: Polling flow
 @flow
 def check_s3():
     if s3_file_exists('my-bucket', 'data.csv'):
         run_deployment('process-data')
 
-# Option 2: Event trigger
-@flow(on=S3Event(bucket='my-bucket'))",
+# Option 2: Event trigger via Prefect automation""",
         },
     },
     "executor": {
@@ -53,13 +52,13 @@ def check_s3():
             "DaskTaskRunner for parallelism within a flow",
         ],
         "code_example": {
-            "airflow": "# airflow.cfg
-executor = KubernetesExecutor",
-            "prefect": "# Create a work pool
+            "airflow": """# airflow.cfg
+executor = KubernetesExecutor""",
+            "prefect": """# Create a work pool
 prefect work-pool create k8s-pool --type kubernetes
 
 # Deploy flow to it
-flow.deploy(work_pool_name='k8s-pool')",
+flow.deploy(work_pool_name='k8s-pool')""",
         },
     },
     "hook": {
@@ -73,12 +72,12 @@ flow.deploy(work_pool_name='k8s-pool')",
             "Can be loaded by name or created in code",
         ],
         "code_example": {
-            "airflow": "from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-hook = S3Hook(aws_conn_id='my_aws_conn')",
-            "prefect": "from prefect_aws import S3Bucket
+            "airflow": """from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+hook = S3Hook(aws_conn_id='my_aws_conn')""",
+            "prefect": """from prefect_aws import S3Bucket
 s3 = S3Bucket.load('my-s3-bucket')
 # or
-s3 = S3Bucket(bucket_name='my-bucket', credentials=...)",
+s3 = S3Bucket(bucket_name='my-bucket', credentials=...)""",
         },
     },
     "connection": {
@@ -92,12 +91,12 @@ s3 = S3Bucket(bucket_name='my-bucket', credentials=...)",
             "No dependency on a metadata database",
         ],
         "code_example": {
-            "airflow": "# In Airflow UI or CLI:
-airflow connections add my_pg --conn-type postgres --host localhost",
-            "prefect": "# Create a block in UI or code:
+            "airflow": """# In Airflow UI or CLI:
+airflow connections add my_pg --conn-type postgres --host localhost""",
+            "prefect": """# Create a block in UI or code:
 from prefect_sqlalchemy import SqlAlchemyConnector
 conn = SqlAlchemyConnector(connection_info=...)
-conn.save('my-postgres')",
+conn.save('my-postgres')""",
         },
     },
     "variable": {
@@ -111,13 +110,13 @@ conn.save('my-postgres')",
             "No database dependency",
         ],
         "code_example": {
-            "airflow": "from airflow.models import Variable
-value = Variable.get('my_var')",
-            "prefect": "import os
+            "airflow": """from airflow.models import Variable
+value = Variable.get('my_var')""",
+            "prefect": """import os
 value = os.environ['MY_VAR']
 # or
 from prefect.blocks.system import JSON
-config = JSON.load('my-config')",
+config = JSON.load('my-config')""",
         },
     },
 }
