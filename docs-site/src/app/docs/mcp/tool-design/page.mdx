@@ -26,6 +26,12 @@ We design tools that are safe, deterministic, and easy for agents to use.
   "flow_code": "...",
   "test_code": "...",
   "warnings": ["Schedule not converted; use deployments"],
-  "mapping": {"extract": "extract"}
+  "original_to_new_mapping": {"extract": "extract"},
+  "dataset_conversion": {
+    "events": ["dataset.s3.bucket.data"],
+    "deployment_yaml": "triggers: ...",
+    "materialization_code": "@materialize(\"s3://bucket/data\") ..."
+  },
+  "conversion_runbook_md": "# Conversion Runbook: ..."
 }
 ```

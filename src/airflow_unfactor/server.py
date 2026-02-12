@@ -53,7 +53,8 @@ async def convert(
         include_external_context: Enrich conversion with external MCP context
 
     Returns:
-        JSON with flow_code, test_code, warnings, and task mapping
+        JSON with flow_code, test_code, warnings, task mapping,
+        dataset conversion outputs, and migration runbook
     """
     return await convert_dag(
         path=path,
