@@ -130,6 +130,8 @@ def produce():
         
         assert "emit_event" in result["producer_code"]
         assert "s3://bucket/output" in result["producer_code"]
+        assert result["materialization_code"] == ""
+        assert result["assets"] == []
 
     def test_generate_deployment_yaml(self):
         """Generate deployment trigger config."""
@@ -163,6 +165,30 @@ def plain_dag():
         
         assert result["producer_code"] == ""
         assert "No Datasets" in result["notes"][0]
+        assert result["events"] == []
+        assert result["assets"] == []
+        assert result["materialization_code"] == ""
+
+    def test_generate_asset_materialization_code(self):
+        """Assets should produce materialization scaffolding."""
+        code = '''
+from airflow.assets import Asset
+from airflow.decorators import task
+
+sales_asset = Asset("s3://sales/daily")
+
+@task(outlets=[sales_asset])
+def build_sales():
+    pass
+'''
+        analysis = analyze_datasets(code)
+        result = generate_event_code(analysis)
+
+        assert len(result["assets"]) == 1
+        assert result["assets"][0]["name"] == "sales_asset"
+        assert result["assets"][0]["uri"] == "s3://sales/daily"
+        assert "materialize_sales_asset" in result["materialization_code"]
+        assert "emit_sales_asset_updated" in result["producer_code"]
 
 
 class TestRealWorldDatasets:

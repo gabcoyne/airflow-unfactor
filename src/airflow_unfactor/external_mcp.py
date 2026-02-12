@@ -81,6 +81,7 @@ async def _mcp_call(
     headers = server.headers or {}
 
     start = time.time()
+    query = str(payload.get("query", ""))
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(tool_url, json={"input": payload}, headers=headers)
@@ -88,6 +89,7 @@ async def _mcp_call(
             return {
                 "ok": True,
                 "tool": tool_name,
+                "query": query,
                 "elapsed_ms": int((time.time() - start) * 1000),
                 "result": resp.json(),
             }
@@ -95,6 +97,7 @@ async def _mcp_call(
         return {
             "ok": False,
             "tool": tool_name,
+            "query": query,
             "elapsed_ms": int((time.time() - start) * 1000),
             "error": str(e),
         }

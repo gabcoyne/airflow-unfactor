@@ -51,6 +51,10 @@ class DatasetAnalysis:
     def has_datasets(self) -> bool:
         return len(self.datasets) > 0
 
+    @property
+    def assets(self) -> list[DatasetInfo]:
+        return [d for d in self.datasets if d.is_asset]
+
 
 def uri_to_event_name(uri: str) -> str:
     """Convert a Dataset URI to a Prefect event name.
@@ -214,7 +218,8 @@ def generate_event_code(
         include_comments: Include educational comments
         
     Returns:
-        Dictionary with producer_code, deployment_yaml, notes
+        Dictionary with producer_code, deployment_yaml, notes, events, assets,
+        and materialization_code
     """
     lines = []
     deployment_triggers = []
@@ -225,6 +230,9 @@ def generate_event_code(
             "producer_code": "",
             "deployment_yaml": "",
             "notes": ["No Datasets detected"],
+            "events": [],
+            "assets": [],
+            "materialization_code": "",
         }
     
     if include_comments:
@@ -236,14 +244,16 @@ def generate_event_code(
     lines.append("from prefect.events import emit_event")
     lines.append("")
     
+    dataset_map = {d.name: d for d in analysis.datasets}
+
     # Generate emit_event calls for each producer
     for producer in analysis.producers:
         if include_comments:
-            lines.append(f"# Task '{producer.task_name}' produces datasets:")
+            lines.append(f"# Task '{producer.task_name}' produces datasets/assets:")
         
         for ds_name in producer.datasets:
-            if ds_name in {d.name for d in analysis.datasets}:
-                ds = next(d for d in analysis.datasets if d.name == ds_name)
+            if ds_name in dataset_map:
+                ds = dataset_map[ds_name]
                 lines.append(f"")
                 lines.append(f"def emit_{ds_name}_updated():")
                 lines.append(f"    \"\"\"Emit event when {ds_name} is updated.\"\"\"")
@@ -257,15 +267,14 @@ def generate_event_code(
         notes.append(f"DAG '{consumer.dag_name}' should be deployed with event triggers")
         
         for ds_name in consumer.datasets:
-            if ds_name in {d.name for d in analysis.datasets}:
-                ds = next(d for d in analysis.datasets if d.name == ds_name)
+            if ds_name in dataset_map:
+                ds = dataset_map[ds_name]
                 deployment_triggers.append({
                     "match": {"prefect.resource.id": ds.uri},
                     "expect": [f"{ds.event_name}.updated"],
                 })
     
     # Format deployment YAML
-    import json
     deployment_yaml = ""
     if deployment_triggers:
         deployment_yaml = f"""# Prefect Deployment triggers (prefect.yaml)
@@ -273,9 +282,40 @@ triggers:"""
         for trigger in deployment_triggers:
             deployment_yaml += f"""\n  - match:\n      prefect.resource.id: "{trigger['match']['prefect.resource.id']}"\n    expect:\n      - "{trigger['expect'][0]}"\n"""
     
+    materialization_lines: list[str] = []
+    if analysis.assets:
+        if include_comments:
+            materialization_lines.append("# Airflow 3.x Asset materialization scaffold")
+            materialization_lines.append(
+                "# Exact Prefect asset APIs may vary by Prefect version."
+            )
+        materialization_lines.append("from prefect import flow")
+        materialization_lines.append("")
+        for asset in analysis.assets:
+            materialization_lines.append(f"@flow(name=\"materialize_{asset.name}\")")
+            materialization_lines.append(f"def materialize_{asset.name}() -> str:")
+            materialization_lines.append(f"    \"\"\"Materialize asset '{asset.name}'.\"\"\"")
+            materialization_lines.append(f"    # TODO: replace with your concrete Prefect asset API usage")
+            materialization_lines.append(f"    return \"{asset.uri}\"")
+            materialization_lines.append("")
+        notes.append(
+            "Assets detected: generated materialization scaffold. "
+            "Finalize concrete Prefect asset API for your runtime version."
+        )
+
     return {
         "producer_code": "\n".join(lines),
         "deployment_yaml": deployment_yaml,
         "notes": notes,
         "events": [d.event_name for d in analysis.datasets],
+        "assets": [
+            {
+                "name": asset.name,
+                "uri": asset.uri,
+                "event_name": asset.event_name,
+                "line_number": asset.line_number,
+            }
+            for asset in analysis.assets
+        ],
+        "materialization_code": "\n".join(materialization_lines).strip(),
     }

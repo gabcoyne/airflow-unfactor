@@ -1,7 +1,63 @@
 # Datasets → Prefect Events
 
-Airflow Datasets (2.4+) map to Prefect Events and Automations.
+Airflow Datasets (2.4+) and Assets (3.x) map to Prefect Events and Automations.
 
 - `Dataset("s3://bucket/data")` → `dataset.s3.bucket.data.updated`
+- `Asset("s3://bucket/data")` → Prefect asset materialization scaffold + event emission
 - `schedule=[dataset]` → deployment trigger
 - `outlets=[dataset]` → emit_event in task
+
+## Migration Delta: Dataset vs Asset
+
+- Airflow `Dataset` represents update-driven dependencies.
+- Airflow `Asset` (3.x) replaces dataset semantics and introduces stronger asset identity.
+- In this project, both produce events so existing automation triggers keep working.
+- For Airflow 3.x assets, we also generate materialization scaffolding to make asset production explicit.
+
+## Why Event + Materialization
+
+- Events preserve deployment-trigger compatibility (`schedule=[dataset|asset]` style workflows).
+- Materialization code gives a dedicated place to model asset production in Prefect.
+- This dual output avoids losing trigger behavior while enabling richer asset modeling.
+
+## Manual Steps Still Required
+
+- Finalize asset naming conventions and ownership metadata.
+- Align storage and lineage metadata with your platform standards.
+- Replace scaffold placeholders with concrete Prefect asset API usage for your Prefect runtime version.
+
+## Before / After
+
+Airflow:
+
+```python
+from airflow.assets import Asset
+from airflow.decorators import task
+
+sales_asset = Asset("s3://sales/daily")
+
+@task(outlets=[sales_asset])
+def build_sales():
+    ...
+```
+
+Generated Prefect outputs (simplified):
+
+```python
+from prefect.events import emit_event
+
+def emit_sales_asset_updated():
+    emit_event(
+        event="dataset.s3.sales.daily.updated",
+        resource={"prefect.resource.id": "s3://sales/daily"},
+    )
+```
+
+```python
+from prefect import flow
+
+@flow(name="materialize_sales_asset")
+def materialize_sales_asset() -> str:
+    # TODO: replace with concrete Prefect asset API usage
+    return "s3://sales/daily"
+```

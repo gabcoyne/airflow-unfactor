@@ -46,7 +46,8 @@ Expose local MCP tools that proxy to external servers:
 - `explain`: optional external enrichment (Prefect examples)
 
 ### R4: Runtime Behavior
-- External calls are **opt-in** via `include_external_context: bool` (default: true)
+- External calls are **enabled by default** via `include_external_context: bool = true`
+- Setting `include_external_context=false` must fully disable external MCP calls
 - Timeouts and failures must **not** break core conversion
 - Responses should be attached under `external_context` with provenance
 
@@ -58,18 +59,31 @@ Example:
   "warnings": [],
   "external_context": {
     "prefect": {
+      "ok": true,
       "tool": "SearchPrefect",
       "query": "taskflow conversion",
-      "results": [ ... ]
+      "elapsed_ms": 123,
+      "result": { ... }
     },
     "astronomer": {
+      "ok": false,
       "tool": "Airflow2to3Migration",
       "query": "datasets -> assets",
-      "results": [ ... ]
+      "elapsed_ms": 8000,
+      "error": "timeout"
     }
   }
 }
 ```
+
+Canonical provider payload:
+- `ok: bool` required
+- `tool: str` required
+- `query: str` required
+- `elapsed_ms: int` required
+- Exactly one of:
+  - Success: `result: object|array|string|number|bool|null`
+  - Failure: `error: str`
 
 ### R6: Security
 - Do not log secrets or raw auth headers
