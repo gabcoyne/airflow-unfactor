@@ -7,34 +7,50 @@ title: Home
 
 > *"Airflow is for airports. Welcome to modern orchestration."*
 
-**airflow-unfactor** is an MCP (Model Context Protocol) server that converts Apache Airflow DAGs to Prefect flows using AI-assisted analysis.
+**airflow-unfactor** is an MCP server that converts Apache Airflow DAGs to Prefect flows. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
-## Why airflow-unfactor?
+## Features
 
-- **🔄 Complete Conversion** — Handles all operators, not just the easy ones
-- **📚 Educational** — Comments explain *why* Prefect does it better
-- **✅ Test Generation** — Every converted flow comes with pytest tests
-- **🤖 AI-Assisted** — Smart analysis of complex DAG patterns
-- **📦 Batch Support** — Convert entire projects at once
+- 🔄 **Complete Conversion** — Handles all operators, not just the easy ones
+- 📚 **Educational** — Comments explain *why* Prefect does it better
+- ✅ **Test Generation** — Every converted flow comes with pytest tests
+- 🤖 **AI-Assisted** — Smart analysis of complex DAG patterns
+- 📦 **Batch Support** — Convert entire projects at once
 
 ## Quick Start
 
+### 1. Install
+
 ```bash
-# Install
 uv pip install airflow-unfactor
-
-# Convert a DAG
-airflow-unfactor convert my_dag.py -o my_flow.py
-
-# Or use as an MCP server with Claude/Cursor
 ```
+
+### 2. Add to Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
+```
+
+### 3. Convert!
+
+Ask Claude:
+> "Convert the DAG in `dags/my_etl.py` to a Prefect flow"
 
 ## The Key Differentiator: Tests
 
 Every conversion generates:
 - The converted Prefect flow
 - pytest tests that verify the migration works
-- Migration verification tests (task count, no XCom references)
+- Migration verification (task count, no XCom references)
 
 **Migrations you can trust.**
 
@@ -62,6 +78,9 @@ with DAG("my_etl", ...) as dag:
 ```python
 from prefect import flow, task
 
+# ✨ Prefect Advantage: Direct Data Passing
+# No XCom - data flows in-memory between tasks.
+
 @task
 def extract():
     return {"users": [1, 2, 3]}
@@ -72,14 +91,18 @@ def transform(data):
 
 @flow(name="my_etl")
 def my_etl():
-    data = extract()      # Direct return, not xcom_push
-    result = transform(data)  # Direct parameter, not xcom_pull
+    data = extract()      # Direct return
+    result = transform(data)  # Direct parameter
     return result
 ```
 
 ## Learn More
 
-- [Getting Started](getting-started.md)
-- [Examples](examples.md) (from [Astronomer example DAGs](https://github.com/astronomer/2-9-example-dags))
-- [Operator Mapping](operator-mapping.md)
-- [Testing](testing.md)
+- [Getting Started](getting-started.md) — Installation and setup
+- [Examples](examples.md) — Real conversions from [Astronomer DAGs](https://github.com/astronomer/2-9-example-dags)
+- [Operator Mapping](operator-mapping.md) — Complete Airflow → Prefect reference
+- [Testing](testing.md) — How to verify your migrations
+
+---
+
+Made with 💙 by [Prefect](https://prefect.io)

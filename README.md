@@ -2,66 +2,166 @@
 
 > *"Airflow is for airports. Welcome to modern orchestration."*
 
-An MCP (Model Context Protocol) server that converts Apache Airflow DAGs to Prefect flows using AI-assisted analysis.
+[![Tests](https://github.com/prefect/airflow-unfactor/actions/workflows/test.yml/badge.svg)](https://github.com/prefect/airflow-unfactor/actions/workflows/test.yml)
+[![PyPI](https://img.shields.io/pypi/v/airflow-unfactor)](https://pypi.org/project/airflow-unfactor/)
+[![License](https://img.shields.io/github/license/prefect/airflow-unfactor)](LICENSE)
+
+An MCP server that converts Apache Airflow DAGs to Prefect flows with AI assistance. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
 ## Features
 
-- 🔍 **Analyze** — Understand DAG complexity before converting
-- 🔄 **Convert** — Transform Airflow DAGs to idiomatic Prefect flows
-- ✅ **Validate** — Verify conversions maintain behavioral equivalence  
-- 📚 **Educate** — Learn Prefect advantages through helpful comments
-- 📦 **Batch** — Convert entire projects at once
+- 🔄 **Complete Conversion** — Handles all operators, not just the easy ones
+- 📚 **Educational** — Comments explain *why* Prefect does it better
+- ✅ **Test Generation** — Every converted flow comes with pytest tests
+- 🤖 **AI-Assisted** — Smart analysis of complex DAG patterns
+- 📦 **Batch Support** — Convert entire projects at once
 
 ## Installation
 
 ```bash
+# Using uv (recommended)
+uv pip install airflow-unfactor
+
+# Using pip
+pip install airflow-unfactor
+
+# From source (for development)
+git clone https://github.com/prefect/airflow-unfactor.git
+cd airflow-unfactor
 uv pip install -e ".[dev]"
 ```
 
-## Usage
+## Quick Start
 
-### As MCP Server
+### Use with Claude Desktop
 
-Add to your Claude Desktop or Cursor config:
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "airflow-unfactor": {
-      "command": "uv",
-      "args": ["run", "airflow-unfactor"]
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
     }
   }
 }
 ```
 
-### CLI
+Then ask Claude:
+> "Convert the DAG in `dags/my_etl.py` to a Prefect flow"
+
+### Use with Cursor
+
+Add to your Cursor MCP config:
+
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
+```
+
+### Run Standalone
 
 ```bash
-# Analyze a DAG
-airflow-unfactor analyze my_dag.py
+# Start the MCP server
+airflow-unfactor
 
-# Convert a DAG
-airflow-unfactor convert my_dag.py -o my_flow.py
-
-# Batch convert
-airflow-unfactor batch ./dags/ -o ./flows/
+# Or with uv
+uvx airflow-unfactor
 ```
+
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `analyze` | Analyze a DAG's structure, operators, and complexity |
+| `convert` | Convert a DAG to a Prefect flow with tests |
+| `validate` | Verify conversion maintains behavioral equivalence |
+| `explain` | Learn Airflow concepts and Prefect equivalents |
+| `batch` | Convert multiple DAGs at once |
+
+## Example
+
+**Airflow DAG:**
+```python
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+def extract():
+    return {"users": [1, 2, 3]}
+
+def transform(ti):
+    data = ti.xcom_pull(task_ids="extract")
+    return [u * 2 for u in data["users"]]
+
+with DAG("my_etl", ...) as dag:
+    t1 = PythonOperator(task_id="extract", python_callable=extract)
+    t2 = PythonOperator(task_id="transform", python_callable=transform)
+    t1 >> t2
+```
+
+**Converted Prefect Flow:**
+```python
+from prefect import flow, task
+
+# ✨ Prefect Advantage: Direct Data Passing
+# No XCom push/pull - data flows in-memory between tasks.
+
+@task
+def extract():
+    return {"users": [1, 2, 3]}
+
+@task
+def transform(data):
+    return [u * 2 for u in data["users"]]
+
+@flow(name="my_etl")
+def my_etl():
+    data = extract()  # Direct return
+    result = transform(data)  # Direct parameter
+    return result
+```
+
+**Plus generated tests!** See [Testing](https://prefect.github.io/airflow-unfactor/testing/) for details.
+
+## Documentation
+
+Full documentation: [prefect.github.io/airflow-unfactor](https://prefect.github.io/airflow-unfactor)
+
+- [Getting Started](https://prefect.github.io/airflow-unfactor/getting-started/)
+- [Examples](https://prefect.github.io/airflow-unfactor/examples/)
+- [Operator Mapping](https://prefect.github.io/airflow-unfactor/operator-mapping/)
+- [Testing](https://prefect.github.io/airflow-unfactor/testing/)
 
 ## Development
 
 ```bash
-# Install with dev dependencies
+# Clone and install
+git clone https://github.com/prefect/airflow-unfactor.git
+cd airflow-unfactor
 uv pip install -e ".[dev]"
 
 # Run tests
 pytest
 
 # Task tracking with Beads
-bd ready  # See available tasks
-bd create "New feature" -p 1
+bd ready
 ```
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE).
+
+---
+
+Made with 💙 by [Prefect](https://prefect.io)

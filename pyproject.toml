@@ -4,9 +4,22 @@ version = "0.1.0"
 description = "MCP server to convert Apache Airflow DAGs to Prefect flows"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Prefect", email = "engineering@prefect.io" }
+]
+license = { text = "MIT" }
+keywords = ["airflow", "prefect", "mcp", "migration", "orchestration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
 dependencies = [
-    "mcp>=1.0.0",
-    "anthropic>=0.40.0",
+    "fastmcp>=3.0.0b2",
     "prefect>=3.0.0",
     "pydantic>=2.0.0",
 ]
@@ -18,9 +31,18 @@ dev = [
     "hypothesis>=6.0.0",
     "ruff>=0.5.0",
 ]
+ai = [
+    "anthropic>=0.40.0",
+    "openai>=1.0.0",
+]
 
 [project.scripts]
 airflow-unfactor = "airflow_unfactor.server:main"
+
+[project.urls]
+Homepage = "https://github.com/prefect/airflow-unfactor"
+Documentation = "https://prefect.github.io/airflow-unfactor"
+Repository = "https://github.com/prefect/airflow-unfactor"
 
 [build-system]
 requires = ["hatchling"]
@@ -32,6 +54,9 @@ packages = ["src/airflow_unfactor"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

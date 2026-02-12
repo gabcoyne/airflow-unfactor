@@ -4,87 +4,165 @@ title: Getting Started
 permalink: /getting-started/
 ---
 
-# Getting Started with airflow-unfactor
+# Getting Started
 
 ## Installation
 
-```bash
-# Using uv (recommended)
-uv pip install airflow-unfactor
+### Using uv (recommended)
 
-# Using pip
+```bash
+uv pip install airflow-unfactor
+```
+
+### Using pip
+
+```bash
 pip install airflow-unfactor
 ```
 
-## Usage
+### From source
 
-### As an MCP Server
+```bash
+git clone https://github.com/prefect/airflow-unfactor.git
+cd airflow-unfactor
+uv pip install -e ".[dev]"
+```
 
-Add to your Claude Desktop or Cursor config:
+## Setup with Claude Desktop
+
+Add to your Claude Desktop config:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "airflow-unfactor": {
-      "command": "uv",
-      "args": ["run", "airflow-unfactor"]
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
     }
   }
 }
 ```
 
-Then ask Claude to convert your DAGs:
+Restart Claude Desktop. You should see the airflow-unfactor tools available.
 
-> "Convert the DAG in `dags/my_etl.py` to a Prefect flow"
+## Setup with Cursor
 
-### CLI Usage
+Add to your Cursor MCP config (`~/.cursor/mcp.json` or via Cursor settings):
 
-```bash
-# Analyze a DAG (without converting)
-airflow-unfactor analyze my_dag.py
-
-# Convert a single DAG
-airflow-unfactor convert my_dag.py -o my_flow.py
-
-# Convert with tests
-airflow-unfactor convert my_dag.py -o my_flow.py --with-tests
-
-# Batch convert a directory
-airflow-unfactor batch ./dags/ -o ./flows/
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
 ```
 
-## MCP Tools
+## Usage
 
-### `analyze_dag`
-Analyze a DAG without converting. Returns:
-- Operators used
-- Task dependencies
-- XCom usage patterns
-- Complexity score
+### With an AI Assistant
 
-### `convert_dag`
-Convert a DAG to a Prefect flow. Generates:
-- Clean, idiomatic Prefect code
-- Educational comments explaining Prefect advantages
-- pytest tests for the converted flow
+Once configured, ask your AI assistant:
 
-### `validate_conversion`
-Verify a conversion maintains behavioral equivalence.
+> "Analyze the DAG in `dags/my_etl.py`"
 
-### `explain_concept`
-Learn about Airflow concepts and their Prefect equivalents:
-- XCom → Return values
-- Sensors → Triggers / polling flows
-- Executors → Work pools
-- Hooks → Blocks
-- Connections → Blocks / env vars
-- Variables → Parameters / Blocks
+> "Convert `dags/my_dag.py` to a Prefect flow"
 
-### `batch_convert`
-Convert multiple DAGs at once with a migration report.
+> "Explain what XCom is and how Prefect handles data passing"
+
+> "Convert all DAGs in the `dags/` directory"
+
+### Standalone
+
+Run the MCP server directly:
+
+```bash
+# Using uvx (no install needed)
+uvx airflow-unfactor
+
+# Or if installed
+airflow-unfactor
+```
+
+## Available Tools
+
+### `analyze`
+Analyze a DAG without converting.
+
+```
+Inputs:
+  - path: Path to DAG file
+  - content: DAG code (alternative to path)
+
+Returns:
+  - dag_id, operators, dependencies
+  - XCom usage, complexity score
+  - Conversion notes
+```
+
+### `convert`
+Convert a DAG to a Prefect flow.
+
+```
+Inputs:
+  - path: Path to DAG file
+  - content: DAG code (alternative to path)
+  - include_comments: Add educational comments (default: true)
+  - generate_tests: Generate pytest tests (default: true)
+
+Returns:
+  - flow_code: Converted Prefect flow
+  - test_code: pytest tests for the flow
+  - warnings: Conversion warnings
+  - task mapping: Original → converted task names
+```
+
+### `validate`
+Verify a conversion is correct.
+
+```
+Inputs:
+  - original_dag: Original DAG path/content
+  - converted_flow: Converted flow path/content
+
+Returns:
+  - valid: Boolean
+  - issues: List of problems
+  - test_suggestions: Recommended tests
+```
+
+### `explain`
+Learn Airflow concepts and Prefect equivalents.
+
+```
+Inputs:
+  - concept: XCom, Sensor, Executor, Hook, Connection, or Variable
+
+Returns:
+  - Explanation with code examples
+  - Prefect advantages
+```
+
+### `batch`
+Convert multiple DAGs at once.
+
+```
+Inputs:
+  - directory: Directory with DAG files
+  - output_directory: Where to write flows (optional)
+
+Returns:
+  - Conversion report (success/fail counts)
+  - Migration report file
+```
 
 ## Next Steps
 
 - See [Examples](examples.md) for real-world conversions
-- Learn the [Operator Mapping](operator-mapping.md)
-- Understand [Testing](testing.md) your migrations
+- Review the [Operator Mapping](operator-mapping.md)
+- Learn about [Testing](testing.md) your migrations
