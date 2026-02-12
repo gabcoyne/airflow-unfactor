@@ -1,0 +1,12 @@
+{
+  "prefect": {
+    "url": "https://docs.prefect.io/mcp",
+    "transport": "http",
+    "headers": {}
+  },
+  "astronomer": {
+    "url": "https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration",
+    "transport": "http",
+    "headers": {}
+  }
+}

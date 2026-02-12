@@ -1,6 +1,7 @@
 """Explain Airflow concepts and Prefect equivalents."""
 
 import json
+from airflow_unfactor.external_mcp import ExternalMCPClient
 
 CONCEPT_EXPLANATIONS = {
     "xcom": {
@@ -122,19 +123,29 @@ config = JSON.load('my-config')""",
 }
 
 
-async def explain_concept(concept: str) -> str:
+async def explain_concept(concept: str, include_external_context: bool = True) -> str:
     """Explain an Airflow concept and its Prefect equivalent.
 
     Args:
         concept: Airflow concept name
+        include_external_context: Enrich with external MCP context
 
     Returns:
         JSON with explanation and examples
     """
     key = concept.lower().strip()
+    external_context = {}
 
     if key in CONCEPT_EXPLANATIONS:
-        return json.dumps(CONCEPT_EXPLANATIONS[key], indent=2)
+        result = CONCEPT_EXPLANATIONS[key]
+        if include_external_context:
+            client = ExternalMCPClient.from_env()
+            external_context["prefect"] = await client.call_prefect_search(
+                f"{concept} in Prefect"
+            )
+        if external_context:
+            result = {**result, "external_context": external_context}
+        return json.dumps(result, indent=2)
 
     return json.dumps({
         "error": f"Unknown concept: {concept}",

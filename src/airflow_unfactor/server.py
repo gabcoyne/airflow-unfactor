@@ -12,6 +12,7 @@ from airflow_unfactor.tools.convert import convert_dag
 from airflow_unfactor.tools.validate import validate_conversion
 from airflow_unfactor.tools.explain import explain_concept
 from airflow_unfactor.tools.batch import batch_convert
+from airflow_unfactor.tools.external import prefect_search, astronomer_migration
 
 
 mcp = FastMCP(
@@ -21,7 +22,7 @@ mcp = FastMCP(
 
 
 @mcp.tool
-async def analyze(path: Optional[str] = None, content: Optional[str] = None) -> str:
+async def analyze(path: Optional[str] = None, content: Optional[str] = None, include_external_context: bool = True) -> str:
     """Analyze an Airflow DAG to understand its structure.
 
     Args:
@@ -31,7 +32,7 @@ async def analyze(path: Optional[str] = None, content: Optional[str] = None) -> 
     Returns:
         JSON with operators, dependencies, XCom usage, and complexity score
     """
-    return await analyze_dag(path=path, content=content)
+    return await analyze_dag(path=path, content=content, include_external_context=include_external_context)
 
 
 @mcp.tool
@@ -40,6 +41,7 @@ async def convert(
     content: Optional[str] = None,
     include_comments: bool = True,
     generate_tests: bool = True,
+    include_external_context: bool = True,
 ) -> str:
     """Convert an Airflow DAG to a Prefect flow.
 
@@ -48,6 +50,7 @@ async def convert(
         content: DAG code content (alternative to path)
         include_comments: Include educational comments explaining Prefect advantages
         generate_tests: Generate pytest tests for the converted flow
+        include_external_context: Enrich conversion with external MCP context
 
     Returns:
         JSON with flow_code, test_code, warnings, and task mapping
@@ -57,6 +60,7 @@ async def convert(
         content=content,
         include_comments=include_comments,
         generate_tests=generate_tests,
+        include_external_context=include_external_context,
     )
 
 
@@ -78,7 +82,7 @@ async def validate(original_dag: str, converted_flow: str) -> str:
 
 
 @mcp.tool
-async def explain(concept: str) -> str:
+async def explain(concept: str, include_external_context: bool = True) -> str:
     """Explain an Airflow concept and its Prefect equivalent.
 
     Args:
@@ -87,7 +91,7 @@ async def explain(concept: str) -> str:
     Returns:
         JSON with explanation, advantages, and code examples
     """
-    return await explain_concept(concept=concept)
+    return await explain_concept(concept=concept, include_external_context=include_external_context)
 
 
 @mcp.tool
@@ -108,6 +112,18 @@ async def batch(
         directory=directory,
         output_directory=output_directory,
     )
+
+
+@mcp.tool
+async def prefect_search_tool(query: str) -> str:
+    """Proxy to Prefect MCP search."""
+    return await prefect_search(query)
+
+
+@mcp.tool
+async def astronomer_migration_tool(query: str) -> str:
+    """Proxy to Astronomer Airflow 2→3 migration MCP tool."""
+    return await astronomer_migration(query)
 
 
 def main():

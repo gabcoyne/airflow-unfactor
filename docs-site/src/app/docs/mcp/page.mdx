@@ -1,6 +1,20 @@
 # Prefect MCP Alignment
 
-Our MCP server aligns with **Prefect’s MCP guidance** and tooling conventions.
+Our MCP server aligns with **Prefect’s MCP guidance** and integrates external MCP servers for richer context.
+
+## External MCP Servers
+
+We use two unauthenticated MCP servers:
+
+- **Prefect MCP**: `https://docs.prefect.io/mcp`
+- **Astronomer MCP**: `https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration`
+
+Set optional env overrides:
+
+```bash
+export MCP_PREFECT_URL="https://docs.prefect.io/mcp"
+export MCP_ASTRONOMER_URL="https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration"
+```
 
 ## Prefect MCP server profile
 
