@@ -16,6 +16,12 @@ class XComPullInfo:
     is_constant: bool  # Whether task_ids is a constant value
     source_text: str  # Original source text of the call
     line_number: int | None = None
+    is_multi_task: bool = False  # Whether pulling from multiple tasks
+
+    def __post_init__(self):
+        """Set is_multi_task based on task_ids type."""
+        if isinstance(self.task_ids, list) and len(self.task_ids) > 1:
+            self.is_multi_task = True
 
 
 @dataclass
@@ -47,12 +53,38 @@ class XComUsage:
         return False
 
     @property
+    def has_multi_task_pulls(self) -> bool:
+        """Check if any pulls are from multiple tasks."""
+        return any(pull.is_multi_task for pull in self.pulls)
+
+    @property
     def simple_pull_task_ids(self) -> list[str]:
-        """Get task_ids from simple constant pulls."""
+        """Get task_ids from simple constant pulls (single task only)."""
         result = []
         for pull in self.pulls:
             if pull.is_constant and isinstance(pull.task_ids, str):
                 result.append(pull.task_ids)
+        return result
+
+    @property
+    def multi_task_pull_ids(self) -> list[list[str]]:
+        """Get task_ids from multi-task pulls."""
+        result = []
+        for pull in self.pulls:
+            if pull.is_multi_task and isinstance(pull.task_ids, list):
+                result.append(pull.task_ids)
+        return result
+
+    @property
+    def all_pull_task_ids(self) -> list[str]:
+        """Get all task_ids from all pulls (flattened)."""
+        result = []
+        for pull in self.pulls:
+            if pull.is_constant:
+                if isinstance(pull.task_ids, str):
+                    result.append(pull.task_ids)
+                elif isinstance(pull.task_ids, list):
+                    result.extend(pull.task_ids)
         return result
 
 
@@ -239,6 +271,11 @@ class FunctionExtractor(ast.NodeVisitor):
                     f"Dynamic task_ids in xcom_pull at line {pull.line_number}: {pull.source_text}. "
                     "This requires manual conversion - task_ids cannot be resolved statically."
                 )
+            if pull.is_multi_task:
+                xcom_usage.warnings.append(
+                    f"Multi-task xcom_pull at line {pull.line_number}: pulling from {pull.task_ids}. "
+                    "Each task's result is now a separate function parameter."
+                )
             if pull.key and pull.key != "return_value":
                 xcom_usage.warnings.append(
                     f"Custom key '{pull.key}' in xcom_pull at line {pull.line_number}. "
@@ -333,16 +370,24 @@ def convert_python_operator(
         new_args = []
         for arg in func.args:
             if arg == "ti":
-                # Replace ti with actual data parameters from simple pulls
+                # Replace ti with actual data parameters from all pulls
+                # Handle simple single-task pulls
                 for pull_task in xcom_usage.simple_pull_task_ids:
                     safe_name = pull_task.replace("-", "_").replace(" ", "_")
                     new_args.append(f"{safe_name}_data")
+                # Handle multi-task pulls - add parameter for each task
+                for pull in xcom_usage.pulls:
+                    if pull.is_multi_task and isinstance(pull.task_ids, list):
+                        for task_id in pull.task_ids:
+                            safe_name = task_id.replace("-", "_").replace(" ", "_")
+                            if f"{safe_name}_data" not in new_args:
+                                new_args.append(f"{safe_name}_data")
             elif arg not in ("context", "kwargs", "ds", "execution_date"):
                 new_args.append(arg)
 
         # Add parameters for XCom pulls if not already captured
-        if xcom_usage.simple_pull_task_ids and not func.has_ti_param:
-            for pull_task in xcom_usage.simple_pull_task_ids:
+        if xcom_usage.all_pull_task_ids and not func.has_ti_param:
+            for pull_task in xcom_usage.all_pull_task_ids:
                 safe_name = pull_task.replace("-", "_").replace(" ", "_")
                 if f"{safe_name}_data" not in new_args:
                     new_args.append(f"{safe_name}_data")
@@ -414,16 +459,29 @@ def _convert_function_body(
                 if pull.source_text:
                     converted = converted.replace(pull.source_text, replacement)
             elif pull.is_constant and isinstance(pull.task_ids, list):
-                # List of task_ids - this is more complex
-                warnings.append(
-                    f"xcom_pull with list of task_ids requires manual conversion: {pull.source_text}"
-                )
-                # Add TODO comment
-                if pull.source_text:
-                    converted = converted.replace(
-                        pull.source_text,
-                        f"# TODO: Convert multi-task xcom_pull - {pull.source_text}",
+                # List of task_ids - generate dict comprehension or tuple
+                if len(pull.task_ids) == 1:
+                    # Single item in list - treat as simple case
+                    safe_name = pull.task_ids[0].replace("-", "_").replace(" ", "_")
+                    replacement = f"{safe_name}_data"
+                else:
+                    # Multiple task_ids - generate dict/tuple of results
+                    safe_names = [
+                        tid.replace("-", "_").replace(" ", "_") for tid in pull.task_ids
+                    ]
+                    # Generate a dict with task_id keys for easy access
+                    dict_items = ", ".join(
+                        f'"{tid}": {safe}_data'
+                        for tid, safe in zip(pull.task_ids, safe_names)
                     )
+                    replacement = "{" + dict_items + "}"
+                    warnings.append(
+                        f"Multi-task xcom_pull converted to dict: {pull.source_text} -> {replacement}. "
+                        "Access individual results via result['task_id']."
+                    )
+
+                if pull.source_text:
+                    converted = converted.replace(pull.source_text, replacement)
             else:
                 # Dynamic task_ids
                 warnings.append(

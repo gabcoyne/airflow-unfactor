@@ -85,6 +85,32 @@ uvx airflow-unfactor
 | `validate` | Verify refactoring maintains behavioral equivalence |
 | `explain` | Learn Airflow concepts and Prefect equivalents |
 | `batch` | Refactor multiple DAGs at once |
+| `scaffold` | Generate a complete Prefect project from DAG directory |
+
+### Validating Conversions
+
+The `validate` tool compares your original DAG with the converted flow to ensure behavioral equivalence:
+
+```python
+# Via MCP
+result = await validate(
+    original_dag="path/to/dag.py",
+    converted_flow="path/to/flow.py"
+)
+
+# Returns JSON with:
+# - is_valid: Overall pass/fail
+# - task_count_match: Whether task counts match
+# - dependency_preserved: Whether dependencies are preserved
+# - confidence_score: 0-100 confidence rating
+# - issues: Specific mismatches found
+```
+
+The validator:
+- Extracts task graphs from both files
+- Ignores DummyOperator/EmptyOperator (not needed in Prefect)
+- Detects XCom patterns and verifies they're converted to return values
+- Reports actionable issues when mismatches are found
 
 ## Recommended Target Layout (New Prefect Project)
 

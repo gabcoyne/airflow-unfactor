@@ -851,3 +851,313 @@ class TestSchedulePresets:
         for preset in expected_presets:
             assert preset in SCHEDULE_PRESETS
             assert SCHEDULE_PRESETS[preset]  # Non-empty description
+
+
+# P3 Enhancement Tests (6.1-6.6)
+
+
+class TestWorkPoolSection:
+    """Test work pool recommendation section (P3 6.1)."""
+
+    def test_runbook_includes_work_pool_section(self):
+        settings = DAGSettings(dag_id="test_dag")
+        runbook = generate_runbook(settings)
+
+        assert "## Work Pool Configuration" in runbook
+
+    def test_work_pool_includes_process_option(self):
+        settings = DAGSettings(dag_id="test_dag")
+        runbook = generate_runbook(settings)
+
+        assert "Process Work Pool" in runbook
+        assert "prefect work-pool create" in runbook
+        assert "--type process" in runbook
+
+    def test_work_pool_includes_docker_option(self):
+        settings = DAGSettings(dag_id="test_dag")
+        runbook = generate_runbook(settings)
+
+        assert "Docker Work Pool" in runbook
+        assert "--type docker" in runbook
+
+    def test_work_pool_includes_kubernetes_option(self):
+        settings = DAGSettings(dag_id="test_dag")
+        runbook = generate_runbook(settings)
+
+        assert "Kubernetes Work Pool" in runbook
+        assert "--type kubernetes" in runbook
+
+    def test_work_pool_uses_dag_id_in_commands(self):
+        settings = DAGSettings(dag_id="my-custom-dag")
+        runbook = generate_runbook(settings)
+
+        assert "my-custom-dag-pool" in runbook
+        assert 'prefect worker start --pool "my-custom-dag-pool"' in runbook
+
+
+class TestAutomationSection:
+    """Test automation setup guidance section (P3 6.2)."""
+
+    def test_sla_callback_generates_automation_section(self):
+        settings = DAGSettings(
+            dag_id="test",
+            callbacks=[
+                CallbackInfo(
+                    callback_type="sla_miss_callback",
+                    function_name="sla_alert",
+                )
+            ],
+        )
+        runbook = generate_runbook(settings)
+
+        assert "## Automation Setup" in runbook
+        assert "SLA Monitoring Automation" in runbook
+        assert "Proactive" in runbook  # SLA uses proactive posture
+
+    def test_failure_callback_generates_automation_section(self):
+        settings = DAGSettings(
+            dag_id="test",
+            callbacks=[
+                CallbackInfo(
+                    callback_type="on_failure_callback",
+                    function_name="notify_failure",
+                )
+            ],
+        )
+        runbook = generate_runbook(settings)
+
+        assert "## Automation Setup" in runbook
+        assert "Failure Notification Automation" in runbook
+        assert "prefect.flow-run.Failed" in runbook
+
+    def test_success_callback_generates_automation_section(self):
+        settings = DAGSettings(
+            dag_id="test",
+            callbacks=[
+                CallbackInfo(
+                    callback_type="on_success_callback",
+                    function_name="notify_success",
+                )
+            ],
+        )
+        runbook = generate_runbook(settings)
+
+        assert "## Automation Setup" in runbook
+        assert "Success Notification Automation" in runbook
+        assert "prefect.flow-run.Completed" in runbook
+
+
+class TestDeploymentConfigSection:
+    """Test prefect.yaml configuration section (P3 6.3)."""
+
+    def test_runbook_includes_deployment_config_section(self):
+        settings = DAGSettings(dag_id="test_dag")
+        runbook = generate_runbook(settings)
+
+        assert "## Deployment Configuration (prefect.yaml)" in runbook
+        assert "prefect deploy" in runbook
+
+    def test_deployment_config_includes_schedule(self):
+        settings = DAGSettings(dag_id="test", schedule="@daily")
+        runbook = generate_runbook(settings)
+
+        assert "schedules:" in runbook
+        assert "0 0 * * *" in runbook  # @daily converted to cron
+
+    def test_deployment_config_includes_parameters(self):
+        class MockVariable:
+            def __init__(self, name):
+                self.name = name
+                self.is_set = False
+                self.is_sensitive = False
+
+        variables = [MockVariable("batch_size"), MockVariable("start_date")]
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings, variables=variables)
+
+        assert "parameters:" in runbook
+        assert "batch_size" in runbook
+        assert "start_date" in runbook
+
+    def test_deployment_config_includes_tags(self):
+        settings = DAGSettings(dag_id="test", tags=["production", "critical"])
+        runbook = generate_runbook(settings)
+
+        assert "tags:" in runbook
+        assert '"production"' in runbook
+        assert '"critical"' in runbook
+
+
+class TestBlockSetupSection:
+    """Test Block setup CLI commands section (P3 6.4)."""
+
+    def test_postgres_connection_generates_block_setup(self):
+        class MockConnection:
+            def __init__(self, name, conn_type):
+                self.name = name
+                self.conn_type = conn_type
+
+        connections = [MockConnection("my_postgres", "postgres")]
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings, connections=connections)
+
+        assert "## Block Setup Commands" in runbook
+        assert "Database Block: `my_postgres`" in runbook
+        assert "SqlAlchemyConnector" in runbook
+        assert "prefect block register -m prefect_sqlalchemy" in runbook
+        assert 'my_postgres_block.save("my_postgres")' in runbook
+
+    def test_aws_connection_generates_block_setup(self):
+        class MockConnection:
+            def __init__(self, name, conn_type):
+                self.name = name
+                self.conn_type = conn_type
+
+        connections = [MockConnection("aws_conn", "aws")]
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings, connections=connections)
+
+        assert "AWS Credentials Block: `aws_conn`" in runbook
+        assert "prefect block register -m prefect_aws" in runbook
+        assert "AwsCredentials" in runbook
+
+    def test_gcp_connection_generates_block_setup(self):
+        class MockConnection:
+            def __init__(self, name, conn_type):
+                self.name = name
+                self.conn_type = conn_type
+
+        connections = [MockConnection("gcp_conn", "google_cloud")]
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings, connections=connections)
+
+        assert "GCP Credentials Block: `gcp_conn`" in runbook
+        assert "prefect block register -m prefect_gcp" in runbook
+        assert "GcpCredentials" in runbook
+
+    def test_slack_connection_generates_block_setup(self):
+        class MockConnection:
+            def __init__(self, name, conn_type):
+                self.name = name
+                self.conn_type = conn_type
+
+        connections = [MockConnection("slack_alerts", "slack_webhook")]
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings, connections=connections)
+
+        assert "Slack Webhook Block: `slack_alerts`" in runbook
+        assert "SlackWebhook" in runbook
+
+    def test_snowflake_connection_generates_block_setup(self):
+        class MockConnection:
+            def __init__(self, name, conn_type):
+                self.name = name
+                self.conn_type = conn_type
+
+        connections = [MockConnection("sf_conn", "snowflake")]
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings, connections=connections)
+
+        assert "Snowflake Block: `sf_conn`" in runbook
+        assert "prefect block register -m prefect_snowflake" in runbook
+        assert "SnowflakeConnector" in runbook
+
+
+class TestTestingSection:
+    """Test testing guidance section (P3 6.5)."""
+
+    def test_runbook_includes_testing_section(self):
+        settings = DAGSettings(dag_id="test_dag")
+        runbook = generate_runbook(settings)
+
+        assert "## Testing Guidance" in runbook
+
+    def test_testing_section_includes_local_testing(self):
+        settings = DAGSettings(dag_id="my_flow")
+        runbook = generate_runbook(settings)
+
+        assert "### Local Testing" in runbook
+        assert "python flows/my_flow.py" in runbook
+        assert "pytest tests/test_my_flow.py" in runbook
+
+    def test_testing_section_includes_deployment_testing(self):
+        settings = DAGSettings(dag_id="my_flow")
+        runbook = generate_runbook(settings)
+
+        assert "### Deployment Testing" in runbook
+        assert "prefect deployment run" in runbook
+        assert '"my_flow/my_flow"' in runbook
+
+    def test_testing_section_includes_validation_guidance(self):
+        settings = DAGSettings(dag_id="test")
+        runbook = generate_runbook(settings)
+
+        assert "### Validating Against Airflow" in runbook
+        assert "Compare outputs" in runbook
+
+
+class TestRunbookP3Integration:
+    """Integration tests for P3 enhanced runbook generation."""
+
+    def test_complete_runbook_with_all_p3_sections(self):
+        """Verify all P3 sections are present in a complete runbook."""
+
+        class MockConnection:
+            def __init__(self, name, conn_type):
+                self.name = name
+                self.conn_type = conn_type
+
+        class MockVariable:
+            def __init__(self, name, is_sensitive=False):
+                self.name = name
+                self.is_set = False
+                self.is_sensitive = is_sensitive
+
+        settings = DAGSettings(
+            dag_id="full_migration",
+            schedule="0 2 * * *",
+            catchup=False,
+            default_args={"retries": 3},
+            tags=["production"],
+            callbacks=[
+                CallbackInfo(
+                    callback_type="on_failure_callback",
+                    function_name="alert",
+                ),
+                CallbackInfo(
+                    callback_type="sla_miss_callback",
+                    function_name="sla_alert",
+                ),
+            ],
+        )
+        connections = [MockConnection("prod_db", "postgres")]
+        variables = [MockVariable("api_key", is_sensitive=True)]
+
+        runbook = generate_runbook(settings, connections=connections, variables=variables)
+
+        # P3 6.1: Work Pool section
+        assert "## Work Pool Configuration" in runbook
+        assert "Process Work Pool" in runbook
+        assert "Docker Work Pool" in runbook
+        assert "Kubernetes Work Pool" in runbook
+
+        # P3 6.2: Automation section
+        assert "## Automation Setup" in runbook
+        assert "Failure Notification Automation" in runbook
+        assert "SLA Monitoring Automation" in runbook
+
+        # P3 6.3: Deployment config section
+        assert "## Deployment Configuration (prefect.yaml)" in runbook
+        assert "schedules:" in runbook
+        assert "parameters:" in runbook
+
+        # P3 6.4: Block setup section
+        assert "## Block Setup Commands" in runbook
+        assert "SqlAlchemyConnector" in runbook
+        assert 'prod_db_block.save("prod_db")' in runbook
+
+        # P3 6.5: Testing section
+        assert "## Testing Guidance" in runbook
+        assert "### Local Testing" in runbook
+        assert "### Deployment Testing" in runbook
+        assert "### Validating Against Airflow" in runbook

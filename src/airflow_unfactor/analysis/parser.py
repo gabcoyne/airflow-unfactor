@@ -119,16 +119,50 @@ class DAGVisitor(ast.NodeVisitor):
     def _extract_operator(self, node: ast.Call, op_type: str):
         """Extract operator information."""
         task_id = None
+        retries = None
+        retry_delay = None
+        retry_exponential_backoff = None
+        max_retry_delay = None
+        pool = None
+        pool_slots = None
+
         for keyword in node.keywords:
             if keyword.arg == "task_id" and isinstance(keyword.value, ast.Constant):
                 task_id = keyword.value.value
-                break
+            elif keyword.arg == "retries":
+                retries = self._extract_value(keyword.value)
+            elif keyword.arg == "retry_delay":
+                retry_delay = self._extract_value(keyword.value)
+            elif keyword.arg == "retry_exponential_backoff":
+                retry_exponential_backoff = self._extract_value(keyword.value)
+            elif keyword.arg == "max_retry_delay":
+                max_retry_delay = self._extract_value(keyword.value)
+            elif keyword.arg == "pool":
+                pool = self._extract_value(keyword.value)
+            elif keyword.arg == "pool_slots":
+                pool_slots = self._extract_value(keyword.value)
 
-        self.operators.append({
+        operator_info = {
             "type": op_type,
             "task_id": task_id,
             "line": node.lineno,
-        })
+        }
+
+        # Add task-level retry settings if present
+        if retries is not None:
+            operator_info["retries"] = retries
+        if retry_delay is not None:
+            operator_info["retry_delay"] = retry_delay
+        if retry_exponential_backoff is not None:
+            operator_info["retry_exponential_backoff"] = retry_exponential_backoff
+        if max_retry_delay is not None:
+            operator_info["max_retry_delay"] = max_retry_delay
+        if pool is not None:
+            operator_info["pool"] = pool
+        if pool_slots is not None:
+            operator_info["pool_slots"] = pool_slots
+
+        self.operators.append(operator_info)
 
         if task_id:
             self.task_ids.add(task_id)
@@ -140,6 +174,20 @@ class DAGVisitor(ast.NodeVisitor):
             self.notes.append("Has branching logic (convert to Python if/else)")
         elif op_type == "TaskGroup":
             self.notes.append("Has TaskGroup (convert to subflow)")
+
+        # Add notes for retry/pool configurations
+        if retry_exponential_backoff:
+            self.notes.append(
+                f"Task '{task_id}' uses exponential_backoff - Prefect uses different backoff mechanism"
+            )
+        if pool:
+            self.notes.append(
+                f"Task '{task_id}' uses pool '{pool}' - configure Prefect work pool concurrency"
+            )
+        if pool_slots and pool_slots > 1:
+            self.notes.append(
+                f"Task '{task_id}' uses pool_slots={pool_slots} - review Prefect concurrency limits"
+            )
 
     def _extract_xcom(self, node: ast.Call, func_name: str):
         """Extract XCom usage information."""

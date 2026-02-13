@@ -328,9 +328,15 @@ def generate_runbook(
     # Summary section
     lines.extend(_generate_summary_section(settings))
 
+    # Work pool recommendation (P3 enhancement 6.1)
+    lines.extend(_generate_work_pool_section(settings))
+
     # Schedule configuration
     if settings.schedule is not None:
         lines.extend(_generate_schedule_section(settings))
+
+    # Deployment configuration (P3 enhancement 6.3)
+    lines.extend(_generate_deployment_config_section(settings, variables))
 
     # Catchup configuration
     if settings.catchup is not None:
@@ -352,26 +358,505 @@ def generate_runbook(
     if settings.tags:
         lines.extend(_generate_tags_section(settings))
 
-    # Callbacks configuration
+    # Callbacks/Automation configuration (P3 enhancement 6.2)
     if settings.callbacks:
         lines.extend(_generate_callbacks_section(settings))
+        lines.extend(_generate_automation_section(settings))
 
     # Timeout configuration
     if settings.dagrun_timeout:
         lines.extend(_generate_timeout_section(settings))
 
-    # Connections section
+    # Connections section with Block CLI commands (P3 enhancement 6.4)
     if connections:
         lines.extend(_generate_connections_section(connections))
+        lines.extend(_generate_block_setup_section(connections))
 
     # Variables section
     if variables:
         lines.extend(_generate_variables_section(variables))
 
+    # Testing guidance (P3 enhancement 6.5)
+    lines.extend(_generate_testing_section(settings))
+
     # Action checklist
     lines.extend(_generate_action_checklist(settings, connections, variables))
 
     return "\n".join(lines)
+
+
+def _generate_work_pool_section(settings: DAGSettings) -> list[str]:
+    """Generate work pool recommendation section (P3 6.1)."""
+    dag_id = settings.dag_id or "my-flow"
+    lines = [
+        "## Work Pool Configuration",
+        "",
+        "Choose a work pool type based on your execution requirements:",
+        "",
+        "### Option 1: Process Work Pool (Recommended for simple flows)",
+        "",
+        "Best for: Local development, simple Python flows, no containerization needed.",
+        "",
+        "```bash",
+        "# Create process work pool",
+        f'prefect work-pool create "{dag_id}-pool" --type process',
+        "",
+        "# Start a worker",
+        f'prefect worker start --pool "{dag_id}-pool"',
+        "```",
+        "",
+        "### Option 2: Docker Work Pool (Recommended for production)",
+        "",
+        "Best for: Isolated execution, consistent environments, dependency management.",
+        "",
+        "```bash",
+        "# Create Docker work pool",
+        f'prefect work-pool create "{dag_id}-pool" --type docker',
+        "",
+        "# Start a worker",
+        f'prefect worker start --pool "{dag_id}-pool"',
+        "```",
+        "",
+        "```yaml",
+        "# prefect.yaml - Docker configuration",
+        "deployments:",
+        f"  - name: {dag_id}",
+        f'    work_pool: "{dag_id}-pool"',
+        "    build:",
+        "      - prefect_docker.deployments.steps.build_docker_image:",
+        '          image_name: "my-registry/my-flow"',
+        '          dockerfile: "Dockerfile"',
+        "```",
+        "",
+        "### Option 3: Kubernetes Work Pool (For orchestrated environments)",
+        "",
+        "Best for: Kubernetes clusters, auto-scaling, cloud-native deployments.",
+        "",
+        "```bash",
+        "# Create Kubernetes work pool",
+        f'prefect work-pool create "{dag_id}-pool" --type kubernetes',
+        "",
+        "# Workers run as Kubernetes pods - deploy using:",
+        "helm install prefect-worker prefect/prefect-worker \\",
+        f'  --set worker.config.workPool="{dag_id}-pool"',
+        "```",
+        "",
+    ]
+    return lines
+
+
+def _generate_deployment_config_section(
+    settings: DAGSettings, variables: list[Any] | None = None
+) -> list[str]:
+    """Generate prefect.yaml configuration section (P3 6.3)."""
+    variables = variables or []
+    dag_id = settings.dag_id or "my-flow"
+    flow_name = dag_id.replace("-", "_").replace(" ", "_")
+
+    lines = [
+        "## Deployment Configuration (prefect.yaml)",
+        "",
+        "Create a `prefect.yaml` file to configure your deployment:",
+        "",
+        "```yaml",
+        "# prefect.yaml",
+        f"name: {dag_id}",
+        "",
+        "deployments:",
+        f"  - name: {dag_id}",
+        f'    entrypoint: "flows/{flow_name}.py:{flow_name}"',
+        '    work_pool:',
+        f'      name: "{dag_id}-pool"',
+    ]
+
+    # Add schedule if present
+    if settings.schedule:
+        cron = _convert_schedule_to_cron(settings.schedule)
+        if cron:
+            lines.extend([
+                "    schedules:",
+                "      - cron: \"" + cron + "\"",
+                "        timezone: \"UTC\"  # Adjust as needed",
+            ])
+        else:
+            lines.extend([
+                "    schedules:",
+                f'      - cron: "{settings.schedule}"  # Verify cron expression',
+                "        timezone: \"UTC\"",
+            ])
+
+    # Add parameters if variables detected
+    if variables:
+        lines.extend([
+            "    parameters:",
+        ])
+        for var in variables:
+            var_name = getattr(var, "name", str(var))
+            lines.append(f'      {var_name}: "default_value"  # TODO: Set default')
+
+    # Add tags if present
+    if settings.tags:
+        tags_yaml = ", ".join([f'"{t}"' for t in settings.tags])
+        lines.extend([
+            f"    tags: [{tags_yaml}]",
+        ])
+
+    lines.extend([
+        "```",
+        "",
+        "### Deploy the flow",
+        "",
+        "```bash",
+        "# Deploy using the prefect.yaml configuration",
+        "prefect deploy --all",
+        "",
+        "# Or deploy a specific deployment",
+        f'prefect deploy --name "{dag_id}"',
+        "```",
+        "",
+    ])
+
+    return lines
+
+
+def _generate_automation_section(settings: DAGSettings) -> list[str]:
+    """Generate automation setup guidance for callbacks (P3 6.2)."""
+    callback_types = {c.callback_type for c in settings.callbacks}
+    dag_id = settings.dag_id or "my-flow"
+
+    lines = [
+        "## Automation Setup",
+        "",
+        "Replace Airflow callbacks with Prefect Automations for robust alerting:",
+        "",
+    ]
+
+    if "sla_miss_callback" in callback_types:
+        lines.extend([
+            "### SLA Monitoring Automation",
+            "",
+            "Create an automation to detect SLA breaches based on flow run duration:",
+            "",
+            "```python",
+            "from datetime import timedelta",
+            "from prefect.automations import Automation",
+            "from prefect.events.schemas.automations import EventTrigger",
+            "from prefect.events.actions import SendNotification",
+            "",
+            "# SLA automation - triggers when flow runs exceed expected duration",
+            "sla_automation = Automation(",
+            f'    name="{dag_id}-sla-monitor",',
+            "    description=\"Alert when flow exceeds expected duration\",",
+            "    trigger=EventTrigger(",
+            '        match={"prefect.resource.id": "prefect.flow-run.*"},',
+            '        expect=["prefect.flow-run.Running"],',
+            "        posture=\"Proactive\",",
+            "        threshold=1,",
+            "        within=timedelta(hours=2),  # SLA threshold - adjust as needed",
+            "    ),",
+            "    actions=[",
+            "        SendNotification(",
+            '            block_document_id="your-slack-webhook-block-id",',
+            "            subject=\"SLA Breach Warning\",",
+            f'            body="Flow {dag_id} has been running longer than expected",',
+            "        )",
+            "    ],",
+            ")",
+            "```",
+            "",
+            "**Via Prefect UI:**",
+            "1. Navigate to Automations → Create Automation",
+            "2. Trigger: Flow run enters 'Running' state for > 2 hours",
+            "3. Action: Send Slack/Email notification",
+            "",
+        ])
+
+    if "on_failure_callback" in callback_types:
+        lines.extend([
+            "### Failure Notification Automation",
+            "",
+            "```python",
+            "from prefect.automations import Automation",
+            "from prefect.events.schemas.automations import EventTrigger",
+            "from prefect.events.actions import SendNotification",
+            "",
+            "failure_automation = Automation(",
+            f'    name="{dag_id}-failure-alert",',
+            "    description=\"Alert on flow failures\",",
+            "    trigger=EventTrigger(",
+            '        match={"prefect.resource.id": "prefect.flow-run.*"},',
+            '        expect=["prefect.flow-run.Failed"],',
+            "        posture=\"Reactive\",",
+            "        threshold=1,",
+            "    ),",
+            "    actions=[",
+            "        SendNotification(",
+            '            block_document_id="your-slack-webhook-block-id",',
+            "            subject=\"Flow Failed\",",
+            "            body=\"{{ flow_run.name }} has failed. Check logs for details.\",",
+            "        )",
+            "    ],",
+            ")",
+            "```",
+            "",
+        ])
+
+    if "on_success_callback" in callback_types:
+        lines.extend([
+            "### Success Notification Automation",
+            "",
+            "```python",
+            "from prefect.automations import Automation",
+            "from prefect.events.schemas.automations import EventTrigger",
+            "from prefect.events.actions import SendNotification",
+            "",
+            "success_automation = Automation(",
+            f'    name="{dag_id}-success-alert",',
+            "    description=\"Notify on successful completion\",",
+            "    trigger=EventTrigger(",
+            '        match={"prefect.resource.id": "prefect.flow-run.*"},',
+            '        expect=["prefect.flow-run.Completed"],',
+            "        posture=\"Reactive\",",
+            "        threshold=1,",
+            "    ),",
+            "    actions=[",
+            "        SendNotification(",
+            '            block_document_id="your-slack-webhook-block-id",',
+            "            subject=\"Flow Completed\",",
+            "            body=\"{{ flow_run.name }} completed successfully.\",",
+            "        )",
+            "    ],",
+            ")",
+            "```",
+            "",
+        ])
+
+    return lines
+
+
+def _generate_block_setup_section(connections: list[Any]) -> list[str]:
+    """Generate Block setup CLI commands (P3 6.4)."""
+    lines = [
+        "## Block Setup Commands",
+        "",
+        "Create Prefect Blocks to securely store connection credentials:",
+        "",
+    ]
+
+    for conn in connections:
+        conn_name = getattr(conn, "name", str(conn))
+        conn_type = getattr(conn, "conn_type", "unknown") or "unknown"
+
+        # Block setup based on connection type
+        if conn_type in ("postgres", "postgresql"):
+            lines.extend([
+                f"### Database Block: `{conn_name}`",
+                "",
+                "```bash",
+                "# Register the SqlAlchemy block type",
+                "prefect block register -m prefect_sqlalchemy",
+                "```",
+                "",
+                "```python",
+                "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
+                "",
+                f'{conn_name.replace("-", "_")}_block = SqlAlchemyConnector(',
+                f'    connection_info=ConnectionComponents(',
+                '        driver="postgresql+psycopg2",',
+                '        host="your-host",',
+                '        port=5432,',
+                '        database="your-db",',
+                '        username="your-user",',
+                '        password="your-password",  # Use Secret block for production',
+                "    )",
+                ")",
+                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                "```",
+                "",
+            ])
+        elif conn_type in ("mysql",):
+            lines.extend([
+                f"### Database Block: `{conn_name}`",
+                "",
+                "```python",
+                "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
+                "",
+                f'{conn_name.replace("-", "_")}_block = SqlAlchemyConnector(',
+                f'    connection_info=ConnectionComponents(',
+                '        driver="mysql+pymysql",',
+                '        host="your-host",',
+                '        port=3306,',
+                '        database="your-db",',
+                '        username="your-user",',
+                '        password="your-password",',
+                "    )",
+                ")",
+                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                "```",
+                "",
+            ])
+        elif conn_type in ("aws", "s3"):
+            lines.extend([
+                f"### AWS Credentials Block: `{conn_name}`",
+                "",
+                "```bash",
+                "# Register AWS block types",
+                "prefect block register -m prefect_aws",
+                "```",
+                "",
+                "```python",
+                "from prefect_aws import AwsCredentials",
+                "",
+                f'{conn_name.replace("-", "_")}_block = AwsCredentials(',
+                '    aws_access_key_id="your-key-id",',
+                '    aws_secret_access_key="your-secret-key",',
+                '    region_name="us-east-1",',
+                ")",
+                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                "```",
+                "",
+            ])
+        elif conn_type in ("google_cloud", "google_cloud_platform", "bigquery"):
+            lines.extend([
+                f"### GCP Credentials Block: `{conn_name}`",
+                "",
+                "```bash",
+                "# Register GCP block types",
+                "prefect block register -m prefect_gcp",
+                "```",
+                "",
+                "```python",
+                "from prefect_gcp import GcpCredentials",
+                "",
+                f'{conn_name.replace("-", "_")}_block = GcpCredentials(',
+                '    service_account_file="/path/to/service-account.json",',
+                "    # Or use service_account_info for inline JSON",
+                ")",
+                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                "```",
+                "",
+            ])
+        elif conn_type in ("slack", "slack_webhook"):
+            lines.extend([
+                f"### Slack Webhook Block: `{conn_name}`",
+                "",
+                "```python",
+                "from prefect.blocks.notifications import SlackWebhook",
+                "",
+                f'{conn_name.replace("-", "_")}_block = SlackWebhook(',
+                '    url="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"',
+                ")",
+                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                "```",
+                "",
+            ])
+        elif conn_type == "snowflake":
+            lines.extend([
+                f"### Snowflake Block: `{conn_name}`",
+                "",
+                "```bash",
+                "# Register Snowflake block types",
+                "prefect block register -m prefect_snowflake",
+                "```",
+                "",
+                "```python",
+                "from prefect_snowflake import SnowflakeCredentials, SnowflakeConnector",
+                "",
+                f'{conn_name.replace("-", "_")}_creds = SnowflakeCredentials(',
+                '    account="your-account",',
+                '    user="your-user",',
+                '    password="your-password",',
+                ")",
+                f'{conn_name.replace("-", "_")}_block = SnowflakeConnector(',
+                f'    credentials={conn_name.replace("-", "_")}_creds,',
+                '    database="your-db",',
+                '    schema="your-schema",',
+                '    warehouse="your-warehouse",',
+                ")",
+                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                "```",
+                "",
+            ])
+        else:
+            # Generic block guidance
+            lines.extend([
+                f"### Custom Block: `{conn_name}` (type: {conn_type})",
+                "",
+                "```python",
+                "from prefect.blocks.core import Block",
+                "",
+                f"# Create a custom block or use appropriate prefect integration",
+                f"# Check: https://prefecthq.github.io/prefect-{conn_type}/",
+                "```",
+                "",
+            ])
+
+    return lines
+
+
+def _generate_testing_section(settings: DAGSettings) -> list[str]:
+    """Generate testing guidance section (P3 6.5)."""
+    dag_id = settings.dag_id or "my-flow"
+    flow_name = dag_id.replace("-", "_").replace(" ", "_")
+
+    lines = [
+        "## Testing Guidance",
+        "",
+        "### Local Testing",
+        "",
+        "Run the flow locally to verify behavior before deployment:",
+        "",
+        "```bash",
+        "# Run flow directly",
+        f"python flows/{flow_name}.py",
+        "",
+        "# Or using pytest with the generated tests",
+        f"pytest tests/test_{flow_name}.py -v",
+        "```",
+        "",
+        "### Testing with Prefect",
+        "",
+        "```bash",
+        "# Run with Prefect tracking (requires server connection)",
+        f"prefect flow-run create {flow_name}",
+        "```",
+        "",
+        "### Deployment Testing",
+        "",
+        "Trigger a deployment run to validate in your execution environment:",
+        "",
+        "```bash",
+        "# Trigger deployment run via CLI",
+        f'prefect deployment run "{dag_id}/{dag_id}"',
+        "",
+        "# Trigger with parameters",
+        f'prefect deployment run "{dag_id}/{dag_id}" --param key=value',
+        "",
+        "# Watch the run",
+        f'prefect flow-run watch $(prefect deployment run "{dag_id}/{dag_id}" --output-json | jq -r .id)',
+        "```",
+        "",
+        "### Validating Against Airflow",
+        "",
+        "Compare outputs between your Airflow DAG and Prefect flow:",
+        "",
+        "1. Run the Airflow DAG with a specific execution_date",
+        "2. Run the Prefect flow with the same parameters",
+        "3. Compare task outputs/results",
+        "4. Verify timing and retry behavior",
+        "",
+        "```python",
+        "# Example validation script",
+        f"from flows.{flow_name} import {flow_name}",
+        "",
+        "def validate_migration():",
+        f"    result = {flow_name}()",
+        "    # Compare with expected Airflow output",
+        "    assert result == expected_airflow_output",
+        "```",
+        "",
+    ]
+    return lines
 
 
 def _generate_summary_section(settings: DAGSettings) -> list[str]:

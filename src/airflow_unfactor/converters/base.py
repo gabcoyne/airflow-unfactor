@@ -113,6 +113,106 @@ def build_dependency_graph(dependencies: list[list[str]], task_ids: list[str]) -
 
     return graph
 
+def _build_task_decorator(
+    op: dict,
+    default_args: dict | None = None,
+) -> tuple[str, list[str]]:
+    """Build a @task decorator string with retry/pool handling.
+
+    Args:
+        op: Operator info dict with optional retry/pool settings
+        default_args: DAG-level default_args for fallback values
+
+    Returns:
+        Tuple of (decorator_string, warnings_list)
+    """
+    default_args = default_args or {}
+    decorator_args = []
+    warnings = []
+
+    # Get retry settings - task-level overrides default_args
+    retries = op.get("retries")
+    if retries is None and "retries" in default_args:
+        retries = default_args.get("retries")
+
+    retry_delay = op.get("retry_delay")
+    if retry_delay is None and "retry_delay" in default_args:
+        retry_delay = default_args.get("retry_delay")
+
+    # Add retries if specified
+    if retries is not None:
+        decorator_args.append(f"retries={retries}")
+
+    # Convert retry_delay to retry_delay_seconds
+    if retry_delay is not None:
+        if isinstance(retry_delay, (int, float)):
+            # Assume it's already in seconds
+            decorator_args.append(f"retry_delay_seconds={int(retry_delay)}")
+        elif isinstance(retry_delay, str):
+            # Try to parse timedelta-like strings
+            if "timedelta" in retry_delay:
+                # Extract value - this is a best-effort conversion
+                import re
+
+                # Match patterns like timedelta(minutes=5) or timedelta(seconds=300)
+                minutes_match = re.search(r"minutes\s*=\s*(\d+)", retry_delay)
+                seconds_match = re.search(r"seconds\s*=\s*(\d+)", retry_delay)
+                hours_match = re.search(r"hours\s*=\s*(\d+)", retry_delay)
+
+                total_seconds = 0
+                if hours_match:
+                    total_seconds += int(hours_match.group(1)) * 3600
+                if minutes_match:
+                    total_seconds += int(minutes_match.group(1)) * 60
+                if seconds_match:
+                    total_seconds += int(seconds_match.group(1))
+
+                if total_seconds > 0:
+                    decorator_args.append(f"retry_delay_seconds={total_seconds}")
+                else:
+                    decorator_args.append(f"retry_delay_seconds=60  # TODO: Convert {retry_delay}")
+                    warnings.append(
+                        f"Could not parse retry_delay '{retry_delay}' - defaulting to 60s"
+                    )
+            else:
+                decorator_args.append(f"retry_delay_seconds=60  # TODO: Convert {retry_delay}")
+                warnings.append(
+                    f"Could not parse retry_delay '{retry_delay}' - defaulting to 60s"
+                )
+
+    # Check for exponential backoff
+    if op.get("retry_exponential_backoff"):
+        warnings.append(
+            f"Task '{op.get('task_id')}' uses retry_exponential_backoff=True. "
+            "Prefect uses a different backoff mechanism - consider using "
+            "exponential_backoff=True in @task decorator or custom retry logic."
+        )
+
+    # Check for max_retry_delay
+    if op.get("max_retry_delay"):
+        warnings.append(
+            f"Task '{op.get('task_id')}' uses max_retry_delay={op.get('max_retry_delay')}. "
+            "Prefect doesn't have a direct equivalent - implement custom retry handler if needed."
+        )
+
+    # Check for pool settings
+    if op.get("pool"):
+        warnings.append(
+            f"Task '{op.get('task_id')}' uses pool='{op.get('pool')}'. "
+            "Configure Prefect work pool concurrency or use concurrency limits."
+        )
+
+    if op.get("pool_slots"):
+        warnings.append(
+            f"Task '{op.get('task_id')}' uses pool_slots={op.get('pool_slots')}. "
+            "Review Prefect concurrency management - work pools or task concurrency limits."
+        )
+
+    if decorator_args:
+        return f"@task({', '.join(decorator_args)})", warnings
+    return "@task", warnings
+
+
 # Educational comment templates
 COMMENTS = {
     "header": '''"""Prefect flow converted from Airflow DAG: {dag_id}
@@ -196,26 +296,35 @@ def convert_dag_to_flow(
     # Convert operators to tasks
     task_mapping = {}
     warnings = []
-    
+
+    # Get default_args for retry fallback
+    default_args = dag_info.get("default_args", {})
+    if isinstance(default_args, str):
+        default_args = {}  # Variable reference, can't use
+
     if include_comments and operators:
         lines.append(COMMENTS["task"])
-    
+
     for op in operators:
         op_type = op.get("type", "")
         task_id = op.get("task_id", "unknown_task")
-        
+
+        # Build task decorator with retry/pool handling
+        decorator, decorator_warnings = _build_task_decorator(op, default_args)
+        warnings.extend(decorator_warnings)
+
         # Generate Prefect task
         if op_type == "PythonOperator":
-            lines.append("@task")
+            lines.append(decorator)
             lines.append(f"def {task_id}():")
             lines.append('    """Converted from PythonOperator."""')
             lines.append("    # TODO: Add original function logic")
             lines.append("    pass")
             lines.append("")
             task_mapping[task_id] = task_id
-            
+
         elif op_type == "BashOperator":
-            lines.append("@task")
+            lines.append(decorator)
             lines.append(f"def {task_id}():")
             lines.append('    """Converted from BashOperator."""')
             lines.append("    import subprocess")
@@ -224,7 +333,7 @@ def convert_dag_to_flow(
             lines.append("    return result.stdout")
             lines.append("")
             task_mapping[task_id] = task_id
-            
+
         elif op_type == "BranchPythonOperator":
             if include_comments:
                 lines.append(COMMENTS["branch"])
@@ -235,15 +344,19 @@ def convert_dag_to_flow(
             lines.append("")
             task_mapping[task_id] = f"{task_id}_decide"
             warnings.append(f"BranchPythonOperator '{task_id}' converted to function - review branching logic")
-            
+
         elif op_type in ("DummyOperator", "EmptyOperator"):
             # Skip dummy operators
             warnings.append(f"Removed {op_type} '{task_id}' (not needed in Prefect)")
-            
+
         elif "Sensor" in op_type:
             if include_comments:
                 lines.append(COMMENTS["sensor"])
-            lines.append("@task(retries=3, retry_delay_seconds=60)")
+            # Use custom decorator if task has retry settings, else default sensor retries
+            if op.get("retries") is not None or op.get("retry_delay") is not None:
+                lines.append(decorator)
+            else:
+                lines.append("@task(retries=3, retry_delay_seconds=60)")
             lines.append(f"def {task_id}():")
             lines.append(f'    """Converted from {op_type} - consider event triggers."""')
             lines.append("    # TODO: Implement polling logic or use Prefect triggers")
@@ -251,10 +364,10 @@ def convert_dag_to_flow(
             lines.append("")
             task_mapping[task_id] = task_id
             warnings.append(f"Sensor '{task_id}' converted to polling task - consider Prefect triggers")
-            
+
         else:
             # Generic conversion
-            lines.append("@task")
+            lines.append(decorator)
             lines.append(f"def {task_id}():")
             lines.append(f'    """Converted from {op_type}."""')
             lines.append("    # TODO: Implement equivalent logic")
