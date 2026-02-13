@@ -4,9 +4,9 @@ title: Examples
 permalink: /examples/
 ---
 
-# Conversion Examples
+# Migration Examples
 
-These examples are based on [Astronomer's 2.9 Example DAGs](https://github.com/astronomer/2-9-example-dags).
+Real-world examples of migrating Airflow DAGs to Prefect flows. Based on [Astronomer's 2.9 Example DAGs](https://github.com/astronomer/2-9-example-dags).
 
 ## TaskFlow with @task.bash
 
@@ -230,4 +230,4 @@ def earnings_report():
 
 ## More Examples
 
-See the [tests/fixtures/astronomer](https://github.com/prefect/airflow-unfactor/tree/main/tests/fixtures/astronomer) directory for more real-world examples.
+See the [tests/fixtures/astronomer](https://github.com/prefect/airflow-unfactor/tree/main/tests/fixtures/astronomer) directory for more migration examples from production-style DAGs.

@@ -8,11 +8,11 @@ permalink: /testing/
 
 ## The Key Differentiator
 
-**airflow-unfactor** generates tests alongside every converted flow. This is what makes migrations trustworthy.
+**airflow-unfactor** generates tests alongside every migrated flow. This is what makes migrations trustworthy.
 
 ## Generated Test Structure
 
-When you convert a DAG, you get:
+When you migrate a DAG, you get:
 
 ```
 my_flow.py           # Converted Prefect flow
@@ -166,7 +166,7 @@ jobs:
 ## Migration Checklist
 
 - [ ] All generated tests pass
-- [ ] No XCom references in converted code
+- [ ] No XCom references in migrated code
 - [ ] Task count matches original DAG
 - [ ] Flow executes end-to-end
 - [ ] Data output matches expected format

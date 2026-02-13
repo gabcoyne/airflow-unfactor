@@ -34,7 +34,8 @@ def sales_flow():
     result = json.loads(payload)
 
     assert "conversion_runbook_md" in result
-    assert "Server/API Configuration Checklist" in result["conversion_runbook_md"]
+    # New runbook format uses "Migration Checklist" instead of "Server/API Configuration Checklist"
+    assert "Migration Checklist" in result["conversion_runbook_md"]
     assert "dataset_conversion" in result
     assert "materialization_code" in result["dataset_conversion"]
     assert '@materialize("s3://sales/daily")' in result["dataset_conversion"]["materialization_code"]
@@ -52,6 +53,8 @@ def test_convert_runbook_present_without_dataset_patterns(simple_etl_dag: str) -
     result = json.loads(payload)
 
     assert "conversion_runbook_md" in result
-    assert "No dataset/asset orchestration patterns detected." in result["conversion_runbook_md"]
+    # New runbook format focuses on migration checklist, not dataset patterns
+    assert "Migration Runbook" in result["conversion_runbook_md"]
+    assert "Migration Checklist" in result["conversion_runbook_md"]
     assert "dataset_conversion" in result
     assert result["dataset_conversion"]["events"] == []

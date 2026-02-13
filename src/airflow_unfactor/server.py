@@ -12,6 +12,7 @@ from airflow_unfactor.tools.convert import convert_dag
 from airflow_unfactor.tools.validate import validate_conversion
 from airflow_unfactor.tools.explain import explain_concept
 from airflow_unfactor.tools.batch import batch_convert
+from airflow_unfactor.tools.scaffold import scaffold_project
 from airflow_unfactor.tools.external import prefect_search, astronomer_migration
 
 
@@ -112,6 +113,37 @@ async def batch(
     return await batch_convert(
         directory=directory,
         output_directory=output_directory,
+    )
+
+
+@mcp.tool
+async def scaffold(
+    dags_directory: str,
+    output_directory: str,
+    project_name: Optional[str] = None,
+    include_docker: bool = True,
+    include_github_actions: bool = True,
+) -> str:
+    """Generate a clean project skeleton with migrated flows.
+
+    Creates a well-organized project structure following Prefect best practices.
+
+    Args:
+        dags_directory: Directory containing Airflow DAG files to migrate
+        output_directory: Where to create the new project
+        project_name: Project name (defaults to directory name)
+        include_docker: Include Dockerfile and docker-compose.yml
+        include_github_actions: Include CI workflow
+
+    Returns:
+        JSON with scaffold report (converted counts, project structure)
+    """
+    return await scaffold_project(
+        dags_directory=dags_directory,
+        output_directory=output_directory,
+        project_name=project_name,
+        include_docker=include_docker,
+        include_github_actions=include_github_actions,
     )
 
 

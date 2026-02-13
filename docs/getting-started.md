@@ -71,11 +71,11 @@ Once configured, ask your AI assistant:
 
 > "Analyze the DAG in `dags/my_etl.py`"
 
-> "Convert `dags/my_dag.py` to a Prefect flow"
+> "Migrate `dags/my_dag.py` to a Prefect flow"
 
 > "Explain what XCom is and how Prefect handles data passing"
 
-> "Convert all DAGs in the `dags/` directory"
+> "Migrate all DAGs in the `dags/` directory"
 
 ### Standalone
 
@@ -106,7 +106,7 @@ Returns:
 ```
 
 ### `convert`
-Convert a DAG to a Prefect flow.
+Migrate a DAG to a Prefect flow.
 
 ```
 Inputs:
@@ -133,7 +133,7 @@ Returns:
 ```
 
 ### `validate`
-Verify a conversion is correct.
+Verify a migration is correct.
 
 ```
 Inputs:
@@ -159,7 +159,7 @@ Returns:
 ```
 
 ### `batch`
-Convert multiple DAGs at once.
+Migrate multiple DAGs at once.
 
 ```
 Inputs:
@@ -167,8 +167,39 @@ Inputs:
   - output_directory: Where to write flows (optional)
 
 Returns:
-  - Conversion report (success/fail counts)
-  - Migration report file
+  - Migration report (success/fail counts)
+  - Migration runbook file
+```
+
+### `scaffold`
+Generate a clean project skeleton with migrated flows.
+
+```
+Inputs:
+  - dags_directory: Directory containing Airflow DAG files
+  - output_directory: Where to create the new project
+  - project_name: Project name (optional)
+  - include_docker: Include Dockerfile (default: true)
+  - include_github_actions: Include CI workflow (default: true)
+
+Returns:
+  - Scaffold report with project structure
+```
+
+**Generated structure:**
+```
+your-project/
+├── flows/              # Prefect flow entrypoints
+├── tasks/              # Reusable task functions
+├── deployments/        # Deployment configurations
+├── infrastructure/     # Work pool configs
+├── tests/              # pytest tests
+├── migration/
+│   ├── airflow_sources/    # Original DAGs (read-only)
+│   └── conversion_notes/   # Migration runbooks
+├── prefect.yaml        # Deployment config
+├── Dockerfile          # Container build
+└── docker-compose.yml  # Local development
 ```
 
 ## Next Steps

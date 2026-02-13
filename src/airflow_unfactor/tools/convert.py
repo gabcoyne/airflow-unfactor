@@ -7,8 +7,16 @@ from typing import Optional
 from airflow_unfactor.analysis.parser import parse_dag
 from airflow_unfactor.analysis.version import detect_airflow_version
 from airflow_unfactor.converters.base import convert_dag_to_flow
+from airflow_unfactor.converters.connections import extract_connections, convert_all_connections
+from airflow_unfactor.converters.custom_operators import extract_custom_operators, convert_custom_operators
 from airflow_unfactor.converters.datasets import analyze_datasets, generate_event_code
+from airflow_unfactor.converters.dynamic_mapping import extract_dynamic_mapping, convert_all_dynamic_mappings
+from airflow_unfactor.converters.jinja import has_jinja_patterns, analyze_jinja_in_code
+from airflow_unfactor.converters.runbook import extract_dag_settings, generate_runbook
+from airflow_unfactor.converters.taskgroup import extract_task_groups, convert_all_task_groups
 from airflow_unfactor.converters.test_generator import generate_flow_tests, generate_test_filename
+from airflow_unfactor.converters.trigger_rules import detect_trigger_rules, convert_trigger_rules
+from airflow_unfactor.converters.variables import extract_variables, convert_all_variables
 from airflow_unfactor.external_mcp import ExternalMCPClient
 from airflow_unfactor.validation import validate_generated_code
 
@@ -54,13 +62,77 @@ async def convert_dag(
             dataset_analysis,
             include_comments=include_comments,
         )
-        result["conversion_runbook_md"] = _build_conversion_runbook(
-            dag_id=dag_info.get("dag_id", "unknown"),
-            version=version.version_string,
-            operators=dag_info.get("operators", []),
-            warnings=result.get("warnings", []),
-            dataset_conversion=result["dataset_conversion"],
-            dag_settings=dag_info.get("dag_settings", {}),
+
+        # Extract enhanced features
+        connections = extract_connections(content)
+        variables = extract_variables(content)
+        dag_settings = extract_dag_settings(content)
+        dynamic_mappings = extract_dynamic_mapping(content)
+        task_groups = extract_task_groups(content)
+        trigger_rules = detect_trigger_rules(content)
+        custom_ops = extract_custom_operators(content)
+        has_jinja = has_jinja_patterns(content)
+
+        # Add feature detection to result
+        result["features"] = {
+            "has_taskflow": version.has_taskflow,
+            "has_datasets": version.has_datasets,
+            "has_sensors": any("Sensor" in str(op.get("type", "")) for op in dag_info.get("operators", [])),
+            "has_dynamic_mapping": len(dynamic_mappings) > 0,
+            "has_task_groups": len(task_groups) > 0,
+            "has_trigger_rules": len(trigger_rules) > 0,
+            "has_jinja_templates": has_jinja,
+            "has_connections": len(connections) > 0,
+            "has_variables": len(variables) > 0,
+            "has_custom_operators": len(custom_ops) > 0,
+        }
+
+        # Generate enhanced scaffolds
+        if connections:
+            conn_result = convert_all_connections(content)
+            result["block_scaffolds"] = conn_result.get("scaffolds", {})
+            result.setdefault("warnings", []).extend(conn_result.get("warnings", []))
+
+        if variables:
+            var_result = convert_all_variables(content, include_comments=include_comments)
+            result["variable_scaffolds"] = {
+                v.name: var_result["scaffolds"].get(v.name, ("", "", []))[0]
+                for v in variables
+            }
+            result.setdefault("warnings", []).extend(var_result.get("all_warnings", []))
+
+        if dynamic_mappings:
+            dm_result = convert_all_dynamic_mappings(content)
+            result["dynamic_mapping_code"] = dm_result.get("prefect_code", "")
+            result.setdefault("warnings", []).extend(dm_result.get("warnings", []))
+
+        if task_groups:
+            tg_result = convert_all_task_groups(content, include_comments=include_comments)
+            result["task_group_code"] = tg_result.get("prefect_code", "")
+            result.setdefault("warnings", []).extend(tg_result.get("warnings", []))
+
+        if trigger_rules:
+            tr_result = convert_trigger_rules(content, include_comments=include_comments)
+            result["trigger_rule_code"] = tr_result.get("code_snippets", {})
+            result.setdefault("warnings", []).extend(tr_result.get("warnings", []))
+
+        if custom_ops:
+            co_result = convert_custom_operators(content, include_comments=include_comments)
+            result["custom_operator_stubs"] = co_result.get("stubs", {})
+            result.setdefault("warnings", []).extend(co_result.get("warnings", []))
+
+        if has_jinja:
+            jinja_result = analyze_jinja_in_code(content)
+            result["jinja_analysis"] = jinja_result
+            result.setdefault("warnings", []).extend(
+                [f"Jinja2 template detected: {note}" for note in jinja_result.get("conversion_notes", [])]
+            )
+
+        # Generate enhanced runbook using new module
+        result["conversion_runbook_md"] = generate_runbook(
+            settings=dag_settings,
+            connections=connections,
+            variables=variables,
         )
 
         # Generate tests alongside the flow

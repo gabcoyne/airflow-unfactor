@@ -28,6 +28,51 @@ from airflow_unfactor.converters.provider_mappings import (
     summarize_operator_support,
     OperatorMapping,
 )
+from airflow_unfactor.converters.jinja import (
+    detect_jinja_patterns,
+    convert_jinja_to_fstring,
+    has_jinja_patterns,
+    analyze_jinja_in_code,
+    JinjaPattern,
+    JinjaPatternType,
+)
+from airflow_unfactor.converters.dynamic_mapping import (
+    extract_dynamic_mapping,
+    convert_dynamic_mapping,
+    convert_all_dynamic_mappings,
+    DynamicMappingInfo,
+    MappingType,
+    ConversionResult,
+)
+from airflow_unfactor.converters.trigger_rules import (
+    detect_trigger_rules,
+    generate_trigger_rule_code,
+    convert_trigger_rules,
+    TriggerRuleInfo,
+    TRIGGER_RULE_PATTERNS,
+)
+from airflow_unfactor.converters.taskgroup import (
+    extract_task_groups,
+    convert_task_group,
+    convert_all_task_groups,
+    TaskGroupInfo,
+)
+from airflow_unfactor.converters.custom_operators import (
+    extract_custom_operators,
+    generate_custom_operator_stub,
+    convert_custom_operators,
+    is_known_operator,
+    CustomOperatorInfo,
+    CORE_OPERATORS,
+)
+from airflow_unfactor.converters.runbook import (
+    extract_dag_settings,
+    generate_runbook,
+    DAGSettings,
+    CallbackInfo,
+    DAGSettingsVisitor,
+    SCHEDULE_PRESETS,
+)
 
 __all__ = [
     # Base converter
@@ -55,4 +100,43 @@ __all__ = [
     "generate_conversion_code",
     "summarize_operator_support",
     "OperatorMapping",
+    # Jinja2 converter
+    "detect_jinja_patterns",
+    "convert_jinja_to_fstring",
+    "has_jinja_patterns",
+    "analyze_jinja_in_code",
+    "JinjaPattern",
+    "JinjaPatternType",
+    # Dynamic mapping converter
+    "extract_dynamic_mapping",
+    "convert_dynamic_mapping",
+    "convert_all_dynamic_mappings",
+    "DynamicMappingInfo",
+    "MappingType",
+    "ConversionResult",
+    # Trigger rules converter
+    "detect_trigger_rules",
+    "generate_trigger_rule_code",
+    "convert_trigger_rules",
+    "TriggerRuleInfo",
+    "TRIGGER_RULE_PATTERNS",
+    # TaskGroup converter
+    "extract_task_groups",
+    "convert_task_group",
+    "convert_all_task_groups",
+    "TaskGroupInfo",
+    # Custom operator handler
+    "extract_custom_operators",
+    "generate_custom_operator_stub",
+    "convert_custom_operators",
+    "is_known_operator",
+    "CustomOperatorInfo",
+    "CORE_OPERATORS",
+    # Runbook generator
+    "extract_dag_settings",
+    "generate_runbook",
+    "DAGSettings",
+    "CallbackInfo",
+    "DAGSettingsVisitor",
+    "SCHEDULE_PRESETS",
 ]

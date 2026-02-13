@@ -6,6 +6,8 @@ permalink: /operator-mapping/
 
 # Airflow to Prefect Operator Mapping
 
+Reference for how Airflow operators, sensors, and patterns map to Prefect equivalents during migration.
+
 ## Core Operators
 
 | Airflow | Prefect | Notes |

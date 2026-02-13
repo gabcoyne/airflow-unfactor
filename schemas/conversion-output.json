@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prefect.io/airflow-unfactor/schemas/conversion-output.json",
+  "title": "airflow-unfactor Conversion Output",
+  "description": "Canonical schema for MCP tool responses from airflow-unfactor",
+  "version": "1.0.0",
+  "definitions": {
+    "warning": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Human-readable warning message"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["info", "warning", "error"],
+          "description": "Severity level"
+        },
+        "line": {
+          "type": "integer",
+          "description": "Source line number (optional)"
+        },
+        "column": {
+          "type": "integer",
+          "description": "Source column number (optional)"
+        }
+      },
+      "required": ["message", "category"]
+    },
+    "externalContext": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "Whether the external call succeeded"
+        },
+        "tool": {
+          "type": "string",
+          "description": "Name of the external tool called"
+        },
+        "query": {
+          "type": "string",
+          "description": "Query sent to external tool"
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "description": "Time taken in milliseconds"
+        },
+        "result": {
+          "description": "Result from successful call (mutually exclusive with error)"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message from failed call (mutually exclusive with result)"
+        }
+      },
+      "required": ["ok", "tool", "query", "elapsed_ms"]
+    },
+    "operatorInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Operator class name"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Airflow task_id"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of instances"
+        }
+      },
+      "required": ["type", "task_id"]
+    },
+    "connectionInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Connection name/ID"
+        },
+        "type": {
+          "type": "string",
+          "description": "Connection type (postgres, s3, etc.)"
+        },
+        "prefect_block": {
+          "type": "string",
+          "description": "Recommended Prefect Block type"
+        },
+        "package": {
+          "type": "string",
+          "description": "Required pip package"
+        }
+      },
+      "required": ["name", "type"]
+    },
+    "variableInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Variable name"
+        },
+        "is_sensitive": {
+          "type": "boolean",
+          "description": "Whether variable appears to contain sensitive data"
+        },
+        "recommendation": {
+          "type": "string",
+          "enum": ["secret", "variable", "parameter"],
+          "description": "Recommended Prefect equivalent"
+        }
+      },
+      "required": ["name", "is_sensitive", "recommendation"]
+    }
+  },
+  "oneOf": [
+    {
+      "title": "AnalyzeResponse",
+      "type": "object",
+      "properties": {
+        "dag_id": {
+          "type": "string",
+          "description": "Detected DAG identifier"
+        },
+        "airflow_version": {
+          "type": "object",
+          "properties": {
+            "major": { "type": "integer" },
+            "minor": { "type": ["integer", "null"] },
+            "confidence": { "type": "number" },
+            "evidence": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["major", "confidence"]
+        },
+        "operators": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/operatorInfo" }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "List of [upstream, downstream] pairs"
+        },
+        "xcom_usage": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "complexity_score": {
+          "type": "integer",
+          "description": "Estimated conversion complexity (0-100)"
+        },
+        "features": {
+          "type": "object",
+          "properties": {
+            "has_taskflow": { "type": "boolean" },
+            "has_datasets": { "type": "boolean" },
+            "has_sensors": { "type": "boolean" },
+            "has_dynamic_mapping": { "type": "boolean" },
+            "has_task_groups": { "type": "boolean" },
+            "has_trigger_rules": { "type": "boolean" },
+            "has_jinja_templates": { "type": "boolean" },
+            "has_connections": { "type": "boolean" },
+            "has_variables": { "type": "boolean" },
+            "has_custom_operators": { "type": "boolean" }
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/connectionInfo" }
+        },
+        "variables": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/variableInfo" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/warning" }
+        },
+        "external_context": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/externalContext" }
+        }
+      },
+      "required": ["dag_id", "operators", "dependencies", "complexity_score", "warnings"]
+    },
+    {
+      "title": "ConvertResponse",
+      "type": "object",
+      "properties": {
+        "flow_code": {
+          "type": "string",
+          "description": "Generated Prefect flow Python code"
+        },
+        "imports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required import statements"
+        },
+        "test_code": {
+          "type": "string",
+          "description": "Generated pytest test code"
+        },
+        "conversion_runbook_md": {
+          "type": "string",
+          "description": "DAG-specific migration runbook in markdown"
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/warning" }
+        },
+        "original_to_new_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Map of Airflow task_id to Prefect function name"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "execution_groups": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "description": "Tasks grouped by execution level (parallel groups)"
+        },
+        "block_scaffolds": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Generated Block scaffold code by connection name"
+        },
+        "variable_scaffolds": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Generated Variable/Secret scaffold code by variable name"
+        },
+        "external_context": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/externalContext" }
+        }
+      },
+      "required": ["flow_code", "imports", "warnings", "original_to_new_mapping"]
+    },
+    {
+      "title": "ValidateResponse",
+      "type": "object",
+      "properties": {
+        "is_valid": {
+          "type": "boolean",
+          "description": "Whether the conversion is valid"
+        },
+        "syntax_valid": {
+          "type": "boolean",
+          "description": "Whether generated code has valid Python syntax"
+        },
+        "task_count_match": {
+          "type": "boolean",
+          "description": "Whether task counts match between original and converted"
+        },
+        "dependency_preserved": {
+          "type": "boolean",
+          "description": "Whether dependencies are preserved"
+        },
+        "issues": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/warning" }
+        },
+        "external_context": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/externalContext" }
+        }
+      },
+      "required": ["is_valid", "syntax_valid", "issues"]
+    },
+    {
+      "title": "ExplainResponse",
+      "type": "object",
+      "properties": {
+        "concept": {
+          "type": "string",
+          "description": "The Airflow concept being explained"
+        },
+        "airflow_description": {
+          "type": "string",
+          "description": "How it works in Airflow"
+        },
+        "prefect_equivalent": {
+          "type": "string",
+          "description": "The Prefect equivalent approach"
+        },
+        "migration_notes": {
+          "type": "string",
+          "description": "Key differences and migration guidance"
+        },
+        "code_example": {
+          "type": "object",
+          "properties": {
+            "airflow": { "type": "string" },
+            "prefect": { "type": "string" }
+          }
+        },
+        "external_context": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/externalContext" }
+        }
+      },
+      "required": ["concept", "airflow_description", "prefect_equivalent"]
+    }
+  ]
+}
