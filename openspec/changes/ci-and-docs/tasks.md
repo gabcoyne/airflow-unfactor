@@ -3,7 +3,7 @@
 - [x] 1.1 Create `.github/workflows/lint.yml` with ruff check and format
 - [x] 1.2 Create `.github/workflows/operator-docs.yml` to verify generated docs
 - [x] 1.3 Create `.github/workflows/release.yml` for PyPI publishing on tags
-- [ ] 1.4 (Optional) Create `.github/workflows/typecheck.yml` for pyright
+- [x] 1.4 Create `.github/workflows/typecheck.yml` for pyright
 
 ## 2. Documentation Updates (P1)
 

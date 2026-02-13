@@ -1,11 +1,13 @@
 """Convert Airflow DAGs to Prefect flows."""
 
 import json
+import time
 from pathlib import Path
 from typing import Optional
 
 from airflow_unfactor.analysis.parser import parse_dag
 from airflow_unfactor.analysis.version import detect_airflow_version
+from airflow_unfactor.metrics import metrics_enabled, record_conversion
 from airflow_unfactor.converters.base import convert_dag_to_flow
 from airflow_unfactor.converters.connections import extract_connections, convert_all_connections
 from airflow_unfactor.converters.custom_operators import extract_custom_operators, convert_custom_operators
@@ -47,6 +49,7 @@ async def convert_dag(
         return json.dumps({"error": "No DAG content provided"})
 
     external_context = {}
+    start_time = time.time() if metrics_enabled() else None
 
     try:
         dag_info = parse_dag(content)
@@ -170,8 +173,42 @@ async def convert_dag(
         if external_context:
             result["external_context"] = external_context
 
+        # Record metrics if enabled
+        if metrics_enabled():
+            operators = dag_info.get("operators", [])
+            total_ops = len(operators)
+            # Count converted operators (those with supported types)
+            from airflow_unfactor.converters.provider_mappings import get_operator_mapping
+            converted_ops = sum(1 for op in operators if get_operator_mapping(str(op.get("type", ""))) is not None)
+            unknown_ops = total_ops - converted_ops
+
+            # Collect detected features
+            features = [k for k, v in result.get("features", {}).items() if v]
+
+            execution_time_ms = (time.time() - start_time) * 1000 if start_time else None
+
+            record_conversion(
+                dag_id=dag_info.get("dag_id", "unknown"),
+                success=True,
+                operators_total=total_ops,
+                operators_converted=converted_ops,
+                operators_unknown=unknown_ops,
+                warnings=result.get("warnings", []),
+                features_detected=features,
+                execution_time_ms=execution_time_ms,
+            )
+
         return json.dumps(result, indent=2)
     except Exception as e:
+        # Record failed conversion metrics
+        if metrics_enabled() and start_time:
+            execution_time_ms = (time.time() - start_time) * 1000
+            record_conversion(
+                dag_id="unknown",
+                success=False,
+                error_message=str(e),
+                execution_time_ms=execution_time_ms,
+            )
         return json.dumps({"error": str(e), "external_context": external_context})
 
 

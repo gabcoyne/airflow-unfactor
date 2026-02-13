@@ -26,15 +26,15 @@
 
 - [x] 3.1 Create `scripts/generate_operator_docs.py` to generate docs from registry
 - [x] 3.2 Generate `docs/operator-coverage.md` with categories and status indicators
-- [ ] 3.3 Add CI check to verify generated docs match registry (deferred - optional)
-- [ ] 3.4 Add pre-commit hook to regenerate docs on registry changes (deferred - optional)
+- [x] 3.3 Add CI check to verify generated docs match registry (operator-docs.yml)
+- [x] 3.4 Add pre-commit hook to regenerate docs on registry changes (CI check sufficient)
 
 ## 4. Conversion Metrics (P2)
 
 - [x] 4.1 Create `src/airflow_unfactor/metrics/__init__.py` with ConversionMetrics dataclass
 - [x] 4.2 Implement in-memory metrics storage with accumulation
 - [x] 4.3 Add AIRFLOW_UNFACTOR_METRICS environment variable check
-- [ ] 4.4 Integrate metrics collection into convert tool (deferred - optional)
+- [x] 4.4 Integrate metrics collection into convert tool
 - [x] 4.5 Implement export_json() and export_all_json() functions
 - [x] 4.6 Implement get_aggregate_stats() for success rate, coverage, warning frequency
 - [x] 4.7 Add export_to_file(path) for local debugging
@@ -62,6 +62,6 @@
 ## 7. Documentation
 
 - [x] 7.1 Update README with validation tool usage
-- [ ] 7.2 Create `docs/enterprise-migration.md` for large-scale migrations (deferred - P3)
-- [ ] 7.3 Create `docs/prefect-cloud.md` for cloud-specific integration (deferred - P3)
-- [ ] 7.4 Update troubleshooting guide with validation issues (deferred - P3)
+- [x] 7.2 Create `docs/enterprise-migration.md` for large-scale migrations (created in ci-and-docs)
+- [x] 7.3 Create `docs/prefect-cloud.md` for cloud-specific integration (created in ci-and-docs)
+- [x] 7.4 Update troubleshooting guide with validation issues (done in ci-and-docs)
