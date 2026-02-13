@@ -10,6 +10,7 @@ from airflow_unfactor.converters.base import convert_dag_to_flow
 from airflow_unfactor.converters.datasets import analyze_datasets, generate_event_code
 from airflow_unfactor.converters.test_generator import generate_flow_tests, generate_test_filename
 from airflow_unfactor.external_mcp import ExternalMCPClient
+from airflow_unfactor.validation import validate_generated_code
 
 
 async def convert_dag(
@@ -75,6 +76,14 @@ async def convert_dag(
             )
             result["test_code"] = test_code
             result["test_filename"] = generate_test_filename(dag_id)
+
+        # Validate generated code compiles
+        validation_warnings = validate_generated_code(
+            flow_code=result.get("flow_code"),
+            test_code=result.get("test_code"),
+        )
+        if validation_warnings:
+            result.setdefault("warnings", []).extend(validation_warnings)
 
         # External MCP enrichment (best-effort)
         if include_external_context:
