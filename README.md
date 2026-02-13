@@ -6,15 +6,15 @@
 [![PyPI](https://img.shields.io/pypi/v/airflow-unfactor)](https://pypi.org/project/airflow-unfactor/)
 [![License](https://img.shields.io/github/license/prefect/airflow-unfactor)](LICENSE)
 
-An MCP server that converts Apache Airflow DAGs to Prefect flows with AI assistance. Built with [FastMCP](https://github.com/jlowin/fastmcp).
+An MCP server that refactors Apache Airflow DAG code into Prefect flow code with AI assistance. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
 ## Features
 
-- 🔄 **Complete Conversion** — Handles all operators, not just the easy ones
+- 🔄 **Refactor-Focused** — Translates Airflow DAG patterns into maintainable Prefect flow patterns
 - 📚 **Educational** — Comments explain *why* Prefect does it better
 - ✅ **Test Generation** — Every converted flow comes with pytest tests
 - 🤖 **AI-Assisted** — Smart analysis of complex DAG patterns
-- 📦 **Batch Support** — Convert entire projects at once
+- 📦 **Batch Support** — Refactor entire DAG projects at once
 
 ## Installation
 
@@ -49,7 +49,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 ```
 
 Then ask Claude:
-> "Convert the DAG in `dags/my_etl.py` to a Prefect flow"
+> "Refactor the DAG in `dags/my_etl.py` into a Prefect flow"
 
 ### Use with Cursor
 
@@ -81,10 +81,32 @@ uvx airflow-unfactor
 | Tool | Description |
 |------|-------------|
 | `analyze` | Analyze a DAG's structure, operators, and complexity |
-| `convert` | Convert a DAG to a Prefect flow with tests |
-| `validate` | Verify conversion maintains behavioral equivalence |
+| `convert` | Refactor a DAG into a Prefect flow with tests |
+| `validate` | Verify refactoring maintains behavioral equivalence |
 | `explain` | Learn Airflow concepts and Prefect equivalents |
-| `batch` | Convert multiple DAGs at once |
+| `batch` | Refactor multiple DAGs at once |
+
+## Recommended Target Layout (New Prefect Project)
+
+When refactoring Airflow DAGs into a new codebase, keep generated output organized instead of dropping files into a single folder.
+
+Suggested structure (inspired by `prefecthq/flows` style):
+
+```text
+your-project/
+  flows/                  # Prefect flow entrypoints
+  tasks/                  # Reusable task functions
+  deployments/            # deployment.yaml / deployment scripts
+  infrastructure/         # work pool / worker config helpers
+  tests/
+    flows/
+    tasks/
+  migration/
+    airflow_sources/      # original DAGs kept read-only for reference
+    conversion_notes/     # runbook outputs and manual TODOs
+```
+
+This helps keep migration work auditable and reduces long-term repo clutter.
 
 ## Example
 

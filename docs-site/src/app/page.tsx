@@ -24,11 +24,11 @@ export default function Home() {
               <Badge variant="secondary">Prefect-aligned</Badge>
             </div>
             <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
-              Modernize Airflow DAGs with MCP-native conversions.
+              Refactor Airflow DAGs into Prefect flows with MCP-native tooling.
             </h1>
             <p className="mt-4 text-lg text-muted-foreground">
-              airflow-unfactor converts Airflow DAGs to Prefect flows with rich analysis, clear
-              warnings, and MCP-ready tooling. Built with shadcn/ui and FastMCP.
+              airflow-unfactor focuses on code-first migration and refactoring from Airflow to
+              Prefect, with rich analysis, clear warnings, and MCP-ready tooling.
             </p>
             <div className="mt-6 flex gap-3">
               <Button asChild>
@@ -54,7 +54,7 @@ export default function Home() {
                 <CardTitle>Conversion</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Generate Prefect flows with educational comments and conversion notes.
+                Generate Prefect flows with educational comments and refactoring notes.
               </CardContent>
             </Card>
             <Card>
@@ -73,10 +73,10 @@ export default function Home() {
             <CardHeader>
               <CardTitle>TaskFlow</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Clean conversion from @dag/@task to @flow/@task.
-            </CardContent>
-          </Card>
+              <CardContent className="text-sm text-muted-foreground">
+                Clean refactoring from @dag/@task to @flow/@task.
+              </CardContent>
+            </Card>
           <Card>
             <CardHeader>
               <CardTitle>Datasets</CardTitle>

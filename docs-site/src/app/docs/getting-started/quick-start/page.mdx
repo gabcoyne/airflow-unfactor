@@ -21,3 +21,24 @@
   }
 }
 ```
+
+## Keep Refactors Clean (Project Layout)
+
+If you are migrating into a new Prefect repo, keep generated code structured from day one.
+
+Recommended layout (inspired by `prefecthq/flows` style):
+
+```text
+flows/                  # Prefect flow entrypoints
+tasks/                  # Reusable task logic
+deployments/            # Deployment config/scripts
+tests/                  # Flow/task tests
+migration/
+  airflow_sources/      # Original DAGs for reference
+  conversion_notes/     # Runbook outputs and manual follow-up
+```
+
+Practical rule:
+- Keep Airflow source and generated Prefect code in separate paths.
+- Treat runbook output as a tracked migration artifact.
+- Promote stable code from `migration/` into first-class `flows/` and `tasks/`.
