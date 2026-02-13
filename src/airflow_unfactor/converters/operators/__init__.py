@@ -1,6 +1,14 @@
 """Operator-specific converters."""
 
-from .python import extract_functions, convert_python_operator, ExtractedFunction
+from .python import (
+    extract_functions,
+    convert_python_operator,
+    ExtractedFunction,
+    PythonOperatorConversionResult,
+    XComUsage,
+    XComPullInfo,
+    XComPushInfo,
+)
 from .bash import (
     convert_bash_operator,
     convert_task_bash_decorator,
@@ -14,6 +22,10 @@ __all__ = [
     "extract_functions",
     "convert_python_operator",
     "ExtractedFunction",
+    "PythonOperatorConversionResult",
+    "XComUsage",
+    "XComPullInfo",
+    "XComPushInfo",
     "convert_bash_operator",
     "convert_task_bash_decorator",
     "detect_jinja2_templates",

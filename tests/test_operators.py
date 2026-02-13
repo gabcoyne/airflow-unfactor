@@ -68,8 +68,9 @@ def extract():
             functions=funcs,
             include_comments=False,
         )
-        assert "@task" in result
-        assert "def extract():" in result
+        assert "@task" in result.code
+        assert "def extract():" in result.code
+        assert result.warnings == []
 
     def test_convert_xcom_function(self):
         """Convert a function that uses XCom."""
@@ -84,11 +85,68 @@ def transform(ti):
             python_callable="transform",
             functions=funcs,
         )
-        assert "@task" in result
+        assert "@task" in result.code
         # Should have educational comment about data passing
-        assert "Prefect Advantage" in result
+        assert "Prefect Advantage" in result.code
         # Parameter should be renamed from ti to extracted data
-        assert "extract_data" in result
+        assert "extract_data" in result.code
+
+    def test_convert_xcom_with_dynamic_task_ids(self):
+        """Convert function with dynamic task_ids warns about manual conversion."""
+        code = '''
+def process(ti, task_list):
+    results = ti.xcom_pull(task_ids=task_list)
+    return results
+'''
+        funcs = extract_functions(code)
+        result = convert_python_operator(
+            task_id="process",
+            python_callable="process",
+            functions=funcs,
+            include_comments=True,
+        )
+        # Should have warnings about dynamic task_ids
+        assert len(result.warnings) > 0
+        assert any("dynamic" in w.lower() or "manual" in w.lower() for w in result.warnings)
+        # Should have xcom_usage info
+        assert result.xcom_usage is not None
+        assert result.xcom_usage.has_complex_patterns
+
+    def test_convert_xcom_with_custom_key(self):
+        """Convert function with custom XCom key warns about manual conversion."""
+        code = '''
+def load(ti):
+    schema = ti.xcom_pull(task_ids="extract", key="schema")
+    data = ti.xcom_pull(task_ids="extract", key="data")
+    return {"schema": schema, "data": data}
+'''
+        funcs = extract_functions(code)
+        result = convert_python_operator(
+            task_id="load",
+            python_callable="load",
+            functions=funcs,
+            include_comments=True,
+        )
+        # Should warn about custom keys
+        assert result.xcom_usage is not None
+        assert result.xcom_usage.has_complex_patterns
+
+    def test_convert_xcom_push_to_return(self):
+        """Convert xcom_push to return statement."""
+        code = '''
+def produce(ti):
+    result = {"processed": True}
+    ti.xcom_push(key="result", value=result)
+'''
+        funcs = extract_functions(code)
+        result = convert_python_operator(
+            task_id="produce",
+            python_callable="produce",
+            functions=funcs,
+            include_comments=False,
+        )
+        # xcom_push should be converted to return
+        assert "return result" in result.code or "return {" in result.code
 
 
 class TestConvertBashOperator:
