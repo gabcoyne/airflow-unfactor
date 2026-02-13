@@ -101,10 +101,11 @@ class TestConvertBashOperator:
             bash_command="echo hello",
             include_comments=False,
         )
-        assert "@task" in result
-        assert "def run_script():" in result
-        assert "subprocess.run" in result
-        assert "echo hello" in result
+        assert "@task" in result.code
+        assert "def run_script():" in result.code
+        assert "subprocess.run" in result.code
+        assert "echo hello" in result.code
+        assert result.warnings == []
 
     def test_convert_bash_with_comments(self):
         """Conversion includes educational comments."""
@@ -113,8 +114,36 @@ class TestConvertBashOperator:
             bash_command="echo hello",
             include_comments=True,
         )
-        assert "Prefect Advantage" in result
-        assert "subprocess" in result
+        assert "Prefect Advantage" in result.code
+        assert "subprocess" in result.code
+
+    def test_convert_bash_detects_jinja2(self):
+        """Conversion detects and warns about Jinja2 templates."""
+        result = convert_bash_operator(
+            task_id="run_dated_script",
+            bash_command="gsutil cp gs://bucket/{{ ds }}/data.csv .",
+            include_comments=True,
+        )
+        # Should have warnings
+        assert len(result.warnings) > 0
+        assert "Jinja2" in result.warnings[0]
+        # Code should have warning comments
+        assert "WARNING" in result.code
+        assert "{{ ds }}" in result.code
+        # Detection info should be present
+        assert result.jinja2_detection is not None
+        assert result.jinja2_detection.has_templates
+        assert "{{ ds }}" in result.jinja2_detection.templates_found
+
+    def test_convert_bash_no_jinja2(self):
+        """No warnings for commands without Jinja2."""
+        result = convert_bash_operator(
+            task_id="simple_echo",
+            bash_command="echo 'no templates here'",
+            include_comments=False,
+        )
+        assert result.warnings == []
+        assert result.jinja2_detection is None or not result.jinja2_detection.has_templates
 
 
 class TestConvertBranchOperator:
