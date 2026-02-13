@@ -12,9 +12,12 @@ title: Home
 ## Features
 
 - **Complete Migration** — Handles operators, TaskFlow, sensors, datasets, dynamic mapping, TaskGroups, trigger rules, and Jinja2 templates
+- **Validation** — Verify converted flows maintain behavioral equivalence with original DAGs
+- **35+ Provider Operators** — AWS, GCP, Azure, Databricks, dbt, and more with full mapping support
+- **Conversion Metrics** — Track success rates, operator coverage, and warnings across migrations
 - **Educational** — Comments explain *why* Prefect does it better
 - **Test Generation** — Every migrated flow comes with pytest tests
-- **Migration Runbooks** — DAG-specific guidance for schedule, callbacks, connections, and variables
+- **Migration Runbooks** — DAG-specific guidance with work pool, automation, and Block setup
 - **AI-Assisted** — Smart analysis with external MCP enrichment from Prefect and Astronomer docs
 
 ## What Gets Converted
@@ -109,6 +112,11 @@ def my_etl():
 - [Installation & Setup](getting-started.md)
 - [Examples](examples.md) — Real conversions from Astronomer DAGs
 - [Operator Mapping](operator-mapping.md) — Complete reference
+- [Operator Coverage Matrix](operator-coverage.md) — All 35+ supported operators
+
+### Tools
+- [Validation](tools/validate.md) — Verify conversion correctness
+- [Metrics](tools/metrics.md) — Track conversion statistics
 
 ### Conversion Guides
 - [Dynamic Task Mapping](conversion/dynamic-mapping.md) — `.expand()` to `.map()`
@@ -117,6 +125,10 @@ def my_etl():
 - [Jinja2 Templates](conversion/jinja-templates.md) — Runtime context
 - [Connections & Blocks](conversion/connections.md) — Credential management
 - [Variables & Secrets](conversion/variables.md) — Configuration patterns
+
+### Guides
+- [Enterprise Migration](guides/enterprise-migration.md) — Large-scale patterns
+- [Prefect Cloud](guides/prefect-cloud.md) — Cloud-specific features
 
 ### Reference
 - [Migration Playbooks](playbooks.md) — Step-by-step guides for common patterns

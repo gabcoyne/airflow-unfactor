@@ -1,0 +1,380 @@
+---
+title: Enterprise Migration Guide
+---
+
+# Enterprise Migration Guide
+
+Patterns and strategies for migrating large DAG portfolios to Prefect.
+
+## Assessment Phase
+
+Before starting migration, assess your DAG portfolio:
+
+### 1. Inventory Analysis
+
+```bash
+# Count DAGs and operators
+find dags/ -name "*.py" -exec grep -l "DAG\|@dag" {} \; | wc -l
+
+# Identify unique operators
+grep -rh "Operator\|Sensor" dags/ | sort | uniq -c | sort -rn
+```
+
+Use the `analyze` tool to get detailed breakdowns:
+
+```python
+# Analyze all DAGs
+for dag_file in Path("dags/").glob("*.py"):
+    result = await analyze(path=str(dag_file))
+    print(f"{dag_file.name}: {len(result['operators'])} operators")
+```
+
+### 2. Complexity Scoring
+
+Categorize DAGs by migration complexity:
+
+| Complexity | Characteristics | Estimated Effort |
+|------------|-----------------|------------------|
+| **Simple** | < 10 tasks, standard operators, no XCom | Automated |
+| **Medium** | 10-30 tasks, some provider operators, basic XCom | Review needed |
+| **Complex** | 30+ tasks, custom operators, dynamic patterns | Manual work |
+
+### 3. Dependency Mapping
+
+Identify cross-DAG dependencies:
+- `TriggerDagRunOperator` calls
+- `ExternalTaskSensor` waits
+- Shared datasets/assets
+- Common connections
+
+These become flow-to-flow orchestration patterns in Prefect.
+
+## Phased Migration Strategy
+
+### Phase 1: Pilot (1-2 weeks)
+
+**Goal**: Validate tooling and establish patterns.
+
+1. Select 3-5 representative DAGs:
+   - 1 simple ETL
+   - 1 with provider operators
+   - 1 with complex dependencies
+
+2. Convert and validate:
+   ```python
+   # Convert
+   result = await convert(path="dags/pilot_dag.py")
+
+   # Validate
+   validation = await validate(
+       original_dag="dags/pilot_dag.py",
+       converted_flow="flows/pilot_dag.py"
+   )
+   ```
+
+3. Deploy to Prefect (staging):
+   ```bash
+   prefect deploy --name pilot-dag
+   ```
+
+4. Run in parallel with Airflow for comparison.
+
+### Phase 2: Batch Migration (2-4 weeks)
+
+**Goal**: Convert remaining DAGs using proven patterns.
+
+Use the `batch` tool for bulk conversion:
+
+```python
+result = await batch(
+    paths=["dags/"],
+    output_dir="flows/",
+    include_tests=True,
+)
+```
+
+Enable metrics to track progress:
+
+```bash
+export AIRFLOW_UNFACTOR_METRICS=1
+python scripts/migrate_batch.py
+```
+
+### Phase 3: Validation at Scale (1-2 weeks)
+
+**Goal**: Verify all conversions before cutover.
+
+```python
+from pathlib import Path
+
+for dag_file in Path("dags/").glob("*.py"):
+    flow_file = Path("flows/") / dag_file.name
+    if flow_file.exists():
+        result = await validate(
+            original_dag=str(dag_file),
+            converted_flow=str(flow_file)
+        )
+        if not result["is_valid"]:
+            print(f"FAIL: {dag_file.name}")
+            for issue in result["issues"]:
+                print(f"  - {issue}")
+```
+
+### Phase 4: Cutover (1 week)
+
+**Goal**: Switch production to Prefect.
+
+1. **Final sync**: Run one last batch conversion
+2. **Pause Airflow DAGs**: Prevent new runs
+3. **Activate Prefect deployments**: Start scheduled runs
+4. **Monitor**: Watch for failures, compare outputs
+5. **Archive Airflow**: Keep DAGs read-only for reference
+
+## Batch Conversion Workflow
+
+### Using the Batch Tool
+
+```python
+result = await batch(
+    paths=["dags/etl/", "dags/ml/"],
+    output_dir="flows/",
+    include_tests=True,
+    include_runbook=True,
+)
+
+print(f"Converted: {result['successful']}/{result['total']}")
+for warning in result['warnings']:
+    print(f"Warning: {warning}")
+```
+
+### Using the Scaffold Tool
+
+For complete project setup:
+
+```python
+result = await scaffold(
+    dag_directory="dags/",
+    output_directory="prefect-project/",
+    project_name="my-migration",
+)
+```
+
+This creates:
+```
+prefect-project/
+├── flows/
+├── tasks/
+├── tests/
+├── deployments/
+├── prefect.yaml
+└── requirements.txt
+```
+
+## Validation at Scale
+
+### Automated Validation Pipeline
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime
+
+def validate_all(dag_dir: Path, flow_dir: Path) -> dict:
+    results = {
+        "timestamp": datetime.now().isoformat(),
+        "passed": [],
+        "failed": [],
+        "skipped": [],
+    }
+
+    for dag_file in dag_dir.glob("*.py"):
+        flow_file = flow_dir / dag_file.name
+
+        if not flow_file.exists():
+            results["skipped"].append(dag_file.name)
+            continue
+
+        try:
+            result = validate_sync(
+                original_dag=str(dag_file),
+                converted_flow=str(flow_file)
+            )
+
+            if result["is_valid"]:
+                results["passed"].append({
+                    "dag": dag_file.name,
+                    "confidence": result["confidence_score"]
+                })
+            else:
+                results["failed"].append({
+                    "dag": dag_file.name,
+                    "issues": result["issues"]
+                })
+        except Exception as e:
+            results["failed"].append({
+                "dag": dag_file.name,
+                "issues": [str(e)]
+            })
+
+    return results
+
+# Run validation
+results = validate_all(Path("dags/"), Path("flows/"))
+
+# Report
+print(f"Passed: {len(results['passed'])}")
+print(f"Failed: {len(results['failed'])}")
+print(f"Skipped: {len(results['skipped'])}")
+
+# Save report
+with open("validation_report.json", "w") as f:
+    json.dump(results, f, indent=2)
+```
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/validate-migration.yml
+name: Validate Migration
+
+on:
+  push:
+    paths:
+      - 'dags/**'
+      - 'flows/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install airflow-unfactor
+
+      - name: Validate conversions
+        run: python scripts/validate_all.py
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: validation_report.json
+```
+
+## Rollback Planning
+
+### Maintain Parallel Operations
+
+During migration, keep both systems running:
+
+```
+┌─────────────┐     ┌─────────────┐
+│   Airflow   │     │   Prefect   │
+│  (Primary)  │ --> │  (Shadow)   │
+└─────────────┘     └─────────────┘
+        │                  │
+        v                  v
+   Same data         Compare outputs
+```
+
+### Quick Rollback
+
+If issues arise after cutover:
+
+1. **Pause Prefect deployments**:
+   ```bash
+   prefect deployment pause "flow-name/deployment"
+   ```
+
+2. **Unpause Airflow DAGs**:
+   ```bash
+   airflow dags unpause dag_id
+   ```
+
+3. **Investigate and fix** the Prefect flow
+
+4. **Resume migration** when ready
+
+### Data Validation
+
+Compare outputs between systems:
+
+```python
+def compare_outputs(dag_id: str, execution_date: str):
+    # Get Airflow task outputs
+    airflow_outputs = get_airflow_xcom(dag_id, execution_date)
+
+    # Get Prefect task results
+    prefect_outputs = get_prefect_results(dag_id, execution_date)
+
+    # Compare
+    for task_id, airflow_value in airflow_outputs.items():
+        prefect_value = prefect_outputs.get(task_id)
+        if airflow_value != prefect_value:
+            print(f"Mismatch in {task_id}:")
+            print(f"  Airflow: {airflow_value}")
+            print(f"  Prefect: {prefect_value}")
+```
+
+## Monitoring Migration Progress
+
+### Metrics Dashboard
+
+Track migration health with the metrics module:
+
+```python
+from airflow_unfactor.metrics import get_aggregate_stats
+
+stats = get_aggregate_stats()
+
+dashboard = {
+    "conversion_progress": {
+        "total": stats.total_conversions,
+        "successful": stats.successful_conversions,
+        "failed": stats.failed_conversions,
+        "success_rate": f"{stats.success_rate:.1%}",
+    },
+    "operator_coverage": {
+        "total": stats.total_operators,
+        "converted": stats.operators_converted,
+        "unknown": stats.operators_unknown,
+        "coverage": f"{stats.operator_coverage:.1%}",
+    },
+    "common_issues": dict(
+        sorted(stats.warning_frequency.items(), key=lambda x: -x[1])[:5]
+    ),
+}
+```
+
+### Progress Tracking
+
+```python
+# Track by team/domain
+domains = {
+    "etl": "dags/etl/",
+    "ml": "dags/ml/",
+    "analytics": "dags/analytics/",
+}
+
+for domain, path in domains.items():
+    dag_count = len(list(Path(path).glob("*.py")))
+    flow_count = len(list(Path(f"flows/{domain}/").glob("*.py")))
+    print(f"{domain}: {flow_count}/{dag_count} migrated")
+```
+
+## Best Practices
+
+1. **Start small** — Pilot with representative DAGs first
+2. **Automate validation** — Run validation in CI/CD
+3. **Track metrics** — Monitor progress and identify issues
+4. **Maintain parallel** — Keep Airflow running during migration
+5. **Document decisions** — Record patterns and exceptions
+6. **Communicate progress** — Share dashboards with stakeholders
+7. **Plan rollback** — Always have a way back to Airflow
+8. **Test with real data** — Validation checks structure, not correctness

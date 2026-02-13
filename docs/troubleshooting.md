@@ -134,8 +134,93 @@ Warning: Original DAG has 5 tasks, converted flow has 4 tasks
 
 **Solution**: Review which tasks were skipped (usually `DummyOperator`/`EmptyOperator`) and verify this is expected.
 
+## Validation Issues
+
+The `validate` tool compares your original DAG with the converted flow to verify behavioral equivalence. Here are common issues:
+
+### Task Count Mismatch (Validation)
+
+```json
+{
+  "is_valid": false,
+  "issues": ["Task count mismatch: DAG has 5 tasks, flow has 3 tasks"]
+}
+```
+
+**Cause**: The validation excludes `DummyOperator`/`EmptyOperator` (not needed in Prefect), but other tasks may have been skipped.
+
+**Solution**:
+1. Check the conversion warnings for skipped operators
+2. Verify custom operators were handled correctly
+3. Review the generated flow for missing task implementations
+
+### Dependency Graph Mismatch
+
+```json
+{
+  "is_valid": false,
+  "issues": ["Dependency mismatch: edge (extract, transform) not found in flow"]
+}
+```
+
+**Cause**: The task dependency structure differs between DAG and flow.
+
+**Solution**:
+1. Check that tasks are called in the correct order in the flow
+2. Verify `wait_for` or data passing preserves dependencies
+3. Review complex patterns like fan-out/fan-in
+
+### Data Flow Warnings
+
+```json
+{
+  "issues": ["XCom pattern 'ti.xcom_pull(task_ids=\"extract\")' not converted to parameter"]
+}
+```
+
+**Cause**: XCom pulls should become function parameters in Prefect.
+
+**Solution**:
+1. Ensure the converted task receives data as a parameter
+2. Check that upstream tasks return values
+3. For multi-task pulls, verify all sources are connected
+
+### Low Confidence Scores
+
+```json
+{
+  "confidence_score": 45,
+  "is_valid": true
+}
+```
+
+**Cause**: Confidence decreases with:
+- Many tasks (complex DAGs)
+- Custom/unknown operators
+- Dynamic patterns that can't be statically analyzed
+- Partial dependency matches
+
+**Solution**:
+1. Scores above 70 are generally reliable
+2. Scores 50-70 warrant manual review
+3. Scores below 50 indicate significant manual work needed
+4. Focus on the specific `issues` rather than the score
+
+### Validation Timeout
+
+For very large DAGs, validation may timeout:
+
+```json
+{
+  "error": "Validation timeout: DAG has 200+ tasks"
+}
+```
+
+**Solution**: Consider splitting large DAGs into smaller flows, which is a Prefect best practice anyway.
+
 ## Getting Help
 
 1. Check the [examples](examples.md) for similar patterns
 2. Review the [operator mapping](operator-mapping.md) reference
-3. File an issue at [github.com/prefect/airflow-unfactor](https://github.com/prefect/airflow-unfactor/issues)
+3. Use the [validation tool](tools/validate.md) to verify conversions
+4. File an issue at [github.com/prefect/airflow-unfactor](https://github.com/prefect/airflow-unfactor/issues)

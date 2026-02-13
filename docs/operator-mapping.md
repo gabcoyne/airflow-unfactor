@@ -8,6 +8,8 @@ permalink: /operator-mapping/
 
 Reference for how Airflow operators, sensors, and patterns map to Prefect equivalents during migration.
 
+> **See also:** [Operator Coverage Matrix](operator-coverage.md) for the complete list of 35+ supported operators with their Prefect equivalents and required packages.
+
 ## Core Operators
 
 | Airflow | Prefect | Notes |
@@ -129,3 +131,14 @@ This means:
 - Faster data passing (in-memory, not serialized)
 - Lower infrastructure overhead
 - Simpler debugging
+
+## Adding New Operator Support
+
+The operator registry is maintained in `src/airflow_unfactor/converters/provider_mappings.py`. To add support for a new operator:
+
+1. Add an `OperatorMapping` entry to the appropriate provider section
+2. Add the operator to `get_operators_by_category()` for documentation
+3. Add tests in `tests/test_provider_operators.py`
+4. Run `python scripts/generate_operator_docs.py` to regenerate the coverage matrix
+
+The [Operator Coverage Matrix](operator-coverage.md) is auto-generated from the registry and should always stay in sync.

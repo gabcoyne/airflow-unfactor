@@ -1,0 +1,219 @@
+# Troubleshooting
+
+Common issues and solutions when migrating Airflow DAGs to Prefect flows.
+
+## Validation Issues
+
+### Task Count Mismatch
+
+**Symptom**: Validation reports different task counts between DAG and flow.
+
+```json
+{"issues": ["Task count mismatch: DAG has 5 tasks, flow has 4 tasks"]}
+```
+
+**Causes**:
+- Missing task implementation in converted flow
+- DummyOperator/EmptyOperator not properly excluded
+- Dynamic task generation not fully converted
+
+**Solutions**:
+1. Compare task lists in validation output:
+   ```python
+   result = await validate(original_dag="dag.py", converted_flow="flow.py")
+   print(f"DAG tasks: {result['dag_tasks']}")
+   print(f"Flow tasks: {result['flow_tasks']}")
+   # Find missing tasks
+   missing = set(result['dag_tasks']) - set(result['flow_tasks'])
+   print(f"Missing: {missing}")
+   ```
+
+2. For dynamic tasks, ensure all generated tasks are represented:
+   ```python
+   # Airflow dynamic tasks
+   for i in range(3):
+       task = PythonOperator(task_id=f"task_{i}", ...)
+
+   # Prefect equivalent
+   for i in range(3):
+       task_i.submit(...)  # Or use .map()
+   ```
+
+### Dependency Mismatch
+
+**Symptom**: Validation reports edges not preserved.
+
+```json
+{"issues": ["Dependency mismatch: edge (extract, transform) not found in flow"]}
+```
+
+**Causes**:
+- Tasks called in wrong order
+- Missing data passing between tasks
+- Parallel execution where sequential was expected
+
+**Solutions**:
+1. Ensure explicit data flow:
+   ```python
+   # Wrong - no explicit dependency
+   @flow
+   def my_flow():
+       extract()
+       transform()  # May run before extract finishes
+
+   # Correct - explicit data dependency
+   @flow
+   def my_flow():
+       data = extract()
+       transform(data)  # Waits for extract
+   ```
+
+2. Use `wait_for` for non-data dependencies:
+   ```python
+   from prefect import flow, task
+
+   @flow
+   def my_flow():
+       a = task_a.submit()
+       b = task_b.submit(wait_for=[a])  # Explicit ordering
+   ```
+
+### Low Confidence Score
+
+**Symptom**: Validation passes but confidence is below 60.
+
+**Causes**:
+- Complex DAG structure
+- Many unknown operators
+- Dynamic patterns detected
+
+**Solutions**:
+1. Review unknown operators in conversion output
+2. Manually verify critical paths
+3. Add integration tests for converted flow
+4. Consider breaking complex DAGs into smaller flows
+
+### XCom Pattern Not Converted
+
+**Symptom**: Validation detects unconverted XCom usage.
+
+```json
+{"issues": ["XCom pattern 'ti.xcom_pull(task_ids=\"extract\")' not converted"]}
+```
+
+**Solutions**:
+1. Replace XCom pull with function parameters:
+   ```python
+   # Airflow
+   def transform(**context):
+       data = context['ti'].xcom_pull(task_ids='extract')
+
+   # Prefect
+   @task
+   def transform(data):  # Receive as parameter
+       ...
+
+   @flow
+   def my_flow():
+       data = extract()
+       transform(data)  # Pass directly
+   ```
+
+2. For multi-task pulls, use explicit parameters:
+   ```python
+   # Airflow
+   data = ti.xcom_pull(task_ids=['task_a', 'task_b'])
+
+   # Prefect
+   @task
+   def combine(data_a, data_b):
+       ...
+
+   @flow
+   def my_flow():
+       a = task_a()
+       b = task_b()
+       combine(a, b)
+   ```
+
+## Conversion Errors
+
+### Parse Error
+
+**Symptom**: Conversion fails with syntax or parse error.
+
+**Solutions**:
+1. Ensure the DAG file is valid Python
+2. Check for missing imports
+3. Verify Airflow version compatibility
+
+### Unknown Operator
+
+**Symptom**: Warning about unsupported operator type.
+
+**Solutions**:
+1. Check [Operator Coverage](/docs/conversion/operators) for supported operators
+2. For provider operators, ensure the provider is supported
+3. For custom operators, manual conversion is required
+
+### Dynamic DAG Patterns
+
+**Symptom**: Conversion produces incomplete or incorrect output for dynamic DAGs.
+
+**Solutions**:
+1. Simplify dynamic patterns where possible
+2. Use explicit task definitions instead of loops
+3. Consider generating multiple static flows
+
+## Runtime Issues
+
+### Import Errors
+
+**Symptom**: Converted flow fails to import.
+
+**Solutions**:
+1. Install required Prefect integrations:
+   ```bash
+   pip install prefect-aws prefect-gcp prefect-sqlalchemy
+   ```
+
+2. Check for missing custom modules
+3. Verify Python version compatibility
+
+### Connection/Block Not Found
+
+**Symptom**: Flow fails looking for Airflow connection.
+
+**Solutions**:
+1. Create corresponding Prefect Block
+2. Update code to use Block.load() pattern
+3. See [Prefect Cloud Guide](/docs/guides/prefect-cloud) for Block examples
+
+### Schedule Not Triggering
+
+**Symptom**: Converted flow doesn't run on schedule.
+
+**Solutions**:
+1. Verify deployment was created:
+   ```bash
+   prefect deployment ls
+   ```
+
+2. Check schedule configuration in prefect.yaml
+3. Ensure worker is running:
+   ```bash
+   prefect worker start --pool "my-pool"
+   ```
+
+## Getting Help
+
+If you encounter issues not covered here:
+
+1. Check the [conversion output](/docs/tools/validate) for specific warnings
+2. Enable [metrics](/docs/tools/metrics) to track conversion patterns
+3. Review the [Enterprise Migration Guide](/docs/guides/enterprise-migration) for large-scale patterns
+4. Open an issue on GitHub with:
+   - Original DAG (sanitized)
+   - Conversion output
+   - Validation result
+   - Expected vs actual behavior

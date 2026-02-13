@@ -1,0 +1,47 @@
+name: Verify Operator Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/airflow_unfactor/converters/provider_mappings.py'
+      - 'docs/operator-coverage.md'
+      - 'scripts/generate_operator_docs.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/airflow_unfactor/converters/provider_mappings.py'
+      - 'docs/operator-coverage.md'
+      - 'scripts/generate_operator_docs.py'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv pip install -e .
+
+      - name: Generate operator docs
+        run: uv run python scripts/generate_operator_docs.py
+
+      - name: Check for changes
+        run: |
+          if git diff --exit-code docs/operator-coverage.md; then
+            echo "✅ Operator docs are up to date"
+          else
+            echo "::error::Operator docs are out of sync with registry."
+            echo "::error::Run 'python scripts/generate_operator_docs.py' and commit the changes."
+            git diff docs/operator-coverage.md
+            exit 1
+          fi
