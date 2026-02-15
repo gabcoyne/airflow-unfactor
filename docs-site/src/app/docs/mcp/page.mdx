@@ -1,56 +1,123 @@
-# Prefect MCP Alignment
+# MCP Tools
 
-Our MCP server aligns with **Prefect’s MCP guidance** and integrates external MCP servers for richer context.
+Our MCP server provides analysis, context, and validation tools for LLM-assisted Airflow→Prefect conversion.
 
-## External MCP Servers
+## Architecture
 
-We use two unauthenticated MCP servers:
-
-- **Prefect MCP**: `https://docs.prefect.io/mcp`
-- **Astronomer MCP**: `https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration`
-
-Set optional env overrides:
-
-```bash
-export MCP_PREFECT_URL="https://docs.prefect.io/mcp"
-export MCP_ASTRONOMER_URL="https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration"
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      MCP Client (LLM)                           │
+├─────────────────────────────────────────────────────────────────┤
+│  1. analyze(dag_code)         → Rich structured payload         │
+│  2. get_context(features)     → Prefect docs & patterns         │
+│  3. operator_mapping(type)    → Specific operator guidance      │
+│  4. LLM generates complete Prefect flow                         │
+│  5. validate(original, gen)   → Verify correctness              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Prefect MCP server profile
+## Primary Tools
 
-According to the Prefect MCP registry endpoint, the Prefect MCP server exposes a search tool with the following shape:
+### `analyze`
 
+Comprehensive DAG analysis returning everything an LLM needs for conversion.
+
+**Input:**
 ```json
 {
-  "server": {
-    "name": "Prefect",
-    "version": "1.0.0",
-    "transport": "http"
-  },
-  "capabilities": {
-    "tools": {
-      "SearchPrefect": {
-        "description": "Search across the Prefect knowledge base...",
-        "inputSchema": {
-          "type": "object",
-          "properties": { "query": { "type": "string" } },
-          "required": ["query"]
-        }
-      }
-    }
-  }
+  "path": "path/to/dag.py",
+  "content": "# optional: raw DAG code",
+  "include_external_context": true
 }
 ```
 
-We model our tool descriptions and schemas to match this standard.
+**Output includes:**
+- `dag_id`, `airflow_version` detection
+- `structure`: operators, dependencies, task_groups, imports
+- `patterns`: xcom, sensors, trigger_rules, branching, connections, variables
+- `dag_config`: schedule, catchup, default_args, tags
+- `complexity`: score and factors
+- `migration_notes`: actionable conversion guidance
+- `original_code`: for LLM reference
 
-## Design goals
+### `get_context`
 
-- **Precise schemas**: All tools publish JSON Schema for inputs
-- **Clear descriptions**: Tools describe intent and when to use them
-- **Deterministic output**: Structured output for downstream agents
-- **Error transparency**: Conversion warnings returned inline
+Fetch Prefect documentation and patterns relevant to detected features.
 
-## Next: Tool design
+**Input:**
+```json
+{
+  "topics": ["flows", "tasks", "blocks", "deployments"],
+  "detected_features": ["sensors", "xcom", "connections"]
+}
+```
 
-See **MCP → Tool Design** for practical conventions and examples.
+**Output includes:**
+- `documentation`: Relevant Prefect docs
+- `operator_patterns`: Airflow→Prefect mappings
+- `connection_mappings`: Connection→Block type mappings
+- `deployment_template`: prefect.yaml structure examples
+
+### `operator_mapping`
+
+Get detailed Prefect equivalent for a specific Airflow operator.
+
+```json
+{"operator_type": "S3KeySensor"}
+```
+
+Returns prefect_pattern, example code, and migration notes.
+
+### `connection_mapping`
+
+Map Airflow connection ID to Prefect block type.
+
+```json
+{"connection_id": "postgres_default"}
+```
+
+Returns block_type, package, and configuration guidance.
+
+### `validate`
+
+Verify generated Prefect code matches original DAG structure.
+
+```json
+{
+  "original_dag": "# Airflow DAG code",
+  "converted_flow": "# Generated Prefect flow"
+}
+```
+
+Returns validation status, task coverage, and suggestions.
+
+## External MCP Integration
+
+We call external MCP servers for enriched context:
+
+| Server | URL | Purpose |
+|--------|-----|---------|
+| Prefect | `https://docs.prefect.io/mcp` | Documentation search |
+| Astronomer | `https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration` | Migration guidance |
+
+Configure via environment:
+
+```bash
+export MCP_PREFECT_ENABLED=true
+export MCP_PREFECT_URL="https://docs.prefect.io/mcp"
+```
+
+## Deprecated Tools
+
+The following tools use brittle template-based conversion and are deprecated:
+
+| Tool | Replacement |
+|------|-------------|
+| `convert` | Use `analyze` + `get_context` + LLM generation |
+| `batch` | Use `analyze` on each DAG individually |
+
+## Next Steps
+
+- [Tool Design](/docs/mcp/tool-design) — Design principles
+- [Examples](/docs/mcp/examples) — Usage examples
+- [Schemas](/docs/mcp/schemas) — Full JSON schemas

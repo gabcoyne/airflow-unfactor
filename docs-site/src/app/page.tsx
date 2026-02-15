@@ -37,7 +37,7 @@ export default function Home() {
               href="/docs/mcp"
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
-              MCP Guide
+              MCP Tools
             </Link>
             <Link
               href="https://github.com/gabcoyne/airflow-unfactor"
@@ -60,22 +60,21 @@ export default function Home() {
                 className="border-primary/30 bg-primary/5"
               >
                 <Zap className="mr-1 h-3 w-3" />
-                MCP Native
+                LLM-Native
               </Badge>
-              <Badge variant="secondary">v0.1.0</Badge>
+              <Badge variant="secondary">MCP Server</Badge>
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl">
-              Transform{" "}
+              Analyze{" "}
               <span className="text-gradient">Airflow DAGs</span>
               <br />
-              into Prefect Flows
+              for LLM Conversion
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-              AI-powered migration tooling that analyzes your DAGs, generates
-              clean Prefect code with educational comments, and validates
-              behavioral equivalence.
+              Rich analysis payloads that enable LLMs to generate complete,
+              functional Prefect flows. We analyze. The LLM generates. We validate.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -86,12 +85,12 @@ export default function Home() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/docs/mcp">MCP Integration</Link>
+                <Link href="/docs/mcp">MCP Tools</Link>
               </Button>
             </div>
           </div>
 
-          {/* Code Preview */}
+          {/* Workflow Preview */}
           <div className="mx-auto mt-16 max-w-4xl">
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-primary/5">
               <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-3">
@@ -99,35 +98,35 @@ export default function Home() {
                 <div className="h-3 w-3 rounded-full bg-accent/60" />
                 <div className="h-3 w-3 rounded-full bg-chart-3/60" />
                 <span className="ml-2 text-xs text-muted-foreground">
-                  conversion_example.py
+                  workflow
                 </span>
               </div>
               <pre className="overflow-x-auto p-6 text-sm">
                 <code className="text-muted-foreground">
-                  <span className="text-chart-5"># Before: Airflow DAG</span>
+                  <span className="text-chart-5"># 1. Analyze your DAG</span>
                   {"\n"}
-                  <span className="text-chart-4">@dag</span>(dag_id=
-                  <span className="text-chart-2">&quot;etl_pipeline&quot;</span>)
-                  {"\n"}
-                  <span className="text-primary">def</span>{" "}
-                  <span className="text-foreground">etl_pipeline</span>():
-                  {"\n"}
-                  {"    "}extract_task = PythonOperator(...)
+                  analysis = <span className="text-primary">analyze</span>(
+                  <span className="text-chart-2">&quot;dags/etl.py&quot;</span>)
                   {"\n\n"}
-                  <span className="text-chart-5"># After: Prefect Flow</span>
+                  <span className="text-chart-5"># 2. Get Prefect context</span>
                   {"\n"}
-                  <span className="text-chart-4">@flow</span>(name=
-                  <span className="text-chart-2">&quot;etl_pipeline&quot;</span>)
+                  context = <span className="text-primary">get_context</span>(
                   {"\n"}
-                  <span className="text-primary">def</span>{" "}
-                  <span className="text-foreground">etl_pipeline</span>():
+                  {"    "}features=analysis.patterns
                   {"\n"}
-                  {"    "}
-                  <span className="text-chart-5">
-                    # Prefect handles retries, logging, and observability
-                  </span>
+                  )
+                  {"\n\n"}
+                  <span className="text-chart-5"># 3. LLM generates Prefect flow using analysis + context</span>
                   {"\n"}
-                  {"    "}result = extract_task()
+                  <span className="text-chart-5"># 4. Validate the result</span>
+                  {"\n"}
+                  result = <span className="text-primary">validate</span>(
+                  {"\n"}
+                  {"    "}original=dag_code,
+                  {"\n"}
+                  {"    "}generated=prefect_flow
+                  {"\n"}
+                  )
                 </code>
               </pre>
             </div>
@@ -140,11 +139,11 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-              Intelligent Migration
+              LLM-Assisted Migration
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              More than a transpiler. Understand, convert, and validate your
-              workflow migrations.
+              Deterministic templating is brittle. We provide rich payloads
+              that let LLMs generate idiomatic Prefect code.
             </p>
           </div>
 
@@ -154,11 +153,11 @@ export default function Home() {
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                   <Code2 className="h-5 w-5 text-primary" />
                 </div>
-                <CardTitle>Deep Analysis</CardTitle>
+                <CardTitle>Rich Analysis</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Detect Airflow versions (2.x/3.x), identify TaskFlow API,
-                Datasets, Sensors, and 50+ operator types with full context.
+                Comprehensive DAG payloads with structure, patterns, configuration,
+                complexity metrics, and migration notes.
               </CardContent>
             </Card>
 
@@ -167,11 +166,11 @@ export default function Home() {
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
                   <Layers className="h-5 w-5 text-accent-foreground" />
                 </div>
-                <CardTitle>Smart Conversion</CardTitle>
+                <CardTitle>Prefect Context</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Generate idiomatic Prefect flows with educational comments
-                explaining each transformation and Prefect best practices.
+                Fetch relevant Prefect documentation, operator mappings,
+                and deployment templates based on detected features.
               </CardContent>
             </Card>
 
@@ -183,8 +182,8 @@ export default function Home() {
                 <CardTitle>Validation</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Behavioral equivalence checking compares task graphs, data flow,
-                and dependencies between original and converted code.
+                Verify generated code matches original structure—task coverage,
+                dependency graphs, and configuration completeness.
               </CardContent>
             </Card>
 
@@ -193,11 +192,11 @@ export default function Home() {
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-chart-4/10">
                   <GitBranch className="h-5 w-5 text-chart-4" />
                 </div>
-                <CardTitle>TaskFlow Support</CardTitle>
+                <CardTitle>Pattern Detection</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Seamless conversion from @dag/@task decorators to @flow/@task,
-                preserving function signatures and data dependencies.
+                Detect XCom usage, sensors, trigger rules, dynamic mapping,
+                connections, variables, and custom operators.
               </CardContent>
             </Card>
 
@@ -206,11 +205,11 @@ export default function Home() {
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-chart-5/10">
                   <Workflow className="h-5 w-5 text-chart-5" />
                 </div>
-                <CardTitle>Datasets to Events</CardTitle>
+                <CardTitle>Operator Mappings</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Convert Airflow Datasets to Prefect Events with deployment
-                triggers and automation scaffolding.
+                50+ Airflow→Prefect operator mappings with example code
+                and migration guidance for each.
               </CardContent>
             </Card>
 
@@ -222,8 +221,8 @@ export default function Home() {
                 <CardTitle>MCP Native</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Built for AI-assisted workflows. Tool schemas follow MCP
-                conventions for Claude, Cursor, and other AI tools.
+                Built with FastMCP for AI-assisted workflows. Works with
+                Claude, Cursor, and other MCP-compatible tools.
               </CardContent>
             </Card>
           </div>
@@ -238,7 +237,7 @@ export default function Home() {
               Ready to migrate?
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Start converting your Airflow DAGs to Prefect flows in minutes.
+              Let your LLM generate clean Prefect flows from comprehensive DAG analysis.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button size="lg" asChild className="gap-2">

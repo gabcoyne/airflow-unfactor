@@ -1,6 +1,17 @@
 # Quick Start
 
-## Analyze a DAG
+## The Workflow
+
+airflow-unfactor provides analysis and context; your LLM generates the Prefect code.
+
+```
+1. analyze()      → Get comprehensive DAG payload
+2. get_context()  → Fetch relevant Prefect docs
+3. LLM generates  → Complete Prefect flow code
+4. validate()     → Verify structural correctness
+```
+
+## Step 1: Analyze a DAG
 
 ```json
 {
@@ -9,36 +20,92 @@
 }
 ```
 
-## Convert a DAG
+Returns comprehensive analysis:
+- Structure (operators, dependencies, task groups)
+- Patterns (xcom, sensors, connections, variables)
+- Configuration (schedule, catchup, default_args)
+- Migration notes and complexity score
+- Original code for reference
+
+## Step 2: Get Prefect Context
 
 ```json
 {
-  "tool": "convert",
+  "tool": "get_context",
   "args": {
-    "path": "dags/my_etl.py",
-    "include_comments": true,
-    "generate_tests": true
+    "topics": ["flows", "tasks", "blocks"],
+    "detected_features": ["sensors", "xcom", "connections"]
   }
 }
 ```
 
-## Keep Refactors Clean (Project Layout)
+Returns:
+- Relevant Prefect documentation
+- Operator→Prefect pattern mappings
+- Connection→Block mappings
+- Deployment template (prefect.yaml structure)
 
-If you are migrating into a new Prefect repo, keep generated code structured from day one.
+## Step 3: LLM Generates Code
 
-Recommended layout (inspired by `prefecthq/flows` style):
+Using the analysis payload and Prefect context, your LLM generates complete Prefect flow code following `prefecthq/flows` conventions:
 
-```text
-flows/                  # Prefect flow entrypoints
-tasks/                  # Reusable task logic
-deployments/            # Deployment config/scripts
-tests/                  # Flow/task tests
-migration/
-  airflow_sources/      # Original DAGs for reference
-  conversion_notes/     # Runbook outputs and manual follow-up
+```python
+from prefect import flow, task
+
+@task
+def extract_data(source: str) -> dict:
+    # Implementation here
+    return data
+
+@flow
+def my_etl_flow():
+    data = extract_data("s3://bucket/path")
+    transformed = transform_data(data)
+    load_data(transformed)
 ```
 
-Practical rule:
-- Keep Airflow source and generated Prefect code in separate paths.
-- Treat runbook output as a tracked migration artifact.
-- Promote stable code from `migration/` into first-class `flows/` and `tasks/`.
+## Step 4: Validate
+
+```json
+{
+  "tool": "validate",
+  "args": {
+    "original_dag": "# Airflow DAG code",
+    "converted_flow": "# Generated Prefect flow"
+  }
+}
+```
+
+Verifies:
+- All tasks accounted for
+- Dependencies preserved
+- Configuration complete
+
+## Target Project Layout
+
+Generated code should follow `prefecthq/flows` structure:
+
+```text
+deployments/<workspace>/<flow-name>/
+├── flow.py           # Main flow code
+├── Dockerfile        # If custom deps needed
+├── requirements.txt  # Python dependencies
+
+prefect.yaml          # Deployment configuration
+```
+
+## Example prefect.yaml
+
+```yaml
+name: flows
+prefect-version: 3.0.0
+
+deployments:
+  - name: My ETL Flow
+    description: Converted from Airflow DAG 'my_etl'
+    entrypoint: deployments/data/my-etl/flow.py:my_etl_flow
+    schedules:
+      - cron: "0 * * * *"
+    work_pool:
+      name: kubernetes-pool
+```

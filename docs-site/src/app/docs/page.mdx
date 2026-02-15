@@ -4,7 +4,7 @@ import Link from "next/link";
 
 # Documentation
 
-Build clear, code-first refactors from Airflow DAGs to Prefect flows.
+Rich analysis payloads for LLM-assisted Airflow→Prefect conversion.
 
 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
   <Link href="/docs/getting-started/installation" className="block">
@@ -13,38 +13,57 @@ Build clear, code-first refactors from Airflow DAGs to Prefect flows.
         <CardTitle>Getting Started</CardTitle>
       </CardHeader>
       <CardContent>
-        Install the MCP server, run your first refactor, and understand outputs.
+        Install the MCP server and run your first analysis.
       </CardContent>
     </Card>
   </Link>
   <Link href="/docs/mcp" className="block">
     <Card className="h-full transition-colors hover:bg-muted/40">
       <CardHeader>
-        <CardTitle>MCP Best Practices</CardTitle>
+        <CardTitle>MCP Tools</CardTitle>
       </CardHeader>
       <CardContent>
-        Built to align with Prefect’s MCP guidelines for robust tool design.
+        Analysis, context, and validation tools for LLM-assisted conversion.
       </CardContent>
     </Card>
   </Link>
-  <Link href="/docs/conversion/taskflow" className="block">
+  <Link href="/docs/conversion/operators" className="block">
     <Card className="h-full transition-colors hover:bg-muted/40">
       <CardHeader>
-        <CardTitle>Conversion Engine</CardTitle>
+        <CardTitle>Operator Mappings</CardTitle>
       </CardHeader>
       <CardContent>
-        TaskFlow, Datasets, Sensors, and Provider mappings.
+        Airflow→Prefect operator equivalents and patterns.
       </CardContent>
     </Card>
   </Link>
 </div>
 
-## What this server provides
+## Philosophy
 
-- **Analyze** Airflow DAGs into structured summaries
-- **Convert** by refactoring DAG code into Prefect flow code with educational commentary
-- **Validate** refactoring fidelity
-- **Explain** Airflow concepts using Prefect equivalents
-- **Organize** output into clean project structure for maintainable migrations
+**Deterministic code templating is brittle.** Airflow and Prefect are architecturally dissimilar—edge cases are inevitable.
 
-<Badge variant="secondary">FastMCP</Badge> <Badge variant="outline">Prefect MCP-aligned</Badge>
+Instead, we provide **rich structured analysis payloads** that enable LLMs to generate complete, functional Prefect flows using their knowledge of Python and Prefect patterns.
+
+## Workflow
+
+```
+1. analyze(dag)     → Comprehensive DAG structure & patterns
+2. get_context()    → Relevant Prefect documentation
+3. LLM generates    → Complete Prefect flow code
+4. validate()       → Verify structural correctness
+```
+
+**We analyze. The LLM generates. We validate.**
+
+## What the tools provide
+
+| Tool | Returns |
+|------|---------|
+| `analyze` | Structure, patterns, config, complexity, migration notes |
+| `get_context` | Prefect docs, operator mappings, deployment templates |
+| `operator_mapping` | Prefect equivalent for specific operator |
+| `connection_mapping` | Prefect block type for Airflow connection |
+| `validate` | Structural comparison and coverage report |
+
+<Badge variant="secondary">FastMCP</Badge> <Badge variant="outline">LLM-Native</Badge>

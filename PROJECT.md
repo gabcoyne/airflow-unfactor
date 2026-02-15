@@ -4,103 +4,129 @@
 
 ## Overview
 
-An MCP (Model Context Protocol) server that converts Apache Airflow DAGs to Prefect flows using AI-assisted analysis. Educates users on Prefect's advantages while producing clean, idiomatic Python code.
+An MCP (Model Context Protocol) server that provides **rich analysis payloads** for LLM-assisted conversion of Apache Airflow DAGs to Prefect flows.
+
+**Philosophy**: Deterministic code templating is too brittle for DAG conversion. Airflow and Prefect are architecturally dissimilar. Instead, we provide comprehensive analysis that enables LLMs to generate complete, functional Prefect flows using their knowledge of Python and Prefect patterns.
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      MCP Client (LLM)                           │
+├─────────────────────────────────────────────────────────────────┤
+│  1. analyze(dag_code) → Rich structured payload                 │
+│  2. get_context(features) → Prefect docs & patterns             │
+│  3. LLM generates complete Prefect flow                         │
+│  4. validate(original, generated) → Verify correctness          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**We analyze. The LLM generates. We validate.**
 
 ## Philosophy
 
 - **Liberation, not migration** — Help users escape Airflow's complexity
-- **Educational** — Comments explain *why* Prefect does it better, not just *what* changed  
-- **Complete** — Handle all operators, not just the easy ones
-- **TDD** — Every feature starts with a failing test
-- **Beads** — Task tracking with `bd` for structured, agent-friendly development
+- **LLM-native** — Provide rich payloads, let LLMs generate idiomatic code
+- **Educational** — Migration notes explain *why* Prefect does it better
+- **Complete** — Analyze all operators, patterns, and configurations
+- **Validated** — Verify generated code matches original structure
 
 ## Tech Stack
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
 | Language | Python 3.11+ | Match Prefect's target |
-| Protocol | MCP SDK | Agent-native interface |
-| Task Tracking | Beads (`bd`) | Dependency-aware graph for AI agents |
-| Testing | pytest + hypothesis | TDD with property-based testing |
-| AI Backend | Model-agnostic | Claude, GPT, or local models |
+| MCP Framework | FastMCP | Fast, Pythonic MCP server |
+| Task Tracking | Beads (`bd`) | Dependency-aware issue tracking |
+| Testing | pytest | 678+ tests |
 | Package Manager | uv | Fast, modern Python tooling |
 
 ## MCP Tools
 
-### `analyze_dag`
-Analyze an Airflow DAG file without converting.
+### Analysis Tools
 
-**Input:**
+#### `analyze`
+Comprehensive DAG analysis with structure, patterns, and migration guidance.
+
+**Returns:**
 ```json
 {
-  "path": "string (file path or '-' for stdin)",
-  "content": "string (optional, raw DAG code)"
+  "dag_id": "example_dag",
+  "airflow_version": {"detected": "2.7+", "features": {...}},
+  "structure": {
+    "operators": [...],
+    "dependencies": [...],
+    "task_groups": [...]
+  },
+  "patterns": {
+    "xcom_usage": [...],
+    "sensors": [...],
+    "trigger_rules": [...],
+    "connections": [...],
+    "variables": [...]
+  },
+  "dag_config": {
+    "schedule": "0 * * * *",
+    "catchup": false,
+    "default_args": {...}
+  },
+  "complexity": {"score": 7, "factors": [...]},
+  "migration_notes": [...],
+  "original_code": "..."
 }
 ```
 
-**Output:**
-```json
-{
-  "dag_id": "string",
-  "operators": [{"type": "PythonOperator", "task_id": "...", "count": 1}],
-  "dependencies": [["task_a", "task_b"]],
-  "xcom_usage": ["task_a pushes", "task_b pulls"],
-  "complexity_score": 42,
-  "conversion_notes": ["Uses dynamic task mapping", "Has 3 sensors"]
-}
+### Context Tools
+
+#### `get_context`
+Fetch Prefect documentation and patterns relevant to detected features.
+
+#### `operator_mapping`
+Get Prefect equivalent pattern for a specific Airflow operator.
+
+#### `connection_mapping`
+Map Airflow connection ID to Prefect block type.
+
+### Validation Tools
+
+#### `validate`
+Verify generated Prefect code matches the original DAG structure.
+
+### Scaffolding Tools
+
+#### `scaffold`
+Generate project directory structure following `prefecthq/flows` conventions.
+
+## Target Output
+
+Generated flows should follow this structure:
+
+```
+deployments/<workspace>/<flow-name>/
+├── flow.py
+├── Dockerfile
+├── requirements.txt
+
+prefect.yaml
 ```
 
-### `convert_dag`
-Convert an Airflow DAG to a Prefect flow.
-
-**Input:**
-```json
-{
-  "path": "string",
-  "content": "string (optional)",
-  "options": {
-    "prefect_version": "3",
-    "include_comments": true,
-    "comment_style": "educational"
-  }
-}
-```
-
-**Output:**
-```json
-{
-  "flow_code": "string (Python code)",
-  "imports": ["from prefect import flow, task"],
-  "warnings": ["Sensor converted to polling - consider Prefect triggers"],
-  "original_to_new_mapping": {"extract_task": "extract_data"}
-}
-```
-
-### `validate_conversion`
-Validate that a converted flow matches the original DAG's behavior.
-
-### `explain_concept`
-Explain an Airflow concept and its Prefect equivalent.
-
-### `batch_convert`
-Convert multiple DAGs in a directory.
-
-## Operator Mapping
-
-See docs/operator_mapping.md for complete table.
-
-## TDD Workflow with Beads
+## Development
 
 ```bash
-bd create "Convert PythonOperator to @task" -p 1
-# Write failing test
-bd update <id> --claim
-# Implement
-bd update <id> --done
+# Setup
+uv sync --all-extras
+pre-commit install
+
+# Test
+uv run pytest
+
+# Run server
+uv run airflow-unfactor
 ```
 
 ## References
 
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — Detailed architecture documentation
 - [Prefect Migration Guide](https://docs.prefect.io/v3/how-to-guides/migrate/airflow)
+- [prefecthq/flows](https://github.com/PrefectHQ/flows) — Target output patterns
 - [MCP Protocol Spec](https://modelcontextprotocol.io/)
-- [Beads Documentation](https://github.com/steveyegge/beads)
