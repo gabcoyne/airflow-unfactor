@@ -15,8 +15,8 @@ from aiohttp.web import Request, Response
 
 from airflow_unfactor.tools.analyze import analyze_dag
 from airflow_unfactor.tools.convert import convert_dag
-from airflow_unfactor.tools.validate import validate_conversion
 from airflow_unfactor.tools.scaffold import scaffold_project
+from airflow_unfactor.tools.validate import validate_conversion
 
 logger = logging.getLogger(__name__)
 
@@ -135,12 +135,12 @@ async def scaffold_handler(request: Request) -> Response:
 
 async def health_handler(request: Request) -> Response:
     """Handle /health requests."""
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
 
     return json_response({
         "status": "ok",
         "version": "0.1.0",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     })
 
 
