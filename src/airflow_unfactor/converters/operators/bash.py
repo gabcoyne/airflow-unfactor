@@ -3,8 +3,6 @@
 import ast
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # Common Airflow Jinja2 template variables and their Prefect equivalents (where applicable)
 JINJA2_TEMPLATE_MAPPINGS = {
@@ -95,7 +93,7 @@ def detect_jinja2_templates(command: str) -> Jinja2Detection:
     )
 
 
-def extract_bash_command(operator_node: ast.Call) -> Optional[str]:
+def extract_bash_command(operator_node: ast.Call) -> str | None:
     """Extract the bash_command from a BashOperator AST node.
     
     Args:
@@ -135,13 +133,13 @@ class BashConversionResult:
 
     code: str
     warnings: list[str] = field(default_factory=list)
-    jinja2_detection: Optional[Jinja2Detection] = None
+    jinja2_detection: Jinja2Detection | None = None
 
 
 def convert_bash_operator(
     task_id: str,
-    bash_command: Optional[str] = None,
-    env: Optional[dict] = None,
+    bash_command: str | None = None,
+    env: dict | None = None,
     include_comments: bool = True,
 ) -> BashConversionResult:
     """Convert a BashOperator to a Prefect @task.

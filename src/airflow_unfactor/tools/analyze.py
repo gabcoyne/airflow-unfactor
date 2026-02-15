@@ -2,18 +2,17 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 
-from airflow_unfactor.analysis.parser import parse_dag
-from airflow_unfactor.analysis.dependencies import extract_dependencies
 from airflow_unfactor.analysis.complexity import calculate_complexity
+from airflow_unfactor.analysis.dependencies import extract_dependencies
+from airflow_unfactor.analysis.parser import parse_dag
 from airflow_unfactor.analysis.version import detect_airflow_version
 from airflow_unfactor.external_mcp import ExternalMCPClient
 
 
 async def analyze_dag(
-    path: Optional[str] = None,
-    content: Optional[str] = None,
+    path: str | None = None,
+    content: str | None = None,
     include_external_context: bool = True,
 ) -> str:
     """Analyze an Airflow DAG.
@@ -37,7 +36,7 @@ async def analyze_dag(
     try:
         analysis = parse_dag(content)
         dependencies = extract_dependencies(content)
-        complexity_score = calculate_complexity(content)
+        complexity_score = calculate_complexity(analysis)
         version = detect_airflow_version(content)
 
         result = {

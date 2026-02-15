@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from airflow_unfactor.tools.convert import convert_dag
 
@@ -10,7 +9,7 @@ from airflow_unfactor.tools.convert import convert_dag
 async def scaffold_project(
     dags_directory: str,
     output_directory: str,
-    project_name: Optional[str] = None,
+    project_name: str | None = None,
     include_docker: bool = True,
     include_github_actions: bool = True,
 ) -> str:
@@ -295,11 +294,11 @@ CMD ["prefect", "worker", "start", "--pool", "default"]
 
 def _write_docker_compose(output_dir: Path, project_name: str) -> None:
     """Write docker-compose.yml."""
-    content = f'''services:
+    content = '''services:
   worker:
     build: .
     environment:
-      - PREFECT_API_URL=${{PREFECT_API_URL:-http://localhost:4200/api}}
+      - PREFECT_API_URL=${PREFECT_API_URL:-http://localhost:4200/api}
     depends_on:
       - server
 

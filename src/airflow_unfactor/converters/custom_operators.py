@@ -9,12 +9,10 @@ and generates stub @task functions with TODO comments and original context.
 """
 
 import ast
-import textwrap
 from dataclasses import dataclass, field
 from typing import Any
 
 from airflow_unfactor.converters.provider_mappings import OPERATOR_MAPPINGS
-
 
 # Core Airflow operators that are handled elsewhere (not custom)
 CORE_OPERATORS = {

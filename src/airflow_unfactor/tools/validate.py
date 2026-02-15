@@ -516,13 +516,6 @@ def compare_data_flow(
     """
     issues = []
 
-    # Check if XCom pushes have corresponding task returns
-    xcom_push_tasks = {p.get("task_ids") for p in dag_graph.xcom_pushes if p.get("task_ids")}
-    returning_tasks = {
-        name for name, info in flow_graph.tasks.items()
-        if info.has_return
-    }
-
     # Check if XCom pulls have corresponding task parameters
     xcom_pull_count = len(dag_graph.xcom_pulls)
     tasks_with_params = {

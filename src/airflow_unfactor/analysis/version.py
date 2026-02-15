@@ -7,7 +7,6 @@ import ast
 import re
 from dataclasses import dataclass, field
 
-
 # Import patterns that indicate specific versions
 # Key is the import module, value is (major, minor)
 IMPORT_PATTERNS = {
@@ -130,10 +129,9 @@ class VersionDetector(ast.NodeVisitor):
         self.generic_visit(node)
         
     def visit_Call(self, node: ast.Call):
-        try:
+        import contextlib
+        with contextlib.suppress(Exception):
             self.calls.append(ast.unparse(node.func))
-        except Exception:
-            pass
         self.generic_visit(node)
 
 
@@ -231,7 +229,7 @@ def detect_airflow_version(dag_code: str) -> AirflowVersion:
         majors = set(v[0] for v in version_signals)
         if 1 in majors and len(majors) > 1:
             result.confidence = min(result.confidence, 0.5)
-            evidence.append(f"Mixed version signals: likely upgrading from 1.x")
+            evidence.append("Mixed version signals: likely upgrading from 1.x")
     
     result.evidence = evidence
     return result

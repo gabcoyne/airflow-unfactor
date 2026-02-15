@@ -7,7 +7,6 @@ import ast
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # Known sensor types and their conversion strategies
 SENSOR_STRATEGIES = {
     "ExternalTaskSensor": {
@@ -225,7 +224,7 @@ def _generate_s3_sensor(sensor: SensorInfo, retries: int) -> list[str]:
         "",
         f"@task(retries={retries}, retry_delay_seconds={sensor.poke_interval})",
         f"def {sensor.task_id}():",
-        f'    """Wait for S3 object to exist."""',
+        '    """Wait for S3 object to exist."""',
         "    s3 = boto3.client('s3')",
         "    try:",
         f"        s3.head_object(Bucket='{bucket}', Key='{key}')",
@@ -247,11 +246,11 @@ def _generate_http_sensor(sensor: SensorInfo, retries: int) -> list[str]:
         "",
         f"@task(retries={retries}, retry_delay_seconds={sensor.poke_interval})",
         f"def {sensor.task_id}():",
-        f'    """Wait for HTTP endpoint to return success."""',
+        '    """Wait for HTTP endpoint to return success."""',
         f"    # Configure base URL from connection: {http_conn_id}",
         f"    response = httpx.get('http://your-host{endpoint}')",
         "    if response.status_code != 200:",
-        f"        raise Exception(f'HTTP check failed: {{response.status_code}}')",
+        "        raise Exception(f'HTTP check failed: {response.status_code}')",
         "    return True",
     ]
 
@@ -265,10 +264,10 @@ def _generate_file_sensor(sensor: SensorInfo, retries: int) -> list[str]:
         "",
         f"@task(retries={retries}, retry_delay_seconds={sensor.poke_interval})",
         f"def {sensor.task_id}():",
-        f'    """Wait for file to exist."""',
+        '    """Wait for file to exist."""',
         f"    path = Path('{filepath}')",
         "    if not path.exists():",
-        f"        raise Exception(f'File not found: {{path}}')",
+        "        raise Exception(f'File not found: {path}')",
         "    return True",
     ]
 
@@ -283,7 +282,7 @@ def _generate_sql_sensor(sensor: SensorInfo, retries: int) -> list[str]:
         "",
         f"@task(retries={retries}, retry_delay_seconds={sensor.poke_interval})",
         f"def {sensor.task_id}():",
-        f'    """Wait for SQL query to return truthy result."""',
+        '    """Wait for SQL query to return truthy result."""',
         f"    # Connection: {conn_id}",
         f"    sql = \"\"\"{sql}\"\"\"",
         "    # Execute query and check result",
@@ -303,7 +302,7 @@ def _generate_python_sensor(sensor: SensorInfo, retries: int) -> list[str]:
         "",
         f"@task(retries={retries}, retry_delay_seconds={sensor.poke_interval})",
         f"def {sensor.task_id}():",
-        f'    """Converted from PythonSensor."""',
+        '    """Converted from PythonSensor."""',
         f"    # Original callable: {python_callable}",
         "    result = check_condition()  # Replace with actual logic",
         "    if not result:",
@@ -329,7 +328,7 @@ def _generate_external_task_sensor(sensor: SensorInfo) -> list[str]:
         "",
         f"# Original: Wait for {external_dag}" + (f".{external_task}" if external_task else ""),
         f"def {sensor.task_id}():",
-        f'    """Dependency on external flow."""',
+        '    """Dependency on external flow."""',
         "    # Configure via Prefect automation triggers",
         "    pass",
     ]

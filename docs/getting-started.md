@@ -23,7 +23,7 @@ pip install airflow-unfactor
 ### From source
 
 ```bash
-git clone https://github.com/prefect/airflow-unfactor.git
+git clone https://github.com/prefecthq/airflow-unfactor.git
 cd airflow-unfactor
 uv pip install -e ".[dev]"
 ```

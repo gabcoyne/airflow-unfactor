@@ -341,7 +341,7 @@ def _convert_partial_expand(
         else:
             lines.append(f"{assignment}{info.task_name}.map({mapped_arg})")
     else:
-        lines.append(f"# TODO: Review - no expand parameters found")
+        lines.append("# TODO: Review - no expand parameters found")
         lines.append(f"# {info.task_name}.map(...)")
 
     return lines

@@ -14,4 +14,11 @@ export default defineConfig({
     outDir: "dist",
     target: "esnext",
   },
+  server: {
+    // Proxy API calls to Python server during development
+    proxy: {
+      "/api": "http://localhost:8765",
+      "/health": "http://localhost:8765",
+    },
+  },
 });

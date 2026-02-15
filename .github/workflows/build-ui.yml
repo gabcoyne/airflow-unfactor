@@ -1,0 +1,49 @@
+name: Build UI
+
+on:
+  push:
+    paths:
+      - 'mcp-app/**'
+    branches: [main]
+  pull_request:
+    paths:
+      - 'mcp-app/**'
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mcp-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mcp-app
+        run: npm ci
+
+      - name: Type check
+        working-directory: mcp-app
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: mcp-app
+        run: npm run build
+
+      - name: Verify output
+        run: |
+          test -f mcp-app/dist/index.html || (echo "Build output not found" && exit 1)
+          echo "UI build successful"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wizard-ui
+          path: mcp-app/dist/index.html
+          retention-days: 7

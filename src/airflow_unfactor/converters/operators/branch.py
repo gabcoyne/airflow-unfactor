@@ -1,6 +1,5 @@
 """Convert Airflow BranchPythonOperator to native Python branching."""
 
-from typing import Optional
 from dataclasses import dataclass
 
 
@@ -16,7 +15,7 @@ def convert_branch_operator(
     task_id: str,
     python_callable: str,
     downstream_tasks: list[str],
-    function_body: Optional[str] = None,
+    function_body: str | None = None,
     include_comments: bool = True,
 ) -> tuple[str, str]:
     """Convert a BranchPythonOperator to native Python branching.
@@ -48,7 +47,7 @@ def convert_branch_operator(
     # The decision function
     decision_lines.append("@task")
     decision_lines.append(f"def {task_id}_decide(**kwargs) -> str:")
-    decision_lines.append(f'    """Decide which branch to execute."""')
+    decision_lines.append('    """Decide which branch to execute."""')
     
     if function_body:
         # Include the original logic
@@ -92,7 +91,7 @@ def convert_branch_operator(
 def convert_short_circuit_operator(
     task_id: str,
     python_callable: str,
-    function_body: Optional[str] = None,
+    function_body: str | None = None,
     include_comments: bool = True,
 ) -> str:
     """Convert a ShortCircuitOperator to early return pattern.

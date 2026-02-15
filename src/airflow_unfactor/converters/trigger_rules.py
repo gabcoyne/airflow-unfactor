@@ -8,7 +8,6 @@ import ast
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # Mapping of Airflow trigger rules to Prefect code patterns
 # Each pattern is a template that gets formatted with task details
 TRIGGER_RULE_PATTERNS: dict[str, str] = {

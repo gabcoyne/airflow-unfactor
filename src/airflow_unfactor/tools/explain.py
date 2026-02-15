@@ -1,6 +1,7 @@
 """Explain Airflow concepts and Prefect equivalents."""
 
 import json
+
 from airflow_unfactor.external_mcp import ExternalMCPClient
 
 CONCEPT_EXPLANATIONS = {

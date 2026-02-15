@@ -6,7 +6,7 @@ Thanks for your interest in contributing to airflow-unfactor! This guide covers 
 
 ```bash
 # Clone and install
-git clone https://github.com/prefect/airflow-unfactor.git
+git clone https://github.com/prefecthq/airflow-unfactor.git
 cd airflow-unfactor
 uv pip install -e ".[dev]"
 

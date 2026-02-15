@@ -1,9 +1,7 @@
 """Parse Airflow DAG files using AST."""
 
 import ast
-import re
 from typing import Any
-
 
 AIRFLOW_OPERATORS = {
     "PythonOperator",
@@ -299,7 +297,7 @@ class DAGVisitor(ast.NodeVisitor):
             return {}
 
         default_args = {}
-        for key, value in zip(node.keys, node.values):
+        for key, value in zip(node.keys, node.values, strict=False):
             if isinstance(key, ast.Constant):
                 key_str = key.value
                 # Focus on retries and retry_delay as per requirements

@@ -230,4 +230,4 @@ def earnings_report():
 
 ## More Examples
 
-See the [tests/fixtures/astronomer](https://github.com/prefect/airflow-unfactor/tree/main/tests/fixtures/astronomer) directory for more migration examples from production-style DAGs.
+See the [tests/fixtures/astronomer](https://github.com/prefecthq/airflow-unfactor/tree/main/tests/fixtures/astronomer) directory for more migration examples from production-style DAGs.

@@ -4,17 +4,16 @@ Converts Apache Airflow DAGs to Prefect flows with AI assistance.
 Built with FastMCP - the fast, Pythonic way to build MCP servers.
 """
 
-from typing import Optional
+
 from fastmcp import FastMCP
 
 from airflow_unfactor.tools.analyze import analyze_dag
-from airflow_unfactor.tools.convert import convert_dag
-from airflow_unfactor.tools.validate import validate_conversion
-from airflow_unfactor.tools.explain import explain_concept
 from airflow_unfactor.tools.batch import batch_convert
+from airflow_unfactor.tools.convert import convert_dag
+from airflow_unfactor.tools.explain import explain_concept
+from airflow_unfactor.tools.external import astronomer_migration, prefect_search
 from airflow_unfactor.tools.scaffold import scaffold_project
-from airflow_unfactor.tools.external import prefect_search, astronomer_migration
-
+from airflow_unfactor.tools.validate import validate_conversion
 
 mcp = FastMCP(
     "airflow-unfactor",
@@ -23,7 +22,7 @@ mcp = FastMCP(
 
 
 @mcp.tool
-async def analyze(path: Optional[str] = None, content: Optional[str] = None, include_external_context: bool = True) -> str:
+async def analyze(path: str | None = None, content: str | None = None, include_external_context: bool = True) -> str:
     """Analyze an Airflow DAG to understand its structure.
 
     Args:
@@ -38,8 +37,8 @@ async def analyze(path: Optional[str] = None, content: Optional[str] = None, inc
 
 @mcp.tool
 async def convert(
-    path: Optional[str] = None,
-    content: Optional[str] = None,
+    path: str | None = None,
+    content: str | None = None,
     include_comments: bool = True,
     generate_tests: bool = True,
     include_external_context: bool = True,
@@ -99,7 +98,7 @@ async def explain(concept: str, include_external_context: bool = True) -> str:
 @mcp.tool
 async def batch(
     directory: str,
-    output_directory: Optional[str] = None,
+    output_directory: str | None = None,
 ) -> str:
     """Convert multiple DAGs in a directory.
 
@@ -120,7 +119,7 @@ async def batch(
 async def scaffold(
     dags_directory: str,
     output_directory: str,
-    project_name: Optional[str] = None,
+    project_name: str | None = None,
     include_docker: bool = True,
     include_github_actions: bool = True,
 ) -> str:
@@ -159,9 +158,54 @@ async def astronomer_migration_tool(query: str) -> str:
     return await astronomer_migration(query)
 
 
-def main():
-    """Run the MCP server."""
-    mcp.run()
+def main() -> None:
+    """Run the MCP server or HTTP server with wizard UI.
+
+    By default, runs the MCP server over stdio for use with MCP clients.
+    With --ui flag, starts an HTTP server with the wizard UI.
+    """
+    import argparse
+    import asyncio
+
+    parser = argparse.ArgumentParser(
+        description="Convert Apache Airflow DAGs to Prefect flows",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  airflow-unfactor              # Run MCP server (default)
+  airflow-unfactor --ui         # Start wizard UI at http://localhost:8765
+  airflow-unfactor --ui --port 9000  # Custom port
+        """,
+    )
+    parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Start HTTP server with wizard UI instead of MCP server",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Port for HTTP server (default: 8765)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="localhost",
+        help="Host to bind HTTP server (default: localhost)",
+    )
+
+    args = parser.parse_args()
+
+    if args.ui:
+        from airflow_unfactor.http_server import run_server
+
+        try:
+            asyncio.run(run_server(port=args.port, host=args.host))
+        except KeyboardInterrupt:
+            print("\nShutting down...")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

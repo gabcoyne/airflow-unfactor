@@ -23,9 +23,14 @@ dist/
 *.egg-info/
 .eggs/
 
-# Node / docs-site
+# Node
 node_modules/
-docs-site/node_modules/
+
+# MCP App build artifacts (development builds)
+mcp-app/dist/
+
+# docs-site (deprecated, using Jekyll docs/ instead)
+docs-site/
 
 # OS / editor
 .DS_Store

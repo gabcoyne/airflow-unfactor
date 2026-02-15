@@ -448,7 +448,7 @@ def convert_dag_to_flow(
                 "No task dependencies detected. Tasks are called in declaration order. "
                 "Review and add wait_for or data passing to enforce correct execution order."
             )
-            for task_id, converted in task_mapping.items():
+            for _task_id, converted in task_mapping.items():
                 lines.append(f"    {converted}()")
     else:
         lines.append("    pass")

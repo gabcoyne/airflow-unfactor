@@ -2,14 +2,13 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from airflow_unfactor.tools.convert import convert_dag
 
 
 async def batch_convert(
     directory: str,
-    output_directory: Optional[str] = None,
+    output_directory: str | None = None,
 ) -> str:
     """Convert multiple DAGs in a directory.
 

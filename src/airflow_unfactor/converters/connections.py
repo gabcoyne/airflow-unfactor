@@ -8,7 +8,7 @@ Detects connection usage patterns in DAG code and generates:
 
 import ast
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 

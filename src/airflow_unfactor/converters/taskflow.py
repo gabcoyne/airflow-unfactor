@@ -4,8 +4,6 @@ See specs/taskflow-converter.openspec.md for specification.
 """
 
 import ast
-import re
-import textwrap
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -47,8 +45,6 @@ class TaskFlowVisitor(ast.NodeVisitor):
         
     def visit_FunctionDef(self, node: ast.FunctionDef):
         for decorator in node.decorator_list:
-            dec_str = ast.unparse(decorator)
-            
             # Check for @dag decorator
             if self._is_dag_decorator(decorator):
                 dag_info = self._extract_dag_info(node, decorator)
@@ -159,14 +155,14 @@ class TaskFlowVisitor(ast.NodeVisitor):
             return "pass"
         
         # Find minimum indentation
-        non_empty = [l for l in body_lines if l.strip()]
+        non_empty = [line for line in body_lines if line.strip()]
         if not non_empty:
             return "pass"
-        
-        min_indent = min(len(l) - len(l.lstrip()) for l in non_empty)
-        
+
+        min_indent = min(len(line) - len(line.lstrip()) for line in non_empty)
+
         # Dedent
-        dedented = [l[min_indent:] if len(l) > min_indent else l.lstrip() for l in body_lines]
+        dedented = [line[min_indent:] if len(line) > min_indent else line.lstrip() for line in body_lines]
         
         return "\n".join(dedented)
 

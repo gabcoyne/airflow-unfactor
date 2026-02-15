@@ -254,13 +254,13 @@ def generate_event_code(
         for ds_name in producer.datasets:
             if ds_name in dataset_map:
                 ds = dataset_map[ds_name]
-                lines.append(f"")
+                lines.append("")
                 lines.append(f"def emit_{ds_name}_updated():")
                 lines.append(f"    \"\"\"Emit event when {ds_name} is updated.\"\"\"")
-                lines.append(f"    emit_event(")
+                lines.append("    emit_event(")
                 lines.append(f'        event="{ds.event_name}.updated",') 
                 lines.append(f"        resource={{\"prefect.resource.id\": \"{ds.uri}\"}}")
-                lines.append(f"    )")
+                lines.append("    )")
     
     # Generate deployment trigger YAML for consumers
     for consumer in analysis.consumers:
@@ -277,7 +277,7 @@ def generate_event_code(
     # Format deployment YAML
     deployment_yaml = ""
     if deployment_triggers:
-        deployment_yaml = f"""# Prefect Deployment triggers (prefect.yaml)
+        deployment_yaml = """# Prefect Deployment triggers (prefect.yaml)
 triggers:"""
         for trigger in deployment_triggers:
             deployment_yaml += f"""\n  - match:\n      prefect.resource.id: "{trigger['match']['prefect.resource.id']}"\n    expect:\n      - "{trigger['expect'][0]}"\n"""
@@ -295,7 +295,7 @@ triggers:"""
             materialization_lines.append(f"@materialize(\"{asset.uri}\")")
             materialization_lines.append(f"def materialize_{asset.name}() -> str:")
             materialization_lines.append(f"    \"\"\"Materialize asset '{asset.name}'.\"\"\"")
-            materialization_lines.append(f"    # TODO: replace with your concrete Prefect asset API usage")
+            materialization_lines.append("    # TODO: replace with your concrete Prefect asset API usage")
             materialization_lines.append(f"    return \"{asset.uri}\"")
             materialization_lines.append("")
         notes.append(

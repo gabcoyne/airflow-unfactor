@@ -3,7 +3,6 @@
 import ast
 import re
 import textwrap
-from typing import Any, Optional
 from dataclasses import dataclass, field
 
 
@@ -95,7 +94,7 @@ class ExtractedFunction:
     name: str
     args: list[str]
     body: str
-    docstring: Optional[str]
+    docstring: str | None
     has_ti_param: bool  # Uses TaskInstance (ti) for XCom
     has_context: bool  # Uses **context or **kwargs
     xcom_pulls: list[str]  # task_ids that this function pulls from (legacy simple list)
@@ -315,14 +314,14 @@ class PythonOperatorConversionResult:
 
     code: str
     warnings: list[str] = field(default_factory=list)
-    xcom_usage: Optional[XComUsage] = None
+    xcom_usage: XComUsage | None = None
 
 
 def convert_python_operator(
     task_id: str,
     python_callable: str,
     functions: dict[str, ExtractedFunction],
-    op_kwargs: Optional[dict] = None,
+    op_kwargs: dict | None = None,
     include_comments: bool = True,
 ) -> PythonOperatorConversionResult:
     """Convert a PythonOperator to a Prefect @task.
@@ -432,7 +431,7 @@ def convert_python_operator(
 
 
 def _convert_function_body(
-    body: str, xcom_pulls: list[str], xcom_usage: Optional[XComUsage] = None
+    body: str, xcom_pulls: list[str], xcom_usage: XComUsage | None = None
 ) -> tuple[str, list[str]]:
     """Convert function body, replacing XCom calls with direct references.
 
@@ -472,7 +471,7 @@ def _convert_function_body(
                     # Generate a dict with task_id keys for easy access
                     dict_items = ", ".join(
                         f'"{tid}": {safe}_data'
-                        for tid, safe in zip(pull.task_ids, safe_names)
+                        for tid, safe in zip(pull.task_ids, safe_names, strict=False)
                     )
                     replacement = "{" + dict_items + "}"
                     warnings.append(
@@ -517,15 +516,15 @@ def _convert_function_body(
             # Handle various xcom_pull patterns with regex for flexibility
             patterns = [
                 # ti.xcom_pull(task_ids='xxx') or ti.xcom_pull(task_ids="xxx")
-                rf"ti\.xcom_pull\s*\(\s*task_ids\s*=\s*['\"]" + re.escape(pull_task) + r"['\"]\s*\)",
+                r"ti\.xcom_pull\s*\(\s*task_ids\s*=\s*['\"]" + re.escape(pull_task) + r"['\"]\s*\)",
                 # ti.xcom_pull('xxx') or ti.xcom_pull("xxx")
-                rf"ti\.xcom_pull\s*\(\s*['\"]" + re.escape(pull_task) + r"['\"]\s*\)",
+                r"ti\.xcom_pull\s*\(\s*['\"]" + re.escape(pull_task) + r"['\"]\s*\)",
                 # context['ti'].xcom_pull(...)
-                rf"context\s*\[\s*['\"]ti['\"]\s*\]\.xcom_pull\s*\(\s*task_ids\s*=\s*['\"]"
+                r"context\s*\[\s*['\"]ti['\"]\s*\]\.xcom_pull\s*\(\s*task_ids\s*=\s*['\"]"
                 + re.escape(pull_task)
                 + r"['\"]\s*\)",
                 # kwargs['ti'].xcom_pull(...)
-                rf"kwargs\s*\[\s*['\"]ti['\"]\s*\]\.xcom_pull\s*\(\s*task_ids\s*=\s*['\"]"
+                r"kwargs\s*\[\s*['\"]ti['\"]\s*\]\.xcom_pull\s*\(\s*task_ids\s*=\s*['\"]"
                 + re.escape(pull_task)
                 + r"['\"]\s*\)",
             ]

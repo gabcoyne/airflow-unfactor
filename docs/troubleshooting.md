@@ -223,4 +223,4 @@ For very large DAGs, validation may timeout:
 1. Check the [examples](examples.md) for similar patterns
 2. Review the [operator mapping](operator-mapping.md) reference
 3. Use the [validation tool](tools/validate.md) to verify conversions
-4. File an issue at [github.com/prefect/airflow-unfactor](https://github.com/prefect/airflow-unfactor/issues)
+4. File an issue at [github.com/prefecthq/airflow-unfactor](https://github.com/prefecthq/airflow-unfactor/issues)

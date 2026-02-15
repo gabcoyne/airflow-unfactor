@@ -3,29 +3,34 @@
 import json
 import time
 from pathlib import Path
-from typing import Optional
 
 from airflow_unfactor.analysis.parser import parse_dag
 from airflow_unfactor.analysis.version import detect_airflow_version
-from airflow_unfactor.metrics import metrics_enabled, record_conversion
 from airflow_unfactor.converters.base import convert_dag_to_flow
-from airflow_unfactor.converters.connections import extract_connections, convert_all_connections
-from airflow_unfactor.converters.custom_operators import extract_custom_operators, convert_custom_operators
+from airflow_unfactor.converters.connections import convert_all_connections, extract_connections
+from airflow_unfactor.converters.custom_operators import (
+    convert_custom_operators,
+    extract_custom_operators,
+)
 from airflow_unfactor.converters.datasets import analyze_datasets, generate_event_code
-from airflow_unfactor.converters.dynamic_mapping import extract_dynamic_mapping, convert_all_dynamic_mappings
-from airflow_unfactor.converters.jinja import has_jinja_patterns, analyze_jinja_in_code
+from airflow_unfactor.converters.dynamic_mapping import (
+    convert_all_dynamic_mappings,
+    extract_dynamic_mapping,
+)
+from airflow_unfactor.converters.jinja import analyze_jinja_in_code, has_jinja_patterns
 from airflow_unfactor.converters.runbook import extract_dag_settings, generate_runbook
-from airflow_unfactor.converters.taskgroup import extract_task_groups, convert_all_task_groups
+from airflow_unfactor.converters.taskgroup import convert_all_task_groups, extract_task_groups
 from airflow_unfactor.converters.test_generator import generate_flow_tests, generate_test_filename
-from airflow_unfactor.converters.trigger_rules import detect_trigger_rules, convert_trigger_rules
-from airflow_unfactor.converters.variables import extract_variables, convert_all_variables
+from airflow_unfactor.converters.trigger_rules import convert_trigger_rules, detect_trigger_rules
+from airflow_unfactor.converters.variables import convert_all_variables, extract_variables
 from airflow_unfactor.external_mcp import ExternalMCPClient
+from airflow_unfactor.metrics import metrics_enabled, record_conversion
 from airflow_unfactor.validation import validate_generated_code
 
 
 async def convert_dag(
-    path: Optional[str] = None,
-    content: Optional[str] = None,
+    path: str | None = None,
+    content: str | None = None,
     include_comments: bool = True,
     generate_tests: bool = True,
     include_external_context: bool = True,

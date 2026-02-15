@@ -13,7 +13,6 @@ that use Prefect's runtime context.
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class JinjaPatternType(Enum):
@@ -170,7 +169,7 @@ def detect_jinja_patterns(code: str) -> list[JinjaPattern]:
     return patterns
 
 
-def _pattern_to_fstring_expr(pattern: JinjaPattern) -> Optional[str]:
+def _pattern_to_fstring_expr(pattern: JinjaPattern) -> str | None:
     """Convert a single Jinja2 pattern to an f-string expression.
 
     Args:

@@ -2,9 +2,9 @@
 
 > *"Airflow is for airports. Welcome to modern orchestration."*
 
-[![Tests](https://github.com/prefect/airflow-unfactor/actions/workflows/test.yml/badge.svg)](https://github.com/prefect/airflow-unfactor/actions/workflows/test.yml)
+[![Tests](https://github.com/prefecthq/airflow-unfactor/actions/workflows/test.yml/badge.svg)](https://github.com/prefecthq/airflow-unfactor/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/airflow-unfactor)](https://pypi.org/project/airflow-unfactor/)
-[![License](https://img.shields.io/github/license/prefect/airflow-unfactor)](LICENSE)
+[![License](https://img.shields.io/github/license/prefecthq/airflow-unfactor)](LICENSE)
 
 An MCP server that refactors Apache Airflow DAG code into Prefect flow code with AI assistance. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
@@ -15,6 +15,7 @@ An MCP server that refactors Apache Airflow DAG code into Prefect flow code with
 - ✅ **Test Generation** — Every converted flow comes with pytest tests
 - 🤖 **AI-Assisted** — Smart analysis of complex DAG patterns
 - 📦 **Batch Support** — Refactor entire DAG projects at once
+- 🧙 **Visual Wizard** — Step-by-step UI for guided migrations
 
 ## Installation
 
@@ -26,7 +27,7 @@ uv pip install airflow-unfactor
 pip install airflow-unfactor
 
 # From source (for development)
-git clone https://github.com/prefect/airflow-unfactor.git
+git clone https://github.com/prefecthq/airflow-unfactor.git
 cd airflow-unfactor
 uv pip install -e ".[dev]"
 ```
@@ -75,6 +76,27 @@ airflow-unfactor
 # Or with uv
 uvx airflow-unfactor
 ```
+
+### Visual Wizard
+
+For a guided, step-by-step migration experience:
+
+```bash
+# Install with UI support
+pip install airflow-unfactor[ui]
+
+# Start the wizard
+airflow-unfactor --ui
+
+# Open in browser
+open http://localhost:8765
+```
+
+The wizard provides:
+- Visual DAG analysis with complexity scoring
+- Live preview of converted flows
+- Validation with confidence scores
+- Complete project export as ZIP
 
 ## MCP Tools
 
@@ -176,22 +198,22 @@ def my_etl():
     return result
 ```
 
-**Plus generated tests!** See [Testing](https://prefect.github.io/airflow-unfactor/testing/) for details.
+**Plus generated tests!** See [Testing](https://prefecthq.github.io/airflow-unfactor/testing/) for details.
 
 ## Documentation
 
-Full documentation: [prefect.github.io/airflow-unfactor](https://prefect.github.io/airflow-unfactor)
+Full documentation: [prefecthq.github.io/airflow-unfactor](https://prefecthq.github.io/airflow-unfactor)
 
-- [Getting Started](https://prefect.github.io/airflow-unfactor/getting-started/)
-- [Examples](https://prefect.github.io/airflow-unfactor/examples/)
-- [Operator Mapping](https://prefect.github.io/airflow-unfactor/operator-mapping/)
-- [Testing](https://prefect.github.io/airflow-unfactor/testing/)
+- [Getting Started](https://prefecthq.github.io/airflow-unfactor/getting-started/)
+- [Examples](https://prefecthq.github.io/airflow-unfactor/examples/)
+- [Operator Mapping](https://prefecthq.github.io/airflow-unfactor/operator-mapping/)
+- [Testing](https://prefecthq.github.io/airflow-unfactor/testing/)
 
 ## Development
 
 ```bash
 # Clone and install
-git clone https://github.com/prefect/airflow-unfactor.git
+git clone https://github.com/prefecthq/airflow-unfactor.git
 cd airflow-unfactor
 uv pip install -e ".[dev]"
 

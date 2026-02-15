@@ -227,7 +227,7 @@ class DAGSettingsVisitor(ast.NodeVisitor):
             return [self._extract_value(elt) for elt in node.elts]
         elif isinstance(node, ast.Dict):
             result = {}
-            for key, val in zip(node.keys, node.values):
+            for key, val in zip(node.keys, node.values, strict=False):
                 if key and isinstance(key, ast.Constant):
                     result[key.value] = self._extract_value(val)
             return result
@@ -661,7 +661,7 @@ def _generate_block_setup_section(connections: list[Any]) -> list[str]:
                 "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
                 "",
                 f'{conn_name.replace("-", "_")}_block = SqlAlchemyConnector(',
-                f'    connection_info=ConnectionComponents(',
+                '    connection_info=ConnectionComponents(',
                 '        driver="postgresql+psycopg2",',
                 '        host="your-host",',
                 '        port=5432,',
@@ -682,7 +682,7 @@ def _generate_block_setup_section(connections: list[Any]) -> list[str]:
                 "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
                 "",
                 f'{conn_name.replace("-", "_")}_block = SqlAlchemyConnector(',
-                f'    connection_info=ConnectionComponents(',
+                '    connection_info=ConnectionComponents(',
                 '        driver="mysql+pymysql",',
                 '        host="your-host",',
                 '        port=3306,',
@@ -785,7 +785,7 @@ def _generate_block_setup_section(connections: list[Any]) -> list[str]:
                 "```python",
                 "from prefect.blocks.core import Block",
                 "",
-                f"# Create a custom block or use appropriate prefect integration",
+                "# Create a custom block or use appropriate prefect integration",
                 f"# Check: https://prefecthq.github.io/prefect-{conn_type}/",
                 "```",
                 "",
@@ -865,8 +865,8 @@ def _generate_summary_section(settings: DAGSettings) -> list[str]:
     lines = [
         "## Summary",
         "",
-        f"| Setting | Value |",
-        f"|---------|-------|",
+        "| Setting | Value |",
+        "|---------|-------|",
         f"| DAG ID | `{settings.dag_id or 'unknown'}` |",
         f"| Source Pattern | {source} |",
     ]

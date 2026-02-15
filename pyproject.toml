@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
@@ -38,14 +39,17 @@ ai = [
     "anthropic>=0.40.0",
     "openai>=1.0.0",
 ]
+ui = [
+    "aiohttp>=3.9.0",
+]
 
 [project.scripts]
 airflow-unfactor = "airflow_unfactor.server:main"
 
 [project.urls]
-Homepage = "https://github.com/prefect/airflow-unfactor"
-Documentation = "https://prefect.github.io/airflow-unfactor"
-Repository = "https://github.com/prefect/airflow-unfactor"
+Homepage = "https://github.com/prefecthq/airflow-unfactor"
+Documentation = "https://prefecthq.github.io/airflow-unfactor"
+Repository = "https://github.com/prefecthq/airflow-unfactor"
 
 [build-system]
 requires = ["hatchling"]
@@ -60,7 +64,14 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "TCH"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "SIM102", # Nested if statements (can be more readable)
+    "SIM103", # Return condition directly (can be clearer with if/else)
+    "SIM108", # Ternary operator (multi-line if/else often clearer)
+    "SIM118", # dict.keys() (explicit can be clearer)
+    "UP038",  # isinstance union (tuple is compatible with older Python)
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["airflow_unfactor"]
@@ -84,7 +95,7 @@ module = ["prefect.*", "fastmcp.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 addopts = "-v --tb=short"
 
