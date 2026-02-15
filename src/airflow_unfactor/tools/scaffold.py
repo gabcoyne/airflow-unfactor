@@ -7,19 +7,22 @@ from airflow_unfactor.tools.convert import convert_dag
 
 
 async def scaffold_project(
-    dags_directory: str,
+    dags_directory: str | None,
     output_directory: str,
     project_name: str | None = None,
     include_docker: bool = True,
     include_github_actions: bool = True,
 ) -> str:
-    """Generate a clean project skeleton with migrated flows.
+    """Generate a clean project skeleton for Prefect flows.
 
     Creates a well-organized project structure following Prefect best practices,
     inspired by prefecthq/flows architecture.
 
+    If dags_directory is provided, will also convert those DAGs (deprecated).
+    For new architecture, pass dags_directory=None to just create structure.
+
     Args:
-        dags_directory: Directory containing Airflow DAG files to migrate
+        dags_directory: Directory containing Airflow DAG files to migrate (or None for pure scaffolding)
         output_directory: Where to create the new project
         project_name: Project name (defaults to directory name)
         include_docker: Include Dockerfile and docker-compose.yml
@@ -28,9 +31,9 @@ async def scaffold_project(
     Returns:
         JSON with scaffold report
     """
-    input_dir = Path(dags_directory)
     output_dir = Path(output_directory)
-    project_name = project_name or input_dir.name.replace("-", "_").replace(" ", "_")
+    input_dir = Path(dags_directory) if dags_directory else None
+    project_name = project_name or (input_dir.name if input_dir else output_dir.name).replace("-", "_").replace(" ", "_")
 
     # Create project structure
     dirs = {
@@ -49,56 +52,62 @@ async def scaffold_project(
     for dir_path in dirs.values():
         dir_path.mkdir(parents=True, exist_ok=True)
 
-    # Convert DAGs
+    # Convert DAGs (if directory provided - this is deprecated behavior)
     converted = 0
     failed = 0
     errors = []
     flow_names = []
 
-    for dag_file in input_dir.glob("*.py"):
-        if dag_file.name.startswith("__"):
-            continue
-
-        try:
-            result_json = await convert_dag(
-                path=str(dag_file),
-                include_comments=True,
-                generate_tests=True,
-            )
-            result = json.loads(result_json)
-
-            if "error" in result:
-                failed += 1
-                errors.append({"file": dag_file.name, "error": result["error"]})
+    if input_dir is None:
+        # Pure scaffolding mode - no DAG conversion
+        pass
+    elif not input_dir.exists():
+        errors.append({"file": str(input_dir), "error": "Directory does not exist"})
+    else:
+        for dag_file in input_dir.glob("*.py"):
+            if dag_file.name.startswith("__"):
                 continue
 
-            # Determine flow name from mapping or filename
-            flow_name = _extract_flow_name(result, dag_file)
-            flow_names.append(flow_name)
+            try:
+                result_json = await convert_dag(
+                    path=str(dag_file),
+                    include_comments=True,
+                    generate_tests=True,
+                )
+                result = json.loads(result_json)
 
-            # Write flow code
-            flow_file = dirs["flows"] / f"{flow_name}.py"
-            flow_file.write_text(result.get("flow_code", ""))
+                if "error" in result:
+                    failed += 1
+                    errors.append({"file": dag_file.name, "error": result["error"]})
+                    continue
 
-            # Write test code
-            if result.get("test_code"):
-                test_file = dirs["tests_flows"] / f"test_{flow_name}.py"
-                test_file.write_text(result["test_code"])
+                # Determine flow name from mapping or filename
+                flow_name = _extract_flow_name(result, dag_file)
+                flow_names.append(flow_name)
 
-            # Write runbook
-            if result.get("conversion_runbook_md"):
-                runbook_file = dirs["migration_notes"] / f"{flow_name}_runbook.md"
-                runbook_file.write_text(result["conversion_runbook_md"])
+                # Write flow code
+                flow_file = dirs["flows"] / f"{flow_name}.py"
+                flow_file.write_text(result.get("flow_code", ""))
 
-            # Copy original for reference
-            source_copy = dirs["migration_sources"] / dag_file.name
-            source_copy.write_text(dag_file.read_text())
+                # Write test code
+                if result.get("test_code"):
+                    test_file = dirs["tests_flows"] / f"test_{flow_name}.py"
+                    test_file.write_text(result["test_code"])
 
-            converted += 1
+                # Write runbook
+                if result.get("conversion_runbook_md"):
+                    runbook_file = dirs["migration_notes"] / f"{flow_name}_runbook.md"
+                    runbook_file.write_text(result["conversion_runbook_md"])
 
-        except Exception as e:
-            failed += 1
-            errors.append({"file": dag_file.name, "error": str(e)})
+                # Copy original for reference
+                source_copy = dirs["migration_sources"] / dag_file.name
+                source_copy.write_text(dag_file.read_text())
+
+                converted += 1
+
+            except Exception as e:
+                failed += 1
+                errors.append({"file": dag_file.name, "error": str(e)})
 
     # Generate project files
     _write_pyproject_toml(output_dir, project_name)

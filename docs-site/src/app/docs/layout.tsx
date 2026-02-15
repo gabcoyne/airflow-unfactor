@@ -7,14 +7,12 @@ export default function DocsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <DocsTopbar />
-      <div className="mx-auto flex max-w-6xl">
+      <div className="mx-auto flex max-w-7xl">
         <DocsSidebar />
-        <main className="flex-1 px-6 py-10">
-          <article className="max-w-3xl space-y-6 leading-7">
-            {children}
-          </article>
+        <main className="flex-1 px-6 py-10 lg:px-12">
+          <article className="mx-auto max-w-4xl">{children}</article>
         </main>
       </div>
     </div>
