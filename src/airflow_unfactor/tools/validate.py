@@ -223,7 +223,7 @@ class DAGGraphExtractor(ast.NodeVisitor):
             return result
         elif isinstance(node, ast.BinOp):
             # For chained deps a >> b >> c, get rightmost for downstream
-            if isinstance(node.op, (ast.RShift, ast.LShift)):
+            if isinstance(node.op, ast.RShift | ast.LShift):
                 return self._resolve_task_list(node.right)
         return []
 

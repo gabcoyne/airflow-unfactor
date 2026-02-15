@@ -7,13 +7,13 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import httpx
 
 
-class TransportType(str, Enum):
+class TransportType(StrEnum):
     """Supported MCP transport types."""
 
     HTTP_POST = "http_post"  # POST /tools/{tool}
@@ -21,7 +21,7 @@ class TransportType(str, Enum):
     STDIO = "stdio"  # Not implemented - placeholder for future
 
 
-class FallbackMode(str, Enum):
+class FallbackMode(StrEnum):
     """How to handle MCP call failures."""
 
     SILENT = "silent"  # Return empty result, no error

@@ -237,7 +237,7 @@ class DAGSettingsVisitor(ast.NodeVisitor):
             return self._format_call(node)
         elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
             inner = self._extract_value(node.operand)
-            if isinstance(inner, (int, float)):
+            if isinstance(inner, int | float):
                 return -inner
         return None
 

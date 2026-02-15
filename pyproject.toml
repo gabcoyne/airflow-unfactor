@@ -63,6 +63,7 @@ line-length = 100
 target-version = "py311"
 extend-exclude = [
     "tests/fixtures/astronomer-*",  # External fixture files
+    "tests/fixtures/snapshots/",  # Generated snapshot files
     ".ralph/",  # Generated files
 ]
 
@@ -74,7 +75,6 @@ ignore = [
     "SIM103", # Return condition directly (can be clearer with if/else)
     "SIM108", # Ternary operator (multi-line if/else often clearer)
     "SIM118", # dict.keys() (explicit can be clearer)
-    "UP038",  # isinstance union (tuple is compatible with older Python)
 ]
 
 [tool.ruff.lint.isort]

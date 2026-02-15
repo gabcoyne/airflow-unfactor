@@ -144,7 +144,7 @@ def _build_task_decorator(
 
     # Convert retry_delay to retry_delay_seconds
     if retry_delay is not None:
-        if isinstance(retry_delay, (int, float)):
+        if isinstance(retry_delay, int | float):
             # Assume it's already in seconds
             decorator_args.append(f"retry_delay_seconds={int(retry_delay)}")
         elif isinstance(retry_delay, str):
