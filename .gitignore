@@ -29,8 +29,9 @@ node_modules/
 # MCP App build artifacts (development builds)
 mcp-app/dist/
 
-# docs-site (deprecated, using Jekyll docs/ instead)
-docs-site/
+# Next.js build artifacts
+docs-site/.next/
+docs-site/out/
 
 # OS / editor
 .DS_Store
