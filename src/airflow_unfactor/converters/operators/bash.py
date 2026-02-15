@@ -95,17 +95,17 @@ def detect_jinja2_templates(command: str) -> Jinja2Detection:
 
 def extract_bash_command(operator_node: ast.Call) -> str | None:
     """Extract the bash_command from a BashOperator AST node.
-    
+
     Args:
         operator_node: AST Call node for BashOperator
-        
+
     Returns:
         The bash command string, or None if not found
     """
     for keyword in operator_node.keywords:
-        if keyword.arg == 'bash_command':
+        if keyword.arg == "bash_command":
             if isinstance(keyword.value, ast.Constant):
-                return keyword.value.value
+                return str(keyword.value.value)
             elif isinstance(keyword.value, ast.JoinedStr):
                 # f-string - return a representation
                 return _reconstruct_fstring(keyword.value)
@@ -124,7 +124,7 @@ def _reconstruct_fstring(node: ast.JoinedStr) -> str:
                 parts.append(f"{{{value.value.id}}}")
             else:
                 parts.append("{...}")  # Complex expression
-    return ''.join(parts)
+    return "".join(parts)
 
 
 @dataclass
@@ -221,7 +221,9 @@ def convert_bash_operator(
                 "    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)"
             )
         else:
-            lines.append("    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)")
+            lines.append(
+                "    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)"
+            )
 
         lines.append("    if result.returncode != 0:")
         lines.append('        raise RuntimeError(f"Bash command failed: {result.stderr}")')
@@ -248,33 +250,33 @@ def convert_task_bash_decorator(
     include_comments: bool = True,
 ) -> str:
     """Convert Airflow @task.bash to a Prefect @task.
-    
+
     In Airflow 2.9+, @task.bash returns a string that gets executed as bash.
     In Prefect, we execute it with subprocess.
-    
+
     Args:
         task_id: Task ID
         function_body: The function body that returns a bash command
         include_comments: Include educational comments
-        
+
     Returns:
         Prefect task code as string
     """
     lines = []
-    
+
     if include_comments:
         lines.append("# ✨ Prefect Note: @task.bash Conversion")
         lines.append("# Airflow's @task.bash executes the returned string as bash.")
         lines.append("# In Prefect, we compute the command then execute it explicitly.")
         lines.append("")
-    
+
     lines.append("@task")
     lines.append(f"def {task_id}(*args, **kwargs):")
     lines.append('    """Converted from @task.bash - computes and executes bash command."""')
     lines.append("    import subprocess")
     lines.append("")
     lines.append("    # Compute the bash command (original @task.bash logic)")
-    
+
     # Indent the original function body
     for line in function_body.splitlines():
         if line.strip().startswith("return "):
@@ -283,13 +285,13 @@ def convert_task_bash_decorator(
             lines.append(f"    cmd = {cmd_part}")
         else:
             lines.append(f"    {line}" if line.strip() else "")
-    
+
     lines.append("")
     lines.append("    # Execute the computed command")
     lines.append("    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)")
     lines.append("    if result.returncode != 0:")
-    lines.append("        raise RuntimeError(f\"Bash command failed: {result.stderr}\")")
+    lines.append('        raise RuntimeError(f"Bash command failed: {result.stderr}")')
     lines.append("    return result.stdout")
     lines.append("")
-    
+
     return "\n".join(lines)

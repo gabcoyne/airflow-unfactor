@@ -85,7 +85,9 @@ async def convert_dag(
         result["features"] = {
             "has_taskflow": version.has_taskflow,
             "has_datasets": version.has_datasets,
-            "has_sensors": any("Sensor" in str(op.get("type", "")) for op in dag_info.get("operators", [])),
+            "has_sensors": any(
+                "Sensor" in str(op.get("type", "")) for op in dag_info.get("operators", [])
+            ),
             "has_dynamic_mapping": len(dynamic_mappings) > 0,
             "has_task_groups": len(task_groups) > 0,
             "has_trigger_rules": len(trigger_rules) > 0,
@@ -104,8 +106,7 @@ async def convert_dag(
         if variables:
             var_result = convert_all_variables(content, include_comments=include_comments)
             result["variable_scaffolds"] = {
-                v.name: var_result["scaffolds"].get(v.name, ("", "", []))[0]
-                for v in variables
+                v.name: var_result["scaffolds"].get(v.name, ("", "", []))[0] for v in variables
             }
             result.setdefault("warnings", []).extend(var_result.get("all_warnings", []))
 
@@ -133,7 +134,10 @@ async def convert_dag(
             jinja_result = analyze_jinja_in_code(content)
             result["jinja_analysis"] = jinja_result
             result.setdefault("warnings", []).extend(
-                [f"Jinja2 template detected: {note}" for note in jinja_result.get("conversion_notes", [])]
+                [
+                    f"Jinja2 template detected: {note}"
+                    for note in jinja_result.get("conversion_notes", [])
+                ]
             )
 
         # Generate enhanced runbook using new module
@@ -184,7 +188,10 @@ async def convert_dag(
             total_ops = len(operators)
             # Count converted operators (those with supported types)
             from airflow_unfactor.converters.provider_mappings import get_operator_mapping
-            converted_ops = sum(1 for op in operators if get_operator_mapping(str(op.get("type", ""))) is not None)
+
+            converted_ops = sum(
+                1 for op in operators if get_operator_mapping(str(op.get("type", ""))) is not None
+            )
             unknown_ops = total_ops - converted_ops
 
             # Collect detected features
@@ -264,7 +271,9 @@ def _build_conversion_runbook(
             catchup = dag_settings["catchup"]
             lines.append(f"**Catchup**: `{catchup}`")
             if not catchup:
-                lines.append("  - Catchup disabled - Prefect deployments skip past schedule times by default")
+                lines.append(
+                    "  - Catchup disabled - Prefect deployments skip past schedule times by default"
+                )
             lines.append("")
 
         # Concurrency settings
@@ -278,24 +287,32 @@ def _build_conversion_runbook(
         if "max_consecutive_failed_dag_runs" in dag_settings:
             max_failed = dag_settings["max_consecutive_failed_dag_runs"]
             lines.append(f"**Auto-pause**: `max_consecutive_failed_dag_runs={max_failed}`")
-            lines.append(f"  - Airflow 2.9+ auto-pauses DAG after {max_failed} consecutive failures")
-            lines.append("  - In Prefect: Create automation to pause deployment after consecutive failures")
+            lines.append(
+                f"  - Airflow 2.9+ auto-pauses DAG after {max_failed} consecutive failures"
+            )
+            lines.append(
+                "  - In Prefect: Create automation to pause deployment after consecutive failures"
+            )
             lines.append("")
 
         # Retry configuration
         default_args = dag_settings.get("default_args", {})
-        if isinstance(default_args, dict) and ("retries" in default_args or "retry_delay" in default_args):
+        if isinstance(default_args, dict) and (
+            "retries" in default_args or "retry_delay" in default_args
+        ):
             lines.append("**Retry Configuration**:")
             if "retries" in default_args:
                 lines.append(f"  - Retries: `{default_args['retries']}`")
             if "retry_delay" in default_args:
                 lines.append(f"  - Retry delay: `{default_args['retry_delay']}`")
-            lines.append("  - Configure via `@flow(retries=...)` and `@task(retries=...)` decorators")
+            lines.append(
+                "  - Configure via `@flow(retries=...)` and `@task(retries=...)` decorators"
+            )
             lines.append("")
 
         # Tags
         tags = dag_settings.get("tags", [])
-        if tags:
+        if isinstance(tags, list) and tags:
             tags_str = ", ".join([f"`{tag}`" for tag in tags])
             lines.append(f"**Tags**: {tags_str}")
             lines.append("  - Add tags via `@flow(tags=[...])` decorator")
@@ -303,29 +320,31 @@ def _build_conversion_runbook(
 
         # Callbacks
         callbacks = dag_settings.get("callbacks", [])
-        if callbacks:
+        if isinstance(callbacks, list) and callbacks:
             lines.append("**Callbacks Detected**:")
             for callback in callbacks:
                 lines.append(f"  - `{callback}`: Use Prefect state handlers or notification blocks")
             lines.append("")
 
-    lines.extend([
-        "## Server/API Configuration Checklist",
-        "- Configure deployment schedules and pause state in Prefect server/cloud.",
-        "- Configure retries, concurrency, and execution infrastructure at deployment/work pool level.",
-        "- Configure credentials and connections as Prefect blocks, variables, or environment settings.",
-        "- Configure event automations and triggers in Prefect for event-driven workflows.",
-        "- Review notification, SLA, and alerting behavior that was previously Airflow-managed.",
-        "",
-        "## Generated Artifacts",
-        "- `flow_code`: converted flow implementation scaffold",
-        "- `test_code`: generated tests (if enabled)",
-        "- `dataset_conversion.producer_code`: event emission helpers",
-        "- `dataset_conversion.deployment_yaml`: trigger snippets for deployment config",
-        "- `dataset_conversion.materialization_code`: asset materialization scaffold",
-        "",
-        "## Migration Notes",
-    ])
+    lines.extend(
+        [
+            "## Server/API Configuration Checklist",
+            "- Configure deployment schedules and pause state in Prefect server/cloud.",
+            "- Configure retries, concurrency, and execution infrastructure at deployment/work pool level.",
+            "- Configure credentials and connections as Prefect blocks, variables, or environment settings.",
+            "- Configure event automations and triggers in Prefect for event-driven workflows.",
+            "- Review notification, SLA, and alerting behavior that was previously Airflow-managed.",
+            "",
+            "## Generated Artifacts",
+            "- `flow_code`: converted flow implementation scaffold",
+            "- `test_code`: generated tests (if enabled)",
+            "- `dataset_conversion.producer_code`: event emission helpers",
+            "- `dataset_conversion.deployment_yaml`: trigger snippets for deployment config",
+            "- `dataset_conversion.materialization_code`: asset materialization scaffold",
+            "",
+            "## Migration Notes",
+        ]
+    )
 
     if has_deployment_triggers:
         lines.append(

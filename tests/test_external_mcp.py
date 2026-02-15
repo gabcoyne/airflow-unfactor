@@ -3,23 +3,21 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 
 from airflow_unfactor.external_mcp import (
+    DEFAULT_PREFECT_CONTRACT,
     ExternalMCPClient,
     FallbackMode,
+    MCPServerConfig,
     ProviderContract,
     TransportType,
-    MCPServerConfig,
     _contract_from_env,
     _load_headers,
     _normalize_error,
     _to_contract,
-    DEFAULT_PREFECT_CONTRACT,
 )
 
 
@@ -32,6 +30,7 @@ class _DummyResponse:
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
             import httpx
+
             raise httpx.HTTPStatusError(
                 "Error",
                 request=None,  # type: ignore
@@ -50,7 +49,7 @@ class _DummyAsyncClient:
         self.last_json: dict | None = None
         self.last_headers: dict | None = None
 
-    async def __aenter__(self) -> "_DummyAsyncClient":
+    async def __aenter__(self) -> _DummyAsyncClient:
         return self
 
     async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
@@ -224,6 +223,8 @@ class TestMCPCallErrors:
 
     def test_error_fallback_mode_raise(self):
         """Test raise fallback mode raises exception."""
+        import httpx
+
         contract = ProviderContract(
             name="test",
             url="http://127.0.0.1:1",
@@ -233,7 +234,7 @@ class TestMCPCallErrors:
         )
         client = ExternalMCPClient(prefect=contract, astronomer=contract)
 
-        with pytest.raises(Exception):
+        with pytest.raises(httpx.ConnectError):
             asyncio.run(client.call_prefect_search("test query"))
 
 
@@ -263,12 +264,14 @@ class TestHelperFunctions:
     def test_normalize_error_timeout(self):
         """Test normalizing timeout error."""
         import httpx
+
         error = httpx.TimeoutException("timed out")
         assert _normalize_error(error) == "Request timed out"
 
     def test_normalize_error_connection(self):
         """Test normalizing connection error."""
         import httpx
+
         error = httpx.ConnectError("connection refused")
         assert "Connection failed" in _normalize_error(error)
 

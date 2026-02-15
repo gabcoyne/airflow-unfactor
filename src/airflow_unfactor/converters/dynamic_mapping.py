@@ -18,6 +18,7 @@ from typing import Any
 
 class MappingType(Enum):
     """Type of dynamic mapping pattern."""
+
     EXPAND = "expand"
     PARTIAL_EXPAND = "partial_expand"
     EXPAND_KWARGS = "expand_kwargs"
@@ -131,7 +132,9 @@ class DynamicMappingVisitor(ast.NodeVisitor):
         if isinstance(func.value, ast.Call):
             inner_call = func.value
             if isinstance(inner_call.func, ast.Attribute) and inner_call.func.attr == "partial":
-                return self._parse_partial_expand(inner_call, expand_params, unsupported_params, call.lineno)
+                return self._parse_partial_expand(
+                    inner_call, expand_params, unsupported_params, call.lineno
+                )
 
         # Simple .expand() - get task name
         task_name = self._get_task_name(func.value)
@@ -249,7 +252,9 @@ def extract_dynamic_mapping(dag_code: str) -> list[DynamicMappingInfo]:
     return visitor.mappings
 
 
-def convert_dynamic_mapping(info: DynamicMappingInfo, include_comments: bool = True) -> ConversionResult:
+def convert_dynamic_mapping(
+    info: DynamicMappingInfo, include_comments: bool = True
+) -> ConversionResult:
     """Convert a dynamic mapping pattern to Prefect code.
 
     Args:
@@ -352,19 +357,25 @@ def _convert_expand_kwargs(info: DynamicMappingInfo, include_comments: bool) -> 
     lines = []
 
     if include_comments:
-        lines.append(f"# Converted from Airflow: {info.task_name}.expand_kwargs({info.mapped_iterable})")
+        lines.append(
+            f"# Converted from Airflow: {info.task_name}.expand_kwargs({info.mapped_iterable})"
+        )
         lines.append("# Prefect approach: Use a wrapper task or starmap pattern")
 
     # Generate helper function pattern
     lines.append("")
     lines.append("# Option 1: Use list comprehension with .submit()")
     assignment = f"{info.assigned_to} = " if info.assigned_to else "results = "
-    lines.append(f"{assignment}[{info.task_name}.submit(**kwargs) for kwargs in {info.mapped_iterable}]")
+    lines.append(
+        f"{assignment}[{info.task_name}.submit(**kwargs) for kwargs in {info.mapped_iterable}]"
+    )
 
     if include_comments:
         lines.append("")
         lines.append("# Option 2: Extract specific keys if structure is known")
-        lines.append(f"# {info.task_name}.map(**{{k: [d[k] for d in {info.mapped_iterable}] for k in {info.mapped_iterable}[0]}})")
+        lines.append(
+            f"# {info.task_name}.map(**{{k: [d[k] for d in {info.mapped_iterable}] for k in {info.mapped_iterable}[0]}})"
+        )
 
     return lines
 
@@ -398,16 +409,16 @@ def convert_all_dynamic_mappings(
 
     for mapping in mappings:
         result = convert_dynamic_mapping(mapping, include_comments)
-        conversions.append({
-            "mapping": mapping,
-            "result": result,
-        })
+        conversions.append(
+            {
+                "mapping": mapping,
+                "result": result,
+            }
+        )
         all_warnings.extend(result.warnings)
         all_code.append(result.prefect_code)
 
-    type_summary = ", ".join(
-        f"{m.task_name} ({m.mapping_type.value})" for m in mappings
-    )
+    type_summary = ", ".join(f"{m.task_name} ({m.mapping_type.value})" for m in mappings)
 
     return {
         "conversions": conversions,

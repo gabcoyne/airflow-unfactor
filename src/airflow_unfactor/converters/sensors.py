@@ -58,6 +58,7 @@ SENSOR_STRATEGIES = {
 @dataclass
 class SensorInfo:
     """Information about a detected sensor."""
+
     sensor_type: str
     task_id: str
     parameters: dict[str, Any] = field(default_factory=dict)
@@ -70,6 +71,7 @@ class SensorInfo:
 @dataclass
 class SensorConversion:
     """Conversion result for a sensor."""
+
     sensor: SensorInfo
     polling_code: str
     event_suggestion: str
@@ -78,49 +80,49 @@ class SensorConversion:
 
 class SensorVisitor(ast.NodeVisitor):
     """AST visitor to extract sensor patterns."""
-    
+
     def __init__(self):
         self.sensors: list[SensorInfo] = []
-        
+
     def visit_Call(self, node: ast.Call):
         func_name = self._get_func_name(node)
-        
+
         if func_name and "Sensor" in func_name:
             sensor = self._extract_sensor_info(node, func_name)
             if sensor:
                 self.sensors.append(sensor)
-        
+
         self.generic_visit(node)
-    
+
     def _get_func_name(self, node: ast.Call) -> str:
         if isinstance(node.func, ast.Name):
             return node.func.id
         elif isinstance(node.func, ast.Attribute):
             return node.func.attr
         return ""
-    
+
     def _extract_sensor_info(self, node: ast.Call, sensor_type: str) -> SensorInfo | None:
         params = {}
         task_id = "unknown_sensor"
         poke_interval = 60
         timeout = 3600
         mode = "poke"
-        
+
         for kw in node.keywords:
             if kw.arg == "task_id" and isinstance(kw.value, ast.Constant):
-                task_id = kw.value.value
+                task_id = str(kw.value.value)
             elif kw.arg == "poke_interval" and isinstance(kw.value, ast.Constant):
-                poke_interval = kw.value.value
+                poke_interval = int(kw.value.value)  # type: ignore[arg-type]
             elif kw.arg == "timeout" and isinstance(kw.value, ast.Constant):
-                timeout = kw.value.value
+                timeout = int(kw.value.value)  # type: ignore[arg-type]
             elif kw.arg == "mode" and isinstance(kw.value, ast.Constant):
-                mode = kw.value.value
+                mode = str(kw.value.value)
             elif kw.arg:
                 try:
                     params[kw.arg] = ast.literal_eval(kw.value)
                 except (ValueError, TypeError):
                     params[kw.arg] = ast.unparse(kw.value)
-        
+
         return SensorInfo(
             sensor_type=sensor_type,
             task_id=task_id,
@@ -134,10 +136,10 @@ class SensorVisitor(ast.NodeVisitor):
 
 def detect_sensors(dag_code: str) -> list[SensorInfo]:
     """Detect sensors in DAG code.
-    
+
     Args:
         dag_code: Source code of the DAG file
-        
+
     Returns:
         List of detected sensors
     """
@@ -145,7 +147,7 @@ def detect_sensors(dag_code: str) -> list[SensorInfo]:
         tree = ast.parse(dag_code)
     except SyntaxError:
         return []
-    
+
     visitor = SensorVisitor()
     visitor.visit(tree)
     return visitor.sensors
@@ -153,32 +155,35 @@ def detect_sensors(dag_code: str) -> list[SensorInfo]:
 
 def convert_sensor(sensor: SensorInfo, include_comments: bool = True) -> SensorConversion:
     """Convert a single sensor to Prefect patterns.
-    
+
     Args:
         sensor: Sensor information
         include_comments: Include educational comments
-        
+
     Returns:
         SensorConversion with polling code and event suggestions
     """
-    strategy = SENSOR_STRATEGIES.get(sensor.sensor_type, {
-        "approach": "poll",
-        "description": "Generic sensor - convert to polling task",
-    })
-    
+    strategy = SENSOR_STRATEGIES.get(
+        sensor.sensor_type,
+        {
+            "approach": "poll",
+            "description": "Generic sensor - convert to polling task",
+        },
+    )
+
     warnings = []
-    
+
     # Calculate retry count from timeout and poke_interval
     retries = max(1, sensor.timeout // sensor.poke_interval)
-    
+
     # Generate polling code
     polling_lines = []
-    
+
     if include_comments:
         polling_lines.append(f"# Converted from {sensor.sensor_type}")
         polling_lines.append(f"# {strategy['description']}")
         polling_lines.append("")
-    
+
     # Sensor-specific conversions
     if sensor.sensor_type == "S3KeySensor":
         polling_lines.extend(_generate_s3_sensor(sensor, retries))
@@ -196,16 +201,16 @@ def convert_sensor(sensor: SensorInfo, include_comments: bool = True) -> SensorC
     else:
         polling_lines.extend(_generate_generic_sensor(sensor, retries))
         warnings.append(f"Unknown sensor type: {sensor.sensor_type}")
-    
+
     # Generate event suggestion
     event_suggestion = _generate_event_suggestion(sensor, strategy)
-    
+
     if sensor.mode == "reschedule":
         warnings.append(
             "Sensor used 'reschedule' mode. In Prefect, use retries with "
             "retry_delay_seconds for similar behavior without blocking workers."
         )
-    
+
     return SensorConversion(
         sensor=sensor,
         polling_code="\n".join(polling_lines),
@@ -217,7 +222,7 @@ def convert_sensor(sensor: SensorInfo, include_comments: bool = True) -> SensorC
 def _generate_s3_sensor(sensor: SensorInfo, retries: int) -> list[str]:
     bucket = sensor.parameters.get("bucket_name", sensor.parameters.get("bucket_key", "BUCKET"))
     key = sensor.parameters.get("bucket_key", "KEY")
-    
+
     return [
         "import boto3",
         "from prefect import task",
@@ -239,7 +244,7 @@ def _generate_s3_sensor(sensor: SensorInfo, retries: int) -> list[str]:
 def _generate_http_sensor(sensor: SensorInfo, retries: int) -> list[str]:
     endpoint = sensor.parameters.get("endpoint", "/health")
     http_conn_id = sensor.parameters.get("http_conn_id", "http_default")
-    
+
     return [
         "import httpx",
         "from prefect import task",
@@ -257,7 +262,7 @@ def _generate_http_sensor(sensor: SensorInfo, retries: int) -> list[str]:
 
 def _generate_file_sensor(sensor: SensorInfo, retries: int) -> list[str]:
     filepath = sensor.parameters.get("filepath", "/path/to/file")
-    
+
     return [
         "from pathlib import Path",
         "from prefect import task",
@@ -275,7 +280,7 @@ def _generate_file_sensor(sensor: SensorInfo, retries: int) -> list[str]:
 def _generate_sql_sensor(sensor: SensorInfo, retries: int) -> list[str]:
     sql = sensor.parameters.get("sql", "SELECT 1")
     conn_id = sensor.parameters.get("conn_id", "default")
-    
+
     return [
         "from prefect import task",
         "# from prefect_sqlalchemy import SqlAlchemyConnector  # Optional integration",
@@ -284,7 +289,7 @@ def _generate_sql_sensor(sensor: SensorInfo, retries: int) -> list[str]:
         f"def {sensor.task_id}():",
         '    """Wait for SQL query to return truthy result."""',
         f"    # Connection: {conn_id}",
-        f"    sql = \"\"\"{sql}\"\"\"",
+        f'    sql = """{sql}"""',
         "    # Execute query and check result",
         "    # result = connector.fetch_one(sql)",
         "    # if not result or not result[0]:",
@@ -296,7 +301,7 @@ def _generate_sql_sensor(sensor: SensorInfo, retries: int) -> list[str]:
 
 def _generate_python_sensor(sensor: SensorInfo, retries: int) -> list[str]:
     python_callable = sensor.parameters.get("python_callable", "check_condition")
-    
+
     return [
         "from prefect import task",
         "",
@@ -314,7 +319,7 @@ def _generate_python_sensor(sensor: SensorInfo, retries: int) -> list[str]:
 def _generate_external_task_sensor(sensor: SensorInfo) -> list[str]:
     external_dag = sensor.parameters.get("external_dag_id", "upstream_dag")
     external_task = sensor.parameters.get("external_task_id", None)
-    
+
     return [
         "from prefect import flow, task",
         "from prefect.events import emit_event",
@@ -353,9 +358,9 @@ def _generate_event_suggestion(sensor: SensorInfo, strategy: dict) -> str:
     """Generate event-driven alternative suggestion."""
     if strategy.get("approach") not in ("event", "event_or_poll"):
         return ""
-    
+
     event_type = strategy.get("event_type", "custom.event")
-    
+
     return f"""# ✨ Recommended: Event-driven approach
 # Instead of polling, configure your deployment with a trigger:
 #
@@ -377,16 +382,16 @@ def convert_all_sensors(
     include_comments: bool = True,
 ) -> dict[str, Any]:
     """Convert all sensors in a DAG file.
-    
+
     Args:
         dag_code: Source code of the DAG file
         include_comments: Include educational comments
-        
+
     Returns:
         Dictionary with conversions, summary, warnings
     """
     sensors = detect_sensors(dag_code)
-    
+
     if not sensors:
         return {
             "conversions": [],
@@ -394,17 +399,17 @@ def convert_all_sensors(
             "warnings": [],
             "polling_code": "",
         }
-    
+
     conversions = [convert_sensor(s, include_comments) for s in sensors]
     all_warnings = []
     all_code = []
-    
+
     for conv in conversions:
         all_warnings.extend(conv.warnings)
         all_code.append(conv.polling_code)
         if conv.event_suggestion:
             all_code.append(conv.event_suggestion)
-    
+
     return {
         "conversions": conversions,
         "summary": f"Converted {len(sensors)} sensor(s): {', '.join(s.sensor_type for s in sensors)}",

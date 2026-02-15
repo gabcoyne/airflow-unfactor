@@ -1,25 +1,31 @@
-import pytest
 from pathlib import Path
 
-FIXTURES_DIR = Path(__file__).parent / 'fixtures'
-ASTRONOMER_TOYS = FIXTURES_DIR / 'astronomer-2-9' / 'dags' / 'toys'
-SNAPSHOTS_DIR = FIXTURES_DIR / 'snapshots'
+import pytest
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+ASTRONOMER_TOYS = FIXTURES_DIR / "astronomer-2-9" / "dags" / "toys"
+SNAPSHOTS_DIR = FIXTURES_DIR / "snapshots"
+
 
 @pytest.fixture
 def simple_etl_dag():
-    return (FIXTURES_DIR / 'simple_etl.py').read_text()
+    return (FIXTURES_DIR / "simple_etl.py").read_text()
+
 
 @pytest.fixture
 def fixtures_dir():
     return FIXTURES_DIR
 
+
 @pytest.fixture
 def astronomer_toys_dir():
     return ASTRONOMER_TOYS
 
+
 @pytest.fixture
 def snapshots_dir():
     return SNAPSHOTS_DIR
+
 
 def pytest_addoption(parser):
     """Add --snapshot-update option."""
@@ -29,6 +35,7 @@ def pytest_addoption(parser):
         default=False,
         help="Update snapshot golden files",
     )
+
 
 @pytest.fixture
 def snapshot_update(request):

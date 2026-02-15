@@ -3,14 +3,13 @@
 Custom operators are those NOT in provider_mappings.OPERATOR_MAPPINGS.
 """
 
-import pytest
 from airflow_unfactor.converters.custom_operators import (
+    CORE_OPERATORS,
+    CustomOperatorInfo,
+    convert_custom_operators,
     extract_custom_operators,
     generate_custom_operator_stub,
-    convert_custom_operators,
     is_known_operator,
-    CustomOperatorInfo,
-    CORE_OPERATORS,
 )
 
 
@@ -19,7 +18,7 @@ class TestExtractCustomOperators:
 
     def test_detect_imported_custom_operator(self):
         """Detect custom operator from import."""
-        code = '''
+        code = """
 from myproject.operators import MyCustomOperator
 
 with DAG("test") as dag:
@@ -28,7 +27,7 @@ with DAG("test") as dag:
         param1="value1",
         param2=42,
     )
-'''
+"""
         operators = extract_custom_operators(code)
 
         assert len(operators) == 1
@@ -41,7 +40,7 @@ with DAG("test") as dag:
 
     def test_detect_inline_custom_operator(self):
         """Detect inline custom operator class definition."""
-        code = '''
+        code = """
 from airflow.models import BaseOperator
 
 class MyInlineOperator(BaseOperator):
@@ -58,19 +57,19 @@ with DAG("test") as dag:
         task_id="inline_task",
         my_param=10,
     )
-'''
+"""
         operators = extract_custom_operators(code)
 
         assert len(operators) == 1
         assert operators[0].class_name == "MyInlineOperator"
         assert operators[0].task_id == "inline_task"
         assert operators[0].is_inline_class
-        assert "print(f\"Running with {self.my_param}\")" in operators[0].execute_body
+        assert 'print(f"Running with {self.my_param}")' in operators[0].execute_body
         assert "return self.my_param * 2" in operators[0].execute_body
 
     def test_skip_known_provider_operators(self):
         """Known provider operators should not be detected as custom."""
-        code = '''
+        code = """
 from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
 
 with DAG("test") as dag:
@@ -78,13 +77,13 @@ with DAG("test") as dag:
         task_id="s3_task",
         bucket_name="my-bucket",
     )
-'''
+"""
         operators = extract_custom_operators(code)
         assert len(operators) == 0
 
     def test_skip_core_operators(self):
         """Core Airflow operators should not be detected as custom."""
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
@@ -93,20 +92,20 @@ with DAG("test") as dag:
     t1 = PythonOperator(task_id="python_task", python_callable=my_func)
     t2 = BashOperator(task_id="bash_task", bash_command="echo hello")
     t3 = EmptyOperator(task_id="empty_task")
-'''
+"""
         operators = extract_custom_operators(code)
         assert len(operators) == 0
 
     def test_detect_multiple_custom_operators(self):
         """Detect multiple different custom operators."""
-        code = '''
+        code = """
 from team.operators import TeamOperator
 from partner.operators import PartnerOperator
 
 with DAG("test") as dag:
     t1 = TeamOperator(task_id="team_task", team_id=123)
     t2 = PartnerOperator(task_id="partner_task", partner_name="acme")
-'''
+"""
         operators = extract_custom_operators(code)
 
         assert len(operators) == 2
@@ -115,7 +114,7 @@ with DAG("test") as dag:
 
     def test_extract_execute_with_complex_body(self):
         """Extract execute() method with complex logic."""
-        code = '''
+        code = """
 from airflow.models import BaseOperator
 import requests
 
@@ -144,7 +143,7 @@ with DAG("test") as dag:
         endpoint="https://api.example.com/data",
         method="POST",
     )
-'''
+"""
         operators = extract_custom_operators(code)
 
         assert len(operators) == 1
@@ -161,13 +160,13 @@ with DAG("test") as dag:
 
     def test_detect_operator_without_import_path(self):
         """Detect operator when import is complex/not traceable."""
-        code = '''
+        code = """
 # Operator imported dynamically or through __init__
 CustomOperator = get_operator_class()
 
 with DAG("test") as dag:
     task = CustomOperator(task_id="dynamic_task", value=1)
-'''
+"""
         operators = extract_custom_operators(code)
 
         assert len(operators) == 1
@@ -239,12 +238,12 @@ class TestConvertCustomOperators:
 
     def test_convert_returns_empty_for_no_custom_ops(self):
         """Return empty result when no custom operators found."""
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 with DAG("test") as dag:
     task = PythonOperator(task_id="task", python_callable=fn)
-'''
+"""
         result = convert_custom_operators(code)
 
         assert result["operators"] == []
@@ -253,12 +252,12 @@ with DAG("test") as dag:
 
     def test_convert_generates_stubs_and_warnings(self):
         """Convert generates stubs and appropriate warnings."""
-        code = '''
+        code = """
 from team.operators import TeamOperator
 
 with DAG("test") as dag:
     task = TeamOperator(task_id="team_task", team_id=123)
-'''
+"""
         result = convert_custom_operators(code)
 
         assert len(result["operators"]) == 1
@@ -271,7 +270,7 @@ with DAG("test") as dag:
 
     def test_convert_warns_about_inline_without_execute(self):
         """Warn when inline operator has no execute() method."""
-        code = '''
+        code = """
 from airflow.models import BaseOperator
 
 class CustomEmptyOperator(BaseOperator):
@@ -279,7 +278,7 @@ class CustomEmptyOperator(BaseOperator):
 
 with DAG("test") as dag:
     task = CustomEmptyOperator(task_id="empty_custom")
-'''
+"""
         result = convert_custom_operators(code)
 
         assert len(result["warnings"]) == 1
@@ -287,7 +286,7 @@ with DAG("test") as dag:
 
     def test_convert_warns_about_self_references(self):
         """Warn about self.* references in execute() body."""
-        code = '''
+        code = """
 from airflow.models import BaseOperator
 
 class SelfRefOperator(BaseOperator):
@@ -296,7 +295,7 @@ class SelfRefOperator(BaseOperator):
 
 with DAG("test") as dag:
     task = SelfRefOperator(task_id="self_ref_task")
-'''
+"""
         result = convert_custom_operators(code)
 
         assert len(result["warnings"]) == 1

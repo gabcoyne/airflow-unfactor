@@ -8,18 +8,15 @@ These tests cover:
 - Pool/pool_slots detection and warnings (5.6)
 """
 
-import pytest
-from airflow_unfactor.converters.operators.python import (
-    extract_functions,
-    convert_python_operator,
-    XComPullInfo,
-    XComUsage,
-)
-from airflow_unfactor.converters.base import (
-    convert_dag_to_flow,
-    _build_task_decorator,
-)
 from airflow_unfactor.analysis.parser import parse_dag
+from airflow_unfactor.converters.base import (
+    _build_task_decorator,
+    convert_dag_to_flow,
+)
+from airflow_unfactor.converters.operators.python import (
+    convert_python_operator,
+    extract_functions,
+)
 
 
 class TestMultiTaskXComPull:
@@ -27,11 +24,11 @@ class TestMultiTaskXComPull:
 
     def test_detect_multi_task_xcom_pull(self):
         """Detect xcom_pull with list of task_ids."""
-        code = '''
+        code = """
 def aggregate(ti):
     results = ti.xcom_pull(task_ids=["task_a", "task_b"])
     return sum(results.values())
-'''
+"""
         funcs = extract_functions(code)
         func = funcs["aggregate"]
 
@@ -44,11 +41,11 @@ def aggregate(ti):
 
     def test_multi_task_pull_generates_multiple_params(self):
         """Multi-task pull should generate multiple function parameters."""
-        code = '''
+        code = """
 def aggregate(ti):
     results = ti.xcom_pull(task_ids=["extract_users", "extract_orders"])
     return {"users": results[0], "orders": results[1]}
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="aggregate",
@@ -63,11 +60,11 @@ def aggregate(ti):
 
     def test_multi_task_pull_with_key_generates_warning(self):
         """Multi-task pull with key parameter generates warning."""
-        code = '''
+        code = """
 def aggregate(ti):
     data = ti.xcom_pull(task_ids=["task_a", "task_b"], key="data")
     return sum(d for d in data if d)
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="aggregate",
@@ -82,11 +79,11 @@ def aggregate(ti):
 
     def test_multi_task_pull_body_conversion(self):
         """Multi-task pull should convert to dict in body."""
-        code = '''
+        code = """
 def merge(ti):
     all_data = ti.xcom_pull(task_ids=["alpha", "beta"])
     return merge_data(all_data)
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="merge",
@@ -101,11 +98,11 @@ def merge(ti):
 
     def test_single_item_list_treated_as_simple(self):
         """A list with single task_id should be treated simply."""
-        code = '''
+        code = """
 def process(ti):
     data = ti.xcom_pull(task_ids=["only_task"])
     return transform(data)
-'''
+"""
         funcs = extract_functions(code)
         func = funcs["process"]
 
@@ -117,12 +114,12 @@ def process(ti):
 
     def test_xcom_usage_all_pull_task_ids(self):
         """XComUsage.all_pull_task_ids returns flattened list."""
-        code = '''
+        code = """
 def combine(ti):
     a = ti.xcom_pull(task_ids="single")
     b = ti.xcom_pull(task_ids=["multi1", "multi2"])
     return a + b
-'''
+"""
         funcs = extract_functions(code)
         func = funcs["combine"]
 
@@ -138,11 +135,11 @@ class TestDynamicXComPatterns:
 
     def test_variable_task_id_warning(self):
         """Variable task_ids should generate warning."""
-        code = '''
+        code = """
 def dynamic_pull(ti, task_name):
     data = ti.xcom_pull(task_ids=task_name)
     return data
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="dynamic_pull",
@@ -160,12 +157,12 @@ def dynamic_pull(ti, task_name):
 
     def test_fstring_task_id_warning(self):
         """F-string task_ids should generate warning."""
-        code = '''
+        code = """
 def loop_pull(ti):
     for i in range(3):
         data = ti.xcom_pull(task_ids=f"task_{i}")
         process(data)
-'''
+"""
         funcs = extract_functions(code)
         func = funcs["loop_pull"]
 
@@ -176,12 +173,12 @@ def loop_pull(ti):
 
     def test_computed_task_id_warning(self):
         """Computed task_ids should generate warning."""
-        code = '''
+        code = """
 def computed_pull(ti):
     task_id = "prefix_" + get_suffix()
     data = ti.xcom_pull(task_ids=task_id)
     return data
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="computed_pull",
@@ -199,7 +196,7 @@ class TestRetryDelayConversion:
 
     def test_task_level_retries_parsed(self):
         """Task-level retries should be parsed."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -209,7 +206,7 @@ with DAG("test_dag") as dag:
         python_callable=my_func,
         retries=5,
     )
-'''
+"""
         result = parse_dag(code)
         ops = result.get("operators", [])
         assert len(ops) == 1
@@ -217,7 +214,7 @@ with DAG("test_dag") as dag:
 
     def test_task_level_retry_delay_parsed(self):
         """Task-level retry_delay should be parsed."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import timedelta
@@ -228,7 +225,7 @@ with DAG("test_dag") as dag:
         python_callable=my_func,
         retry_delay=timedelta(minutes=5),
     )
-'''
+"""
         result = parse_dag(code)
         ops = result.get("operators", [])
         assert len(ops) == 1
@@ -296,7 +293,7 @@ class TestExponentialBackoffWarning:
 
     def test_exponential_backoff_parsed(self):
         """retry_exponential_backoff is parsed from operators."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -307,7 +304,7 @@ with DAG("test_dag") as dag:
         retries=3,
         retry_exponential_backoff=True,
     )
-'''
+"""
         result = parse_dag(code)
         ops = result.get("operators", [])
         assert len(ops) == 1
@@ -324,7 +321,7 @@ with DAG("test_dag") as dag:
 
     def test_exponential_backoff_note_in_parser(self):
         """Parser adds note about exponential backoff."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -334,7 +331,7 @@ with DAG("test_dag") as dag:
         python_callable=my_func,
         retry_exponential_backoff=True,
     )
-'''
+"""
         result = parse_dag(code)
         notes = result.get("notes", [])
         assert any("exponential" in n.lower() for n in notes)
@@ -353,7 +350,7 @@ class TestPoolDetection:
 
     def test_pool_parsed(self):
         """Pool parameter is parsed from operators."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -363,7 +360,7 @@ with DAG("test_dag") as dag:
         python_callable=my_func,
         pool="limited_resources",
     )
-'''
+"""
         result = parse_dag(code)
         ops = result.get("operators", [])
         assert len(ops) == 1
@@ -371,7 +368,7 @@ with DAG("test_dag") as dag:
 
     def test_pool_slots_parsed(self):
         """pool_slots parameter is parsed from operators."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -382,7 +379,7 @@ with DAG("test_dag") as dag:
         pool="limited_resources",
         pool_slots=2,
     )
-'''
+"""
         result = parse_dag(code)
         ops = result.get("operators", [])
         assert len(ops) == 1
@@ -408,7 +405,7 @@ with DAG("test_dag") as dag:
 
     def test_pool_note_in_parser(self):
         """Parser adds note about pool usage."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -418,7 +415,7 @@ with DAG("test_dag") as dag:
         python_callable=my_func,
         pool="my_pool",
     )
-'''
+"""
         result = parse_dag(code)
         notes = result.get("notes", [])
         assert any("pool" in n.lower() for n in notes)
@@ -429,7 +426,7 @@ class TestFullConversion:
 
     def test_conversion_preserves_task_retries(self):
         """Full conversion preserves task-level retry settings."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -439,7 +436,7 @@ with DAG("retry_dag") as dag:
         python_callable=process,
         retries=5,
     )
-'''
+"""
         dag_info = parse_dag(code)
         result = convert_dag_to_flow(dag_info, code, include_comments=False)
 
@@ -448,7 +445,7 @@ with DAG("retry_dag") as dag:
 
     def test_conversion_with_pool_warnings(self):
         """Full conversion generates pool warnings."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -458,7 +455,7 @@ with DAG("pool_dag") as dag:
         python_callable=process,
         pool="limited",
     )
-'''
+"""
         dag_info = parse_dag(code)
         result = convert_dag_to_flow(dag_info, code, include_comments=False)
 
@@ -467,7 +464,7 @@ with DAG("pool_dag") as dag:
 
     def test_conversion_with_exponential_backoff_warning(self):
         """Full conversion generates exponential backoff warning."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -477,7 +474,7 @@ with DAG("backoff_dag") as dag:
         python_callable=process,
         retry_exponential_backoff=True,
     )
-'''
+"""
         dag_info = parse_dag(code)
         result = convert_dag_to_flow(dag_info, code, include_comments=False)
 
@@ -486,7 +483,7 @@ with DAG("backoff_dag") as dag:
 
     def test_conversion_uses_default_args_retry(self):
         """Conversion falls back to default_args for retry settings."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -498,7 +495,7 @@ with DAG(
         task_id="my_task",
         python_callable=process,
     )
-'''
+"""
         dag_info = parse_dag(code)
         result = convert_dag_to_flow(dag_info, code, include_comments=False)
 

@@ -167,9 +167,7 @@ class DAGSettingsVisitor(ast.NodeVisitor):
                 settings.max_active_runs = int(value) if value is not None else None
 
             elif arg_name == "max_consecutive_failed_dag_runs":
-                settings.max_consecutive_failed_dag_runs = (
-                    int(value) if value is not None else None
-                )
+                settings.max_consecutive_failed_dag_runs = int(value) if value is not None else None
 
             elif arg_name == "tags":
                 if isinstance(value, list):
@@ -194,9 +192,7 @@ class DAGSettingsVisitor(ast.NodeVisitor):
                 settings.doc_md = str(value) if value else None
 
             elif arg_name == "is_paused_upon_creation":
-                settings.is_paused_upon_creation = (
-                    bool(value) if value is not None else None
-                )
+                settings.is_paused_upon_creation = bool(value) if value is not None else None
 
             elif arg_name == "concurrency":
                 settings.concurrency = int(value) if value is not None else None
@@ -465,7 +461,7 @@ def _generate_deployment_config_section(
         "deployments:",
         f"  - name: {dag_id}",
         f'    entrypoint: "flows/{flow_name}.py:{flow_name}"',
-        '    work_pool:',
+        "    work_pool:",
         f'      name: "{dag_id}-pool"',
     ]
 
@@ -473,23 +469,29 @@ def _generate_deployment_config_section(
     if settings.schedule:
         cron = _convert_schedule_to_cron(settings.schedule)
         if cron:
-            lines.extend([
-                "    schedules:",
-                "      - cron: \"" + cron + "\"",
-                "        timezone: \"UTC\"  # Adjust as needed",
-            ])
+            lines.extend(
+                [
+                    "    schedules:",
+                    '      - cron: "' + cron + '"',
+                    '        timezone: "UTC"  # Adjust as needed',
+                ]
+            )
         else:
-            lines.extend([
-                "    schedules:",
-                f'      - cron: "{settings.schedule}"  # Verify cron expression',
-                "        timezone: \"UTC\"",
-            ])
+            lines.extend(
+                [
+                    "    schedules:",
+                    f'      - cron: "{settings.schedule}"  # Verify cron expression',
+                    '        timezone: "UTC"',
+                ]
+            )
 
     # Add parameters if variables detected
     if variables:
-        lines.extend([
-            "    parameters:",
-        ])
+        lines.extend(
+            [
+                "    parameters:",
+            ]
+        )
         for var in variables:
             var_name = getattr(var, "name", str(var))
             lines.append(f'      {var_name}: "default_value"  # TODO: Set default')
@@ -497,24 +499,28 @@ def _generate_deployment_config_section(
     # Add tags if present
     if settings.tags:
         tags_yaml = ", ".join([f'"{t}"' for t in settings.tags])
-        lines.extend([
-            f"    tags: [{tags_yaml}]",
-        ])
+        lines.extend(
+            [
+                f"    tags: [{tags_yaml}]",
+            ]
+        )
 
-    lines.extend([
-        "```",
-        "",
-        "### Deploy the flow",
-        "",
-        "```bash",
-        "# Deploy using the prefect.yaml configuration",
-        "prefect deploy --all",
-        "",
-        "# Or deploy a specific deployment",
-        f'prefect deploy --name "{dag_id}"',
-        "```",
-        "",
-    ])
+    lines.extend(
+        [
+            "```",
+            "",
+            "### Deploy the flow",
+            "",
+            "```bash",
+            "# Deploy using the prefect.yaml configuration",
+            "prefect deploy --all",
+            "",
+            "# Or deploy a specific deployment",
+            f'prefect deploy --name "{dag_id}"',
+            "```",
+            "",
+        ]
+    )
 
     return lines
 
@@ -532,104 +538,110 @@ def _generate_automation_section(settings: DAGSettings) -> list[str]:
     ]
 
     if "sla_miss_callback" in callback_types:
-        lines.extend([
-            "### SLA Monitoring Automation",
-            "",
-            "Create an automation to detect SLA breaches based on flow run duration:",
-            "",
-            "```python",
-            "from datetime import timedelta",
-            "from prefect.automations import Automation",
-            "from prefect.events.schemas.automations import EventTrigger",
-            "from prefect.events.actions import SendNotification",
-            "",
-            "# SLA automation - triggers when flow runs exceed expected duration",
-            "sla_automation = Automation(",
-            f'    name="{dag_id}-sla-monitor",',
-            "    description=\"Alert when flow exceeds expected duration\",",
-            "    trigger=EventTrigger(",
-            '        match={"prefect.resource.id": "prefect.flow-run.*"},',
-            '        expect=["prefect.flow-run.Running"],',
-            "        posture=\"Proactive\",",
-            "        threshold=1,",
-            "        within=timedelta(hours=2),  # SLA threshold - adjust as needed",
-            "    ),",
-            "    actions=[",
-            "        SendNotification(",
-            '            block_document_id="your-slack-webhook-block-id",',
-            "            subject=\"SLA Breach Warning\",",
-            f'            body="Flow {dag_id} has been running longer than expected",',
-            "        )",
-            "    ],",
-            ")",
-            "```",
-            "",
-            "**Via Prefect UI:**",
-            "1. Navigate to Automations → Create Automation",
-            "2. Trigger: Flow run enters 'Running' state for > 2 hours",
-            "3. Action: Send Slack/Email notification",
-            "",
-        ])
+        lines.extend(
+            [
+                "### SLA Monitoring Automation",
+                "",
+                "Create an automation to detect SLA breaches based on flow run duration:",
+                "",
+                "```python",
+                "from datetime import timedelta",
+                "from prefect.automations import Automation",
+                "from prefect.events.schemas.automations import EventTrigger",
+                "from prefect.events.actions import SendNotification",
+                "",
+                "# SLA automation - triggers when flow runs exceed expected duration",
+                "sla_automation = Automation(",
+                f'    name="{dag_id}-sla-monitor",',
+                '    description="Alert when flow exceeds expected duration",',
+                "    trigger=EventTrigger(",
+                '        match={"prefect.resource.id": "prefect.flow-run.*"},',
+                '        expect=["prefect.flow-run.Running"],',
+                '        posture="Proactive",',
+                "        threshold=1,",
+                "        within=timedelta(hours=2),  # SLA threshold - adjust as needed",
+                "    ),",
+                "    actions=[",
+                "        SendNotification(",
+                '            block_document_id="your-slack-webhook-block-id",',
+                '            subject="SLA Breach Warning",',
+                f'            body="Flow {dag_id} has been running longer than expected",',
+                "        )",
+                "    ],",
+                ")",
+                "```",
+                "",
+                "**Via Prefect UI:**",
+                "1. Navigate to Automations → Create Automation",
+                "2. Trigger: Flow run enters 'Running' state for > 2 hours",
+                "3. Action: Send Slack/Email notification",
+                "",
+            ]
+        )
 
     if "on_failure_callback" in callback_types:
-        lines.extend([
-            "### Failure Notification Automation",
-            "",
-            "```python",
-            "from prefect.automations import Automation",
-            "from prefect.events.schemas.automations import EventTrigger",
-            "from prefect.events.actions import SendNotification",
-            "",
-            "failure_automation = Automation(",
-            f'    name="{dag_id}-failure-alert",',
-            "    description=\"Alert on flow failures\",",
-            "    trigger=EventTrigger(",
-            '        match={"prefect.resource.id": "prefect.flow-run.*"},',
-            '        expect=["prefect.flow-run.Failed"],',
-            "        posture=\"Reactive\",",
-            "        threshold=1,",
-            "    ),",
-            "    actions=[",
-            "        SendNotification(",
-            '            block_document_id="your-slack-webhook-block-id",',
-            "            subject=\"Flow Failed\",",
-            "            body=\"{{ flow_run.name }} has failed. Check logs for details.\",",
-            "        )",
-            "    ],",
-            ")",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "### Failure Notification Automation",
+                "",
+                "```python",
+                "from prefect.automations import Automation",
+                "from prefect.events.schemas.automations import EventTrigger",
+                "from prefect.events.actions import SendNotification",
+                "",
+                "failure_automation = Automation(",
+                f'    name="{dag_id}-failure-alert",',
+                '    description="Alert on flow failures",',
+                "    trigger=EventTrigger(",
+                '        match={"prefect.resource.id": "prefect.flow-run.*"},',
+                '        expect=["prefect.flow-run.Failed"],',
+                '        posture="Reactive",',
+                "        threshold=1,",
+                "    ),",
+                "    actions=[",
+                "        SendNotification(",
+                '            block_document_id="your-slack-webhook-block-id",',
+                '            subject="Flow Failed",',
+                '            body="{{ flow_run.name }} has failed. Check logs for details.",',
+                "        )",
+                "    ],",
+                ")",
+                "```",
+                "",
+            ]
+        )
 
     if "on_success_callback" in callback_types:
-        lines.extend([
-            "### Success Notification Automation",
-            "",
-            "```python",
-            "from prefect.automations import Automation",
-            "from prefect.events.schemas.automations import EventTrigger",
-            "from prefect.events.actions import SendNotification",
-            "",
-            "success_automation = Automation(",
-            f'    name="{dag_id}-success-alert",',
-            "    description=\"Notify on successful completion\",",
-            "    trigger=EventTrigger(",
-            '        match={"prefect.resource.id": "prefect.flow-run.*"},',
-            '        expect=["prefect.flow-run.Completed"],',
-            "        posture=\"Reactive\",",
-            "        threshold=1,",
-            "    ),",
-            "    actions=[",
-            "        SendNotification(",
-            '            block_document_id="your-slack-webhook-block-id",',
-            "            subject=\"Flow Completed\",",
-            "            body=\"{{ flow_run.name }} completed successfully.\",",
-            "        )",
-            "    ],",
-            ")",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "### Success Notification Automation",
+                "",
+                "```python",
+                "from prefect.automations import Automation",
+                "from prefect.events.schemas.automations import EventTrigger",
+                "from prefect.events.actions import SendNotification",
+                "",
+                "success_automation = Automation(",
+                f'    name="{dag_id}-success-alert",',
+                '    description="Notify on successful completion",',
+                "    trigger=EventTrigger(",
+                '        match={"prefect.resource.id": "prefect.flow-run.*"},',
+                '        expect=["prefect.flow-run.Completed"],',
+                '        posture="Reactive",',
+                "        threshold=1,",
+                "    ),",
+                "    actions=[",
+                "        SendNotification(",
+                '            block_document_id="your-slack-webhook-block-id",',
+                '            subject="Flow Completed",',
+                '            body="{{ flow_run.name }} completed successfully.",',
+                "        )",
+                "    ],",
+                ")",
+                "```",
+                "",
+            ]
+        )
 
     return lines
 
@@ -649,147 +661,161 @@ def _generate_block_setup_section(connections: list[Any]) -> list[str]:
 
         # Block setup based on connection type
         if conn_type in ("postgres", "postgresql"):
-            lines.extend([
-                f"### Database Block: `{conn_name}`",
-                "",
-                "```bash",
-                "# Register the SqlAlchemy block type",
-                "prefect block register -m prefect_sqlalchemy",
-                "```",
-                "",
-                "```python",
-                "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
-                "",
-                f'{conn_name.replace("-", "_")}_block = SqlAlchemyConnector(',
-                '    connection_info=ConnectionComponents(',
-                '        driver="postgresql+psycopg2",',
-                '        host="your-host",',
-                '        port=5432,',
-                '        database="your-db",',
-                '        username="your-user",',
-                '        password="your-password",  # Use Secret block for production',
-                "    )",
-                ")",
-                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### Database Block: `{conn_name}`",
+                    "",
+                    "```bash",
+                    "# Register the SqlAlchemy block type",
+                    "prefect block register -m prefect_sqlalchemy",
+                    "```",
+                    "",
+                    "```python",
+                    "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
+                    "",
+                    f"{conn_name.replace('-', '_')}_block = SqlAlchemyConnector(",
+                    "    connection_info=ConnectionComponents(",
+                    '        driver="postgresql+psycopg2",',
+                    '        host="your-host",',
+                    "        port=5432,",
+                    '        database="your-db",',
+                    '        username="your-user",',
+                    '        password="your-password",  # Use Secret block for production',
+                    "    )",
+                    ")",
+                    f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                    "```",
+                    "",
+                ]
+            )
         elif conn_type in ("mysql",):
-            lines.extend([
-                f"### Database Block: `{conn_name}`",
-                "",
-                "```python",
-                "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
-                "",
-                f'{conn_name.replace("-", "_")}_block = SqlAlchemyConnector(',
-                '    connection_info=ConnectionComponents(',
-                '        driver="mysql+pymysql",',
-                '        host="your-host",',
-                '        port=3306,',
-                '        database="your-db",',
-                '        username="your-user",',
-                '        password="your-password",',
-                "    )",
-                ")",
-                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### Database Block: `{conn_name}`",
+                    "",
+                    "```python",
+                    "from prefect_sqlalchemy import SqlAlchemyConnector, ConnectionComponents",
+                    "",
+                    f"{conn_name.replace('-', '_')}_block = SqlAlchemyConnector(",
+                    "    connection_info=ConnectionComponents(",
+                    '        driver="mysql+pymysql",',
+                    '        host="your-host",',
+                    "        port=3306,",
+                    '        database="your-db",',
+                    '        username="your-user",',
+                    '        password="your-password",',
+                    "    )",
+                    ")",
+                    f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                    "```",
+                    "",
+                ]
+            )
         elif conn_type in ("aws", "s3"):
-            lines.extend([
-                f"### AWS Credentials Block: `{conn_name}`",
-                "",
-                "```bash",
-                "# Register AWS block types",
-                "prefect block register -m prefect_aws",
-                "```",
-                "",
-                "```python",
-                "from prefect_aws import AwsCredentials",
-                "",
-                f'{conn_name.replace("-", "_")}_block = AwsCredentials(',
-                '    aws_access_key_id="your-key-id",',
-                '    aws_secret_access_key="your-secret-key",',
-                '    region_name="us-east-1",',
-                ")",
-                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### AWS Credentials Block: `{conn_name}`",
+                    "",
+                    "```bash",
+                    "# Register AWS block types",
+                    "prefect block register -m prefect_aws",
+                    "```",
+                    "",
+                    "```python",
+                    "from prefect_aws import AwsCredentials",
+                    "",
+                    f"{conn_name.replace('-', '_')}_block = AwsCredentials(",
+                    '    aws_access_key_id="your-key-id",',
+                    '    aws_secret_access_key="your-secret-key",',
+                    '    region_name="us-east-1",',
+                    ")",
+                    f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                    "```",
+                    "",
+                ]
+            )
         elif conn_type in ("google_cloud", "google_cloud_platform", "bigquery"):
-            lines.extend([
-                f"### GCP Credentials Block: `{conn_name}`",
-                "",
-                "```bash",
-                "# Register GCP block types",
-                "prefect block register -m prefect_gcp",
-                "```",
-                "",
-                "```python",
-                "from prefect_gcp import GcpCredentials",
-                "",
-                f'{conn_name.replace("-", "_")}_block = GcpCredentials(',
-                '    service_account_file="/path/to/service-account.json",',
-                "    # Or use service_account_info for inline JSON",
-                ")",
-                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### GCP Credentials Block: `{conn_name}`",
+                    "",
+                    "```bash",
+                    "# Register GCP block types",
+                    "prefect block register -m prefect_gcp",
+                    "```",
+                    "",
+                    "```python",
+                    "from prefect_gcp import GcpCredentials",
+                    "",
+                    f"{conn_name.replace('-', '_')}_block = GcpCredentials(",
+                    '    service_account_file="/path/to/service-account.json",',
+                    "    # Or use service_account_info for inline JSON",
+                    ")",
+                    f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                    "```",
+                    "",
+                ]
+            )
         elif conn_type in ("slack", "slack_webhook"):
-            lines.extend([
-                f"### Slack Webhook Block: `{conn_name}`",
-                "",
-                "```python",
-                "from prefect.blocks.notifications import SlackWebhook",
-                "",
-                f'{conn_name.replace("-", "_")}_block = SlackWebhook(',
-                '    url="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"',
-                ")",
-                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### Slack Webhook Block: `{conn_name}`",
+                    "",
+                    "```python",
+                    "from prefect.blocks.notifications import SlackWebhook",
+                    "",
+                    f"{conn_name.replace('-', '_')}_block = SlackWebhook(",
+                    '    url="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"',
+                    ")",
+                    f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                    "```",
+                    "",
+                ]
+            )
         elif conn_type == "snowflake":
-            lines.extend([
-                f"### Snowflake Block: `{conn_name}`",
-                "",
-                "```bash",
-                "# Register Snowflake block types",
-                "prefect block register -m prefect_snowflake",
-                "```",
-                "",
-                "```python",
-                "from prefect_snowflake import SnowflakeCredentials, SnowflakeConnector",
-                "",
-                f'{conn_name.replace("-", "_")}_creds = SnowflakeCredentials(',
-                '    account="your-account",',
-                '    user="your-user",',
-                '    password="your-password",',
-                ")",
-                f'{conn_name.replace("-", "_")}_block = SnowflakeConnector(',
-                f'    credentials={conn_name.replace("-", "_")}_creds,',
-                '    database="your-db",',
-                '    schema="your-schema",',
-                '    warehouse="your-warehouse",',
-                ")",
-                f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### Snowflake Block: `{conn_name}`",
+                    "",
+                    "```bash",
+                    "# Register Snowflake block types",
+                    "prefect block register -m prefect_snowflake",
+                    "```",
+                    "",
+                    "```python",
+                    "from prefect_snowflake import SnowflakeCredentials, SnowflakeConnector",
+                    "",
+                    f"{conn_name.replace('-', '_')}_creds = SnowflakeCredentials(",
+                    '    account="your-account",',
+                    '    user="your-user",',
+                    '    password="your-password",',
+                    ")",
+                    f"{conn_name.replace('-', '_')}_block = SnowflakeConnector(",
+                    f"    credentials={conn_name.replace('-', '_')}_creds,",
+                    '    database="your-db",',
+                    '    schema="your-schema",',
+                    '    warehouse="your-warehouse",',
+                    ")",
+                    f'{conn_name.replace("-", "_")}_block.save("{conn_name}")',
+                    "```",
+                    "",
+                ]
+            )
         else:
             # Generic block guidance
-            lines.extend([
-                f"### Custom Block: `{conn_name}` (type: {conn_type})",
-                "",
-                "```python",
-                "from prefect.blocks.core import Block",
-                "",
-                "# Create a custom block or use appropriate prefect integration",
-                f"# Check: https://prefecthq.github.io/prefect-{conn_type}/",
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### Custom Block: `{conn_name}` (type: {conn_type})",
+                    "",
+                    "```python",
+                    "from prefect.blocks.core import Block",
+                    "",
+                    "# Create a custom block or use appropriate prefect integration",
+                    f"# Check: https://prefecthq.github.io/prefect-{conn_type}/",
+                    "```",
+                    "",
+                ]
+            )
 
     return lines
 
@@ -903,16 +929,18 @@ def _generate_schedule_section(settings: DAGSettings) -> list[str]:
         lines.append(f"This is the `{schedule}` preset: {SCHEDULE_PRESETS[schedule]}")
         lines.append("")
 
-    lines.extend([
-        "**Prefect Equivalent**:",
-        "",
-        "Option 1: Deployment with cron schedule",
-        "```yaml",
-        "# prefect.yaml",
-        "deployments:",
-        f"  - name: {settings.dag_id or 'my-flow'}",
-        "    schedule:",
-    ])
+    lines.extend(
+        [
+            "**Prefect Equivalent**:",
+            "",
+            "Option 1: Deployment with cron schedule",
+            "```yaml",
+            "# prefect.yaml",
+            "deployments:",
+            f"  - name: {settings.dag_id or 'my-flow'}",
+            "    schedule:",
+        ]
+    )
 
     # Convert Airflow preset to cron if possible
     cron_value = _convert_schedule_to_cron(schedule) if schedule else None
@@ -921,39 +949,43 @@ def _generate_schedule_section(settings: DAGSettings) -> list[str]:
     else:
         lines.append(f'      cron: "{schedule}"  # Verify this cron expression')
 
-    lines.extend([
-        "```",
-        "",
-        "Option 2: Using `flow.serve()` for simple scheduling",
-        "```python",
-        "if __name__ == '__main__':",
-    ])
+    lines.extend(
+        [
+            "```",
+            "",
+            "Option 2: Using `flow.serve()` for simple scheduling",
+            "```python",
+            "if __name__ == '__main__':",
+        ]
+    )
 
     if cron_value:
         lines.append(f'    my_flow.serve(name="{settings.dag_id}", cron="{cron_value}")')
     else:
         lines.append(f'    my_flow.serve(name="{settings.dag_id}", cron="{schedule}")')
 
-    lines.extend([
-        "```",
-        "",
-        "Option 3: Using interval schedules",
-        "```python",
-        "from datetime import timedelta",
-        "from prefect import flow",
-        "",
-        "@flow",
-        "def my_flow():",
-        "    pass",
-        "",
-        "if __name__ == '__main__':",
-        "    my_flow.serve(",
-        f'        name="{settings.dag_id}",',
-        "        interval=timedelta(hours=1),  # Adjust as needed",
-        "    )",
-        "```",
-        "",
-    ])
+    lines.extend(
+        [
+            "```",
+            "",
+            "Option 3: Using interval schedules",
+            "```python",
+            "from datetime import timedelta",
+            "from prefect import flow",
+            "",
+            "@flow",
+            "def my_flow():",
+            "    pass",
+            "",
+            "if __name__ == '__main__':",
+            "    my_flow.serve(",
+            f'        name="{settings.dag_id}",',
+            "        interval=timedelta(hours=1),  # Adjust as needed",
+            "    )",
+            "```",
+            "",
+        ]
+    )
 
     return lines
 
@@ -969,42 +1001,46 @@ def _generate_catchup_section(settings: DAGSettings) -> list[str]:
     ]
 
     if catchup:
-        lines.extend([
-            "**Behavior**: Airflow will backfill runs for all missed schedule intervals.",
-            "",
-            "**Prefect Equivalent**:",
-            "",
-            "Prefect does not automatically backfill by default. To run backfills:",
-            "",
-            "1. **Manual backfill via CLI**:",
-            "```bash",
-            "# Run flow for a specific date",
-            f'prefect deployment run "{settings.dag_id}/my-deployment" --param execution_date=2024-01-01',
-            "```",
-            "",
-            "2. **Programmatic backfill**:",
-            "```python",
-            "from prefect.deployments import run_deployment",
-            "from datetime import date, timedelta",
-            "",
-            "def backfill(start_date: date, end_date: date):",
-            "    current = start_date",
-            "    while current <= end_date:",
-            '        run_deployment("my-flow/my-deployment", parameters={"execution_date": str(current)})',
-            "        current += timedelta(days=1)",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "**Behavior**: Airflow will backfill runs for all missed schedule intervals.",
+                "",
+                "**Prefect Equivalent**:",
+                "",
+                "Prefect does not automatically backfill by default. To run backfills:",
+                "",
+                "1. **Manual backfill via CLI**:",
+                "```bash",
+                "# Run flow for a specific date",
+                f'prefect deployment run "{settings.dag_id}/my-deployment" --param execution_date=2024-01-01',
+                "```",
+                "",
+                "2. **Programmatic backfill**:",
+                "```python",
+                "from prefect.deployments import run_deployment",
+                "from datetime import date, timedelta",
+                "",
+                "def backfill(start_date: date, end_date: date):",
+                "    current = start_date",
+                "    while current <= end_date:",
+                '        run_deployment("my-flow/my-deployment", parameters={"execution_date": str(current)})',
+                "        current += timedelta(days=1)",
+                "```",
+                "",
+            ]
+        )
     else:
-        lines.extend([
-            "**Behavior**: Airflow skips missed schedule intervals (no backfill).",
-            "",
-            "**Prefect Equivalent**:",
-            "",
-            "This is Prefect's default behavior. No additional configuration needed.",
-            "Prefect deployments only trigger for future scheduled times.",
-            "",
-        ])
+        lines.extend(
+            [
+                "**Behavior**: Airflow skips missed schedule intervals (no backfill).",
+                "",
+                "**Prefect Equivalent**:",
+                "",
+                "This is Prefect's default behavior. No additional configuration needed.",
+                "Prefect deployments only trigger for future scheduled times.",
+                "",
+            ]
+        )
 
     return lines
 
@@ -1037,13 +1073,15 @@ def _generate_retry_section(settings: DAGSettings) -> list[str]:
         lines.append(f"- `email_on_retry`: `{email_on_retry}`")
 
     lines.append("")
-    lines.extend([
-        "**Prefect Equivalent**:",
-        "",
-        "```python",
-        "from prefect import flow, task",
-        "",
-    ])
+    lines.extend(
+        [
+            "**Prefect Equivalent**:",
+            "",
+            "```python",
+            "from prefect import flow, task",
+            "",
+        ]
+    )
 
     # Build decorator args
     decorator_args = []
@@ -1058,36 +1096,40 @@ def _generate_retry_section(settings: DAGSettings) -> list[str]:
 
     decorator_str = ", ".join(decorator_args) if decorator_args else ""
 
-    lines.extend([
-        "# Apply retries at task level",
-        f"@task({decorator_str})" if decorator_str else "@task",
-        "def my_task():",
-        "    pass",
-        "",
-        "# Or at flow level (applies to all tasks)",
-        f"@flow({decorator_str})" if decorator_str else "@flow",
-        "def my_flow():",
-        "    pass",
-        "```",
-        "",
-    ])
+    lines.extend(
+        [
+            "# Apply retries at task level",
+            f"@task({decorator_str})" if decorator_str else "@task",
+            "def my_task():",
+            "    pass",
+            "",
+            "# Or at flow level (applies to all tasks)",
+            f"@flow({decorator_str})" if decorator_str else "@flow",
+            "def my_flow():",
+            "    pass",
+            "```",
+            "",
+        ]
+    )
 
     # Add email notification guidance if needed
     if email or email_on_failure or email_on_retry:
-        lines.extend([
-            "**Email Notifications**:",
-            "",
-            "In Prefect, use notification blocks or automations:",
-            "",
-            "```python",
-            "from prefect.blocks.notifications import SlackWebhook",
-            "",
-            "# Or use Prefect Automations in the UI to:",
-            "# 1. Trigger on flow/task state changes (Failed, Retrying)",
-            "# 2. Send notifications via email, Slack, PagerDuty, etc.",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "**Email Notifications**:",
+                "",
+                "In Prefect, use notification blocks or automations:",
+                "",
+                "```python",
+                "from prefect.blocks.notifications import SlackWebhook",
+                "",
+                "# Or use Prefect Automations in the UI to:",
+                "# 1. Trigger on flow/task state changes (Failed, Retrying)",
+                "# 2. Send notifications via email, Slack, PagerDuty, etc.",
+                "```",
+                "",
+            ]
+        )
 
     return lines
 
@@ -1100,49 +1142,55 @@ def _generate_concurrency_section(settings: DAGSettings) -> list[str]:
     ]
 
     if settings.max_active_runs is not None:
-        lines.extend([
-            f"**Airflow Setting**: `max_active_runs` = `{settings.max_active_runs}`",
-            "",
-            "This limits concurrent DAG runs. In Prefect:",
-            "",
-        ])
+        lines.extend(
+            [
+                f"**Airflow Setting**: `max_active_runs` = `{settings.max_active_runs}`",
+                "",
+                "This limits concurrent DAG runs. In Prefect:",
+                "",
+            ]
+        )
 
     if settings.concurrency is not None:
-        lines.extend([
-            f"**Airflow Setting**: `concurrency` = `{settings.concurrency}`",
-            "",
-            "This limits concurrent tasks within the DAG. In Prefect:",
-            "",
-        ])
+        lines.extend(
+            [
+                f"**Airflow Setting**: `concurrency` = `{settings.concurrency}`",
+                "",
+                "This limits concurrent tasks within the DAG. In Prefect:",
+                "",
+            ]
+        )
 
     max_runs = settings.max_active_runs or settings.concurrency or 1
 
-    lines.extend([
-        "**Prefect Equivalent**:",
-        "",
-        "Option 1: Global concurrency limit (Prefect Cloud/Server)",
-        "```python",
-        "from prefect import flow",
-        "from prefect.concurrency.sync import concurrency",
-        "",
-        "@flow",
-        "def my_flow():",
-        f'    with concurrency("{settings.dag_id}-limit", occupy={max_runs}):',
-        "        # Flow logic here",
-        "        pass",
-        "```",
-        "",
-        "Option 2: Create concurrency limit via CLI",
-        "```bash",
-        f'prefect concurrency-limit create "{settings.dag_id}-limit" {max_runs}',
-        "```",
-        "",
-        "Option 3: Work pool concurrency (limits all flows in pool)",
-        "```bash",
-        f"prefect work-pool update my-pool --concurrency-limit {max_runs}",
-        "```",
-        "",
-    ])
+    lines.extend(
+        [
+            "**Prefect Equivalent**:",
+            "",
+            "Option 1: Global concurrency limit (Prefect Cloud/Server)",
+            "```python",
+            "from prefect import flow",
+            "from prefect.concurrency.sync import concurrency",
+            "",
+            "@flow",
+            "def my_flow():",
+            f'    with concurrency("{settings.dag_id}-limit", occupy={max_runs}):',
+            "        # Flow logic here",
+            "        pass",
+            "```",
+            "",
+            "Option 2: Create concurrency limit via CLI",
+            "```bash",
+            f'prefect concurrency-limit create "{settings.dag_id}-limit" {max_runs}',
+            "```",
+            "",
+            "Option 3: Work pool concurrency (limits all flows in pool)",
+            "```bash",
+            f"prefect work-pool update my-pool --concurrency-limit {max_runs}",
+            "```",
+            "",
+        ]
+    )
 
     return lines
 
@@ -1178,7 +1226,7 @@ def _generate_autopause_section(settings: DAGSettings) -> list[str]:
         "    trigger=EventTrigger(",
         '        expect=["prefect.flow-run.Failed"],',
         f"        threshold={max_failed},",
-        '        within=timedelta(hours=24),  # Adjust window as needed',
+        "        within=timedelta(hours=24),  # Adjust window as needed",
         "    ),",
         "    actions=[",
         "        # Pause deployment action",
@@ -1232,38 +1280,44 @@ def _generate_callbacks_section(settings: DAGSettings) -> list[str]:
     for callback in settings.callbacks:
         lines.append(f"- `{callback.callback_type}` -> `{callback.function_name}`")
 
-    lines.extend([
-        "",
-        "**Prefect Equivalent**:",
-        "",
-        "Prefect uses state change hooks and automations:",
-        "",
-        "```python",
-        "from prefect import flow",
-        "from prefect.states import Failed, Completed",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "**Prefect Equivalent**:",
+            "",
+            "Prefect uses state change hooks and automations:",
+            "",
+            "```python",
+            "from prefect import flow",
+            "from prefect.states import Failed, Completed",
+            "",
+        ]
+    )
 
     # Generate appropriate hook examples based on callback types
     callback_types = {c.callback_type for c in settings.callbacks}
 
     if "on_failure_callback" in callback_types:
-        lines.extend([
-            "def on_failure(flow, flow_run, state):",
-            '    """Called when flow fails."""',
-            "    # Your failure handling logic",
-            '    print(f"Flow {flow.name} failed: {state.message}")',
-            "",
-        ])
+        lines.extend(
+            [
+                "def on_failure(flow, flow_run, state):",
+                '    """Called when flow fails."""',
+                "    # Your failure handling logic",
+                '    print(f"Flow {flow.name} failed: {state.message}")',
+                "",
+            ]
+        )
 
     if "on_success_callback" in callback_types:
-        lines.extend([
-            "def on_success(flow, flow_run, state):",
-            '    """Called when flow succeeds."""',
-            "    # Your success handling logic",
-            '    print(f"Flow {flow.name} completed successfully")',
-            "",
-        ])
+        lines.extend(
+            [
+                "def on_success(flow, flow_run, state):",
+                '    """Called when flow succeeds."""',
+                "    # Your success handling logic",
+                '    print(f"Flow {flow.name} completed successfully")',
+                "",
+            ]
+        )
 
     # Build hook list for decorator
     hooks = []
@@ -1274,33 +1328,39 @@ def _generate_callbacks_section(settings: DAGSettings) -> list[str]:
 
     if hooks:
         hooks_str = ", ".join(hooks)
-        lines.extend([
-            f"@flow({hooks_str})",
-            "def my_flow():",
-            "    pass",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                f"@flow({hooks_str})",
+                "def my_flow():",
+                "    pass",
+                "```",
+                "",
+            ]
+        )
     else:
-        lines.extend([
-            "@flow",
-            "def my_flow():",
-            "    pass",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "@flow",
+                "def my_flow():",
+                "    pass",
+                "```",
+                "",
+            ]
+        )
 
     if "sla_miss_callback" in callback_types:
-        lines.extend([
-            "**SLA Miss Handling**:",
-            "",
-            "For SLA monitoring, use Prefect Automations:",
-            "",
-            "1. Create automation triggered by flow run duration",
-            "2. Set threshold for SLA breach",
-            "3. Action: Send notification or trigger remediation flow",
-            "",
-        ])
+        lines.extend(
+            [
+                "**SLA Miss Handling**:",
+                "",
+                "For SLA monitoring, use Prefect Automations:",
+                "",
+                "1. Create automation triggered by flow run duration",
+                "2. Set threshold for SLA breach",
+                "3. Action: Send notification or trigger remediation flow",
+                "",
+            ]
+        )
 
     return lines
 
@@ -1363,11 +1423,13 @@ def _generate_connections_section(connections: list[Any]) -> list[str]:
 
         lines.append(f"| `{conn_name}` | `{conn_type}` | `{block_type}` |")
 
-    lines.extend([
-        "",
-        "See the generated `combined_code` in the conversion output for Block scaffolds.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "See the generated `combined_code` in the conversion output for Block scaffolds.",
+            "",
+        ]
+    )
 
     return lines
 
@@ -1400,11 +1462,13 @@ def _generate_variables_section(variables: list[Any]) -> list[str]:
 
         lines.append(f"| `{var_name}` | {usage} | {sensitive} | {prefect_equiv} |")
 
-    lines.extend([
-        "",
-        "See the generated scaffolds in the conversion output for implementation options.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "See the generated scaffolds in the conversion output for implementation options.",
+            "",
+        ]
+    )
 
     return lines
 
@@ -1453,30 +1517,32 @@ def _generate_action_checklist(
 
     lines.extend(checklist_items)
 
-    lines.extend([
-        "",
-        "### Deployment",
-        "",
-        "- [ ] Create work pool for flow execution",
-        "- [ ] Create deployment with schedule",
-        "- [ ] Configure concurrency limits (if applicable)",
-        "- [ ] Set up monitoring and alerting",
-        "",
-        "### Validation",
-        "",
-        "- [ ] Run generated tests",
-        "- [ ] Compare output with Airflow DAG runs",
-        "- [ ] Verify retry behavior",
-        "- [ ] Verify notification/callback behavior",
-        "",
-        "### Cutover",
-        "",
-        "- [ ] Pause Airflow DAG",
-        "- [ ] Activate Prefect deployment",
-        "- [ ] Monitor first few scheduled runs",
-        "- [ ] Archive Airflow DAG after validation period",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "### Deployment",
+            "",
+            "- [ ] Create work pool for flow execution",
+            "- [ ] Create deployment with schedule",
+            "- [ ] Configure concurrency limits (if applicable)",
+            "- [ ] Set up monitoring and alerting",
+            "",
+            "### Validation",
+            "",
+            "- [ ] Run generated tests",
+            "- [ ] Compare output with Airflow DAG runs",
+            "- [ ] Verify retry behavior",
+            "- [ ] Verify notification/callback behavior",
+            "",
+            "### Cutover",
+            "",
+            "- [ ] Pause Airflow DAG",
+            "- [ ] Activate Prefect deployment",
+            "- [ ] Monitor first few scheduled runs",
+            "- [ ] Archive Airflow DAG after validation period",
+            "",
+        ]
+    )
 
     return lines
 

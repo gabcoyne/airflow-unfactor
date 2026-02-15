@@ -11,7 +11,7 @@ CONCEPT_EXPLANATIONS = {
         "prefect_equivalent": "Return values / Artifacts",
         "prefect_advantages": [
             "Direct in-memory passing - no database round-trip",
-            "Type-safe with Python's native types", 
+            "Type-safe with Python's native types",
             "No size limits (Airflow XCom has DB constraints)",
             "Automatic serialization of complex objects",
         ],
@@ -141,14 +141,15 @@ async def explain_concept(concept: str, include_external_context: bool = True) -
         result = CONCEPT_EXPLANATIONS[key]
         if include_external_context:
             client = ExternalMCPClient.from_env()
-            external_context["prefect"] = await client.call_prefect_search(
-                f"{concept} in Prefect"
-            )
+            external_context["prefect"] = await client.call_prefect_search(f"{concept} in Prefect")
         if external_context:
             result = {**result, "external_context": external_context}
         return json.dumps(result, indent=2)
 
-    return json.dumps({
-        "error": f"Unknown concept: {concept}",
-        "available": list(CONCEPT_EXPLANATIONS.keys()),
-    }, indent=2)
+    return json.dumps(
+        {
+            "error": f"Unknown concept: {concept}",
+            "available": list(CONCEPT_EXPLANATIONS.keys()),
+        },
+        indent=2,
+    )

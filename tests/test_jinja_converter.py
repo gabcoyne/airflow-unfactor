@@ -4,14 +4,12 @@ Tests the detection and conversion of Airflow Jinja2 template patterns
 to Prefect runtime context expressions.
 """
 
-import pytest
 from airflow_unfactor.converters.jinja import (
-    JinjaPattern,
     JinjaPatternType,
-    detect_jinja_patterns,
-    convert_jinja_to_fstring,
-    has_jinja_patterns,
     analyze_jinja_in_code,
+    convert_jinja_to_fstring,
+    detect_jinja_patterns,
+    has_jinja_patterns,
 )
 
 
@@ -73,9 +71,7 @@ class TestDetectJinjaPatterns:
 
     def test_detect_macros_ds_format(self):
         """Detect {{ macros.ds_format(ds, 'format') }} pattern."""
-        patterns = detect_jinja_patterns(
-            "formatted: {{ macros.ds_format(ds, '%Y/%m/%d') }}"
-        )
+        patterns = detect_jinja_patterns("formatted: {{ macros.ds_format(ds, '%Y/%m/%d') }}")
 
         assert len(patterns) == 1
         assert patterns[0].pattern_type == JinjaPatternType.MACROS_DS_FORMAT
@@ -105,9 +101,7 @@ class TestDetectJinjaPatterns:
 
     def test_detect_multiple_patterns(self):
         """Detect multiple patterns in one string."""
-        patterns = detect_jinja_patterns(
-            "from {{ ds }} to {{ macros.ds_add(ds, 7) }}"
-        )
+        patterns = detect_jinja_patterns("from {{ ds }} to {{ macros.ds_add(ds, 7) }}")
 
         assert len(patterns) == 2
         assert patterns[0].pattern_type == JinjaPatternType.DS
@@ -170,9 +164,7 @@ class TestConvertJinjaToFstring:
 
     def test_convert_macros_ds_add_positive(self):
         """Convert {{ macros.ds_add(ds, N) }} with positive days."""
-        converted, imports, warnings = convert_jinja_to_fstring(
-            "{{ macros.ds_add(ds, 7) }}"
-        )
+        converted, imports, warnings = convert_jinja_to_fstring("{{ macros.ds_add(ds, 7) }}")
 
         assert "timedelta(days=7)" in converted
         assert "strftime('%Y-%m-%d')" in converted
@@ -181,9 +173,7 @@ class TestConvertJinjaToFstring:
 
     def test_convert_macros_ds_add_negative(self):
         """Convert {{ macros.ds_add(ds, -N) }} with negative days."""
-        converted, imports, warnings = convert_jinja_to_fstring(
-            "{{ macros.ds_add(ds, -3) }}"
-        )
+        converted, imports, warnings = convert_jinja_to_fstring("{{ macros.ds_add(ds, -3) }}")
 
         assert "timedelta(days=3)" in converted
         assert " - timedelta" in converted  # subtraction
@@ -213,9 +203,7 @@ class TestConvertJinjaToFstring:
 
     def test_convert_unknown_warns(self):
         """Warn on unrecognized patterns."""
-        converted, imports, warnings = convert_jinja_to_fstring(
-            "{{ dag_run.conf.key }}"
-        )
+        converted, imports, warnings = convert_jinja_to_fstring("{{ dag_run.conf.key }}")
 
         assert len(warnings) == 1
         assert "manual conversion required" in warnings[0]
@@ -332,7 +320,9 @@ class TestRealWorldPatterns:
 
     def test_bash_command_template(self):
         """Convert BashOperator command with templates."""
-        template = 'aws s3 cp "s3://bucket/{{ ds }}/data.csv" /tmp/ && python process.py --date {{ ds }}'
+        template = (
+            'aws s3 cp "s3://bucket/{{ ds }}/data.csv" /tmp/ && python process.py --date {{ ds }}'
+        )
         converted, imports, warnings = convert_jinja_to_fstring(template)
 
         assert converted.startswith('f"')

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from aiohttp import web
-from aiohttp.web import Request, Response
+from aiohttp.web import Request, Response, StreamResponse
 
 from airflow_unfactor.tools.analyze import analyze_dag
 from airflow_unfactor.tools.convert import convert_dag
@@ -137,11 +137,13 @@ async def health_handler(request: Request) -> Response:
     """Handle /health requests."""
     from datetime import UTC, datetime
 
-    return json_response({
-        "status": "ok",
-        "version": "0.1.0",
-        "timestamp": datetime.now(UTC).isoformat(),
-    })
+    return json_response(
+        {
+            "status": "ok",
+            "version": "0.1.0",
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
 
 
 def get_ui_path() -> Path | None:
@@ -196,7 +198,8 @@ def create_app(ui_path: Path | None = None) -> web.Application:
 
     # Serve UI if available
     if ui_path and ui_path.exists():
-        async def index_handler(request: Request) -> Response:
+
+        async def index_handler(request: Request) -> StreamResponse:
             index_file = ui_path / "index.html"
             return web.FileResponse(index_file)
 

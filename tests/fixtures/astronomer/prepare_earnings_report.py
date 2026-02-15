@@ -1,23 +1,23 @@
 """
 ## Prepares the earnings report for a given toy
 
-The toy can be selected in manual runs as an Airflow param. 
+The toy can be selected in manual runs as an Airflow param.
 By default the report will be on our flagship product, the Carrot Plushy.
 """
 
 from airflow.datasets import Dataset
 from airflow.decorators import dag, task
-from airflow.models.param import Param
 from airflow.models.baseoperator import chain
+from airflow.models.param import Param
+from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.timetables.datasets import DatasetOrTimeSchedule
 from airflow.timetables.trigger import CronTriggerTimetable
-from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
-from pendulum import datetime
 from include.helpers import (
-    set_up_report_platform,
     execute_report_mailer,
+    set_up_report_platform,
     tear_down_report_platform,
 )
+from pendulum import datetime
 
 SNOWFLAKE_CONN_ID = "snowflake_de_team"
 
@@ -70,15 +70,13 @@ def prepare_earnings_report():
     @task(retries=0)
     def get_key_metrics(**context):
         key_metric = context["params"]["toy_to_report"]
-        simulate_metric_fetch_failure = context["params"][
-            "simulate_metric_fetch_failure"
-        ]
+        simulate_metric_fetch_failure = context["params"]["simulate_metric_fetch_failure"]
         if simulate_metric_fetch_failure:
             raise Exception("Metric fetch failed!")
         return key_metric
 
     get_total_earnings = SnowflakeOperator(
-        task_id=f"get_total_earnings",
+        task_id="get_total_earnings",
         snowflake_conn_id=SNOWFLAKE_CONN_ID,
         sql="""
         SELECT SUM(REVENUE) FROM sales_reports_table 

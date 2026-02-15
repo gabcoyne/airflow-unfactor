@@ -73,9 +73,7 @@ class DependencyGraph:
             if not self.upstream[task]:
                 levels[task] = 0
             else:
-                levels[task] = 1 + max(
-                    get_level(up, visited) for up in self.upstream[task]
-                )
+                levels[task] = 1 + max(get_level(up, visited) for up in self.upstream[task])
             return levels[task]
 
         for task in self.all_tasks:
@@ -112,6 +110,7 @@ def build_dependency_graph(dependencies: list[list[str]], task_ids: list[str]) -
             graph.add_dependency(upstream, downstream)
 
     return graph
+
 
 def _build_task_decorator(
     op: dict,
@@ -176,9 +175,7 @@ def _build_task_decorator(
                     )
             else:
                 decorator_args.append(f"retry_delay_seconds=60  # TODO: Convert {retry_delay}")
-                warnings.append(
-                    f"Could not parse retry_delay '{retry_delay}' - defaulting to 60s"
-                )
+                warnings.append(f"Could not parse retry_delay '{retry_delay}' - defaulting to 60s")
 
     # Check for exponential backoff
     if op.get("retry_exponential_backoff"):
@@ -226,31 +223,31 @@ Key differences from Airflow:
 - Retries and logging are built into decorators
 """
 ''',
-    "xcom": '''# ✨ Prefect Advantage: Direct Data Passing
+    "xcom": """# ✨ Prefect Advantage: Direct Data Passing
 # In Airflow, you'd use ti.xcom_push() and ti.xcom_pull() to pass
 # data between tasks, hitting the metadata database each time.
 # In Prefect, just return values — data flows in-memory between tasks.
 # Faster, simpler, and no arbitrary size limits.
-''',
-    "task": '''# ✨ Prefect Advantage: Simple Task Definition
+""",
+    "task": """# ✨ Prefect Advantage: Simple Task Definition
 # No need for PythonOperator wrapper — just decorate your function.
 # The @task decorator handles retries, logging, and state management.
-''',
-    "flow": '''# ✨ Prefect Advantage: Flow as Function
+""",
+    "flow": """# ✨ Prefect Advantage: Flow as Function
 # No DAG class, no context managers, no >> operators.
 # Just call tasks in order — Prefect tracks dependencies automatically.
-''',
-    "branch": '''# ✨ Prefect Advantage: Native Python Branching
+""",
+    "branch": """# ✨ Prefect Advantage: Native Python Branching
 # No BranchPythonOperator needed — just use if/else.
 # Prefect only runs the tasks you actually call.
-''',
-    "sensor": '''# ✨ Prefect Note: Sensor Conversion
+""",
+    "sensor": """# ✨ Prefect Note: Sensor Conversion
 # Airflow sensors block a worker slot while polling.
 # Consider Prefect alternatives:
 # - Event-driven triggers (no polling needed)
 # - Lightweight scheduled flows that check conditions
 # - Webhooks for push-based notifications
-''',
+""",
 }
 
 
@@ -260,39 +257,39 @@ def convert_dag_to_flow(
     include_comments: bool = True,
 ) -> dict[str, Any]:
     """Convert parsed DAG info to a Prefect flow.
-    
+
     Args:
         dag_info: Parsed DAG information
         original_code: Original DAG source code
         include_comments: Include educational comments
-        
+
     Returns:
         Dictionary with flow_code, imports, warnings, mapping
     """
     dag_id = dag_info.get("dag_id", "converted_flow")
     operators = dag_info.get("operators", [])
-    
+
     # Build imports
     imports = [
         "from prefect import flow, task",
     ]
-    
+
     # Check if we need additional imports
     has_bash = any(op.get("type") == "BashOperator" for op in operators)
     if has_bash:
         imports.append("import subprocess")
-    
+
     # Start building the flow code
     lines = []
-    
+
     # Add header comment
     if include_comments:
         lines.append(COMMENTS["header"].format(dag_id=dag_id))
-    
+
     # Add imports
     lines.extend(imports)
     lines.append("")
-    
+
     # Convert operators to tasks
     task_mapping = {}
     warnings = []
@@ -329,7 +326,9 @@ def convert_dag_to_flow(
             lines.append('    """Converted from BashOperator."""')
             lines.append("    import subprocess")
             lines.append("    # TODO: Add original bash command")
-            lines.append("    result = subprocess.run(['echo', 'hello'], capture_output=True, text=True)")
+            lines.append(
+                "    result = subprocess.run(['echo', 'hello'], capture_output=True, text=True)"
+            )
             lines.append("    return result.stdout")
             lines.append("")
             task_mapping[task_id] = task_id
@@ -343,7 +342,9 @@ def convert_dag_to_flow(
             lines.append("    return True  # or False")
             lines.append("")
             task_mapping[task_id] = f"{task_id}_decide"
-            warnings.append(f"BranchPythonOperator '{task_id}' converted to function - review branching logic")
+            warnings.append(
+                f"BranchPythonOperator '{task_id}' converted to function - review branching logic"
+            )
 
         elif op_type in ("DummyOperator", "EmptyOperator"):
             # Skip dummy operators
@@ -363,7 +364,9 @@ def convert_dag_to_flow(
             lines.append("    pass")
             lines.append("")
             task_mapping[task_id] = task_id
-            warnings.append(f"Sensor '{task_id}' converted to polling task - consider Prefect triggers")
+            warnings.append(
+                f"Sensor '{task_id}' converted to polling task - consider Prefect triggers"
+            )
 
         else:
             # Generic conversion
@@ -375,7 +378,7 @@ def convert_dag_to_flow(
             lines.append("")
             task_mapping[task_id] = task_id
             warnings.append(f"Operator '{op_type}' requires manual review")
-    
+
     # Extract dependencies from original code
     dependencies = extract_dependencies(original_code)
     task_ids = list(task_mapping.keys())
@@ -406,7 +409,9 @@ def convert_dag_to_flow(
             for level, group in enumerate(execution_groups):
                 if include_comments and len(execution_groups) > 1:
                     if len(group) > 1:
-                        lines.append(f"    # Level {level}: {', '.join(group)} (can run in parallel)")
+                        lines.append(
+                            f"    # Level {level}: {', '.join(group)} (can run in parallel)"
+                        )
                     else:
                         lines.append(f"    # Level {level}: {group[0]}")
 

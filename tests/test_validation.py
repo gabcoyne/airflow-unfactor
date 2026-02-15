@@ -1,7 +1,5 @@
 """Tests for code validation utilities."""
 
-import pytest
-
 from airflow_unfactor.validation import (
     ValidationResult,
     validate_generated_code,

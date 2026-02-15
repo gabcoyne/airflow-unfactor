@@ -253,7 +253,11 @@ with DAG("test", on_failure_callback=notify, schedule=None) as dag:
         runbook = result["conversion_runbook_md"]
 
         # Should mention callbacks/notifications
-        assert "callback" in runbook.lower() or "notification" in runbook.lower() or "alert" in runbook.lower()
+        assert (
+            "callback" in runbook.lower()
+            or "notification" in runbook.lower()
+            or "alert" in runbook.lower()
+        )
 
     def test_runbook_includes_tags_guidance(self):
         """Runbook should mention tag mapping."""

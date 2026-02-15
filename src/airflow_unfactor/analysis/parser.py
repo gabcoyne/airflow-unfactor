@@ -301,7 +301,14 @@ class DAGVisitor(ast.NodeVisitor):
             if isinstance(key, ast.Constant):
                 key_str = key.value
                 # Focus on retries and retry_delay as per requirements
-                if key_str in ("retries", "retry_delay", "owner", "email", "email_on_failure", "email_on_retry"):
+                if key_str in (
+                    "retries",
+                    "retry_delay",
+                    "owner",
+                    "email",
+                    "email_on_failure",
+                    "email_on_retry",
+                ):
                     extracted_value = self._extract_value(value)
                     if extracted_value is not None:
                         default_args[key_str] = extracted_value

@@ -106,9 +106,7 @@ JINJA_PATTERNS = [
     ),
     # {{ macros.ds_format(ds, 'format') }} - date formatting
     (
-        re.compile(
-            r"\{\{\s*macros\.ds_format\s*\(\s*ds\s*,\s*['\"]([^'\"]+)['\"]\s*\)\s*\}\}"
-        ),
+        re.compile(r"\{\{\s*macros\.ds_format\s*\(\s*ds\s*,\s*['\"]([^'\"]+)['\"]\s*\)\s*\}\}"),
         JinjaPatternType.MACROS_DS_FORMAT,
         lambda m: {"format": m.group(1)},
     ),
@@ -292,9 +290,7 @@ def convert_jinja_to_fstring(
     converted = "".join(result_parts)
 
     # If we made any conversions, prefix with 'f'
-    has_fstring_exprs = any(
-        p.pattern_type != JinjaPatternType.UNKNOWN for p in patterns
-    )
+    has_fstring_exprs = any(p.pattern_type != JinjaPatternType.UNKNOWN for p in patterns)
     if has_fstring_exprs:
         converted = f'f"{converted}"'
     else:
@@ -352,8 +348,7 @@ def analyze_jinja_in_code(code: str) -> dict:
         )
 
     if any(
-        p.pattern_type in (JinjaPatternType.PREV_DS, JinjaPatternType.NEXT_DS)
-        for p in patterns
+        p.pattern_type in (JinjaPatternType.PREV_DS, JinjaPatternType.NEXT_DS) for p in patterns
     ):
         notes.append(
             "prev_ds/next_ds conversions assume daily schedule - "

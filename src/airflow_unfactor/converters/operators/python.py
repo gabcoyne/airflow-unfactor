@@ -129,7 +129,7 @@ class FunctionExtractor(ast.NodeVisitor):
         if call_node.args:
             first_arg = call_node.args[0]
             if isinstance(first_arg, ast.Constant):
-                task_ids = first_arg.value
+                task_ids = str(first_arg.value)
                 is_constant = True
             elif isinstance(first_arg, ast.List):
                 # List of task_ids
@@ -137,7 +137,7 @@ class FunctionExtractor(ast.NodeVisitor):
                 is_constant = True
                 for elt in first_arg.elts:
                     if isinstance(elt, ast.Constant):
-                        task_ids.append(elt.value)
+                        task_ids.append(str(elt.value))
                     else:
                         is_constant = False
                         task_ids = self._get_source_segment(first_arg)
@@ -151,14 +151,14 @@ class FunctionExtractor(ast.NodeVisitor):
         for keyword in call_node.keywords:
             if keyword.arg == "task_ids":
                 if isinstance(keyword.value, ast.Constant):
-                    task_ids = keyword.value.value
+                    task_ids = str(keyword.value.value)
                     is_constant = True
                 elif isinstance(keyword.value, ast.List):
                     task_ids = []
                     is_constant = True
                     for elt in keyword.value.elts:
                         if isinstance(elt, ast.Constant):
-                            task_ids.append(elt.value)
+                            task_ids.append(str(elt.value))
                         else:
                             is_constant = False
                             task_ids = self._get_source_segment(keyword.value)
@@ -168,7 +168,7 @@ class FunctionExtractor(ast.NodeVisitor):
                     is_constant = False
             elif keyword.arg == "key":
                 if isinstance(keyword.value, ast.Constant):
-                    key = keyword.value.value
+                    key = str(keyword.value.value)
                 else:
                     key = self._get_source_segment(keyword.value)
 
@@ -190,7 +190,7 @@ class FunctionExtractor(ast.NodeVisitor):
         for keyword in call_node.keywords:
             if keyword.arg == "key":
                 if isinstance(keyword.value, ast.Constant):
-                    key = keyword.value.value
+                    key = str(keyword.value.value)
                 else:
                     key = self._get_source_segment(keyword.value)
             elif keyword.arg == "value":
@@ -302,7 +302,7 @@ def extract_functions(source_code: str) -> dict[str, ExtractedFunction]:
         tree = ast.parse(source_code)
     except SyntaxError:
         return {}
-    
+
     extractor = FunctionExtractor(source_code)
     extractor.visit(tree)
     return extractor.functions
@@ -420,7 +420,9 @@ def convert_python_operator(
         lines.append(f'    """Converted from PythonOperator: {python_callable}."""')
         lines.append(f"    # TODO: Implement - original callable '{python_callable}' not found")
         lines.append("    pass")
-        warnings.append(f"Function '{python_callable}' not found - generated stub requires implementation")
+        warnings.append(
+            f"Function '{python_callable}' not found - generated stub requires implementation"
+        )
 
     lines.append("")
     return PythonOperatorConversionResult(
@@ -465,9 +467,7 @@ def _convert_function_body(
                     replacement = f"{safe_name}_data"
                 else:
                     # Multiple task_ids - generate dict/tuple of results
-                    safe_names = [
-                        tid.replace("-", "_").replace(" ", "_") for tid in pull.task_ids
-                    ]
+                    safe_names = [tid.replace("-", "_").replace(" ", "_") for tid in pull.task_ids]
                     # Generate a dict with task_id keys for easy access
                     dict_items = ", ".join(
                         f'"{tid}": {safe}_data'
@@ -483,9 +483,7 @@ def _convert_function_body(
                     converted = converted.replace(pull.source_text, replacement)
             else:
                 # Dynamic task_ids
-                warnings.append(
-                    f"Dynamic xcom_pull requires manual conversion: {pull.source_text}"
-                )
+                warnings.append(f"Dynamic xcom_pull requires manual conversion: {pull.source_text}")
                 if pull.source_text:
                     converted = converted.replace(
                         pull.source_text,
@@ -539,7 +537,9 @@ def _convert_function_body(
 
             for match in reversed(matches):  # Reverse to preserve positions
                 value = match.group(1).strip()
-                converted = converted[: match.start()] + f"return {value}" + converted[match.end() :]
+                converted = (
+                    converted[: match.start()] + f"return {value}" + converted[match.end() :]
+                )
 
             # If there are still xcom_push calls, warn
             if "xcom_push" in converted:

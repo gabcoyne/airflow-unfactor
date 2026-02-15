@@ -5,24 +5,23 @@ This DAG doesn't really do anything other than attempting to look pretty.
 Used to show UI features.
 """
 
-from airflow.decorators import dag, task_group, task
-from airflow.operators.empty import EmptyOperator
-from airflow.models.baseoperator import chain, chain_linear
-from airflow.utils.edgemodifier import Label
 from airflow.datasets import Dataset
-from pendulum import datetime
-
+from airflow.decorators import dag, task, task_group
+from airflow.models.baseoperator import chain, chain_linear
+from airflow.operators.empty import EmptyOperator
+from airflow.utils.edgemodifier import Label
 from include.rainbow_operators.rainbow_operators import (
     ExtractFromObjectStorageOperator,
-    TransformOperator,
-    LoadtoDWHOperator,
     LoadAPItoDWHOperator,
-    TransformReportOperator,
+    LoadtoDWHOperator,
     PublishReportOperator,
     SpinUpGPUOperator,
-    TrainProprietaryLLMOperator,
     TearDownGPUOperator,
+    TrainProprietaryLLMOperator,
+    TransformOperator,
+    TransformReportOperator,
 )
+from pendulum import datetime
 
 
 @dag(
@@ -35,12 +34,10 @@ from include.rainbow_operators.rainbow_operators import (
     tags=["toy", "UI DAG"],
 )
 def complex_dag_structure_rainbow():
-
     start = EmptyOperator(task_id="start", task_display_name="🏁")
 
     sales_data_extract = ExtractFromObjectStorageOperator.partial(
-        task_id="sales_data_extract", 
-        task_display_name="📦 für Sales!"
+        task_id="sales_data_extract", task_display_name="📦 für Sales!"
     ).expand(my_param=[1, 2, 3, 4])
     internal_api_extract = ExtractFromObjectStorageOperator.partial(
         task_id="internal_api_extract"
@@ -56,15 +53,11 @@ def complex_dag_structure_rainbow():
 
     sales_data_load = LoadtoDWHOperator(task_id="sales_data_load")
     internal_api_load_full = LoadAPItoDWHOperator(task_id="internal_api_load_full")
-    internal_api_load_incremental = LoadAPItoDWHOperator(
-        task_id="internal_api_load_incremental"
-    )
+    internal_api_load_incremental = LoadAPItoDWHOperator(task_id="internal_api_load_incremental")
 
     @task_group()
     def sales_data_reporting(a):
-        prepare_report = TransformReportOperator(
-            task_id="prepare_report", trigger_rule="all_done"
-        )
+        prepare_report = TransformReportOperator(task_id="prepare_report", trigger_rule="all_done")
         publish_report = PublishReportOperator(task_id="publish_report")
 
         chain(prepare_report, publish_report)
@@ -83,9 +76,7 @@ def complex_dag_structure_rainbow():
 
     @task_group()
     def mlops():
-        set_up_cluster = SpinUpGPUOperator(
-            task_id="set_up_cluster", trigger_rule="all_done"
-        )
+        set_up_cluster = SpinUpGPUOperator(task_id="set_up_cluster", trigger_rule="all_done")
         train_model = TrainProprietaryLLMOperator(
             task_id="train_model", outlets=[Dataset("model_trained")]
         )
@@ -121,12 +112,8 @@ def complex_dag_structure_rainbow():
         [sales_data_reporting_obj, cre_integration_obj],
     )
 
-    chain(
-        determine_load_type_obj, Label("additional data"), internal_api_load_incremental
-    )
-    chain(
-        determine_load_type_obj, Label("changed existing data"), internal_api_load_full
-    )
+    chain(determine_load_type_obj, Label("additional data"), internal_api_load_incremental)
+    chain(determine_load_type_obj, Label("changed existing data"), internal_api_load_full)
 
 
 complex_dag_structure_rainbow()

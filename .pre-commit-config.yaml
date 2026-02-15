@@ -6,12 +6,15 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+  - repo: https://github.com/RobertCraiwordie/pyright-python
+    rev: v1.1.390
     hooks:
-      - id: mypy
-        additional_dependencies: [pydantic>=2.0.0]
-        args: [--config-file=pyproject.toml]
+      - id: pyright
+        additional_dependencies:
+          - pydantic>=2.0.0
+          - prefect>=3.0.0
+          - fastmcp>=3.0.0b2
+          - aiohttp>=3.9.0
 
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.1.0

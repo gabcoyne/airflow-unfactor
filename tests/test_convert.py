@@ -1,11 +1,9 @@
 """Tests for DAG conversion including test generation."""
 
-import pytest
 from airflow_unfactor.analysis.parser import parse_dag
 from airflow_unfactor.converters.base import (
-    convert_dag_to_flow,
     build_dependency_graph,
-    DependencyGraph,
+    convert_dag_to_flow,
 )
 from airflow_unfactor.converters.test_generator import generate_flow_tests
 
@@ -106,9 +104,7 @@ class TestDependencyTracking:
             ["transform_a", "load"],
             ["transform_b", "load"],
         ]
-        graph = build_dependency_graph(
-            deps, ["extract", "transform_a", "transform_b", "load"]
-        )
+        graph = build_dependency_graph(deps, ["extract", "transform_a", "transform_b", "load"])
 
         # transform_a and transform_b should be at same level
         groups = graph.get_execution_groups()
@@ -129,7 +125,7 @@ class TestDependencyTracking:
 
     def test_convert_dag_with_dependencies(self):
         """Convert DAG preserves task execution order."""
-        dag_code = '''
+        dag_code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
@@ -140,7 +136,7 @@ with DAG("ordered_etl", start_date=datetime(2024, 1, 1)) as dag:
     load = PythonOperator(task_id="load_data", python_callable=lambda: None)
 
     extract >> transform >> load
-'''
+"""
         dag_info = parse_dag(dag_code)
         result = convert_dag_to_flow(dag_info, dag_code)
 
@@ -158,7 +154,7 @@ with DAG("ordered_etl", start_date=datetime(2024, 1, 1)) as dag:
 
     def test_convert_dag_parallel_branches(self):
         """Convert DAG with parallel branches."""
-        dag_code = '''
+        dag_code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
@@ -170,7 +166,7 @@ with DAG("parallel_etl", start_date=datetime(2024, 1, 1)) as dag:
     end = PythonOperator(task_id="end", python_callable=lambda: None)
 
     start >> [branch_a, branch_b] >> end
-'''
+"""
         dag_info = parse_dag(dag_code)
         result = convert_dag_to_flow(dag_info, dag_code)
 
@@ -188,7 +184,7 @@ with DAG("parallel_etl", start_date=datetime(2024, 1, 1)) as dag:
 
     def test_convert_dag_no_dependencies_warns(self):
         """Convert DAG without dependencies adds warning."""
-        dag_code = '''
+        dag_code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
@@ -197,7 +193,7 @@ with DAG("no_deps", start_date=datetime(2024, 1, 1)) as dag:
     task_a = PythonOperator(task_id="task_a", python_callable=lambda: None)
     task_b = PythonOperator(task_id="task_b", python_callable=lambda: None)
     # No dependencies defined
-'''
+"""
         dag_info = parse_dag(dag_code)
         result = convert_dag_to_flow(dag_info, dag_code)
 

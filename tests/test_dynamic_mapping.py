@@ -6,14 +6,11 @@ Tests detection and conversion of Airflow's dynamic task mapping patterns:
 - .expand_kwargs()
 """
 
-import pytest
 from airflow_unfactor.converters.dynamic_mapping import (
-    extract_dynamic_mapping,
-    convert_dynamic_mapping,
-    convert_all_dynamic_mappings,
-    DynamicMappingInfo,
     MappingType,
-    ConversionResult,
+    convert_all_dynamic_mappings,
+    convert_dynamic_mapping,
+    extract_dynamic_mapping,
 )
 
 
@@ -22,7 +19,7 @@ class TestExtractSimpleExpand:
 
     def test_detect_expand_with_single_param(self):
         """Detect task.expand(param=iterable)."""
-        code = '''
+        code = """
 from airflow.decorators import task
 
 @task
@@ -30,7 +27,7 @@ def process_item(item):
     return item * 2
 
 result = process_item.expand(item=items)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -41,9 +38,9 @@ result = process_item.expand(item=items)
 
     def test_detect_expand_with_multiple_params(self):
         """Detect task.expand(param1=iter1, param2=iter2)."""
-        code = '''
+        code = """
 results = transform.expand(x=x_values, y=y_values)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -56,9 +53,9 @@ results = transform.expand(x=x_values, y=y_values)
 
     def test_detect_expand_without_assignment(self):
         """Detect expand() call without variable assignment."""
-        code = '''
+        code = """
 notify.expand(recipient=recipients)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -67,9 +64,9 @@ notify.expand(recipient=recipients)
 
     def test_detect_expand_with_list_literal(self):
         """Detect expand() with inline list."""
-        code = '''
+        code = """
 process.expand(value=[1, 2, 3, 4, 5])
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -81,9 +78,9 @@ class TestExtractPartialExpand:
 
     def test_detect_partial_expand_simple(self):
         """Detect task.partial(fixed=val).expand(dynamic=iter)."""
-        code = '''
+        code = """
 result = process.partial(config=config_obj).expand(item=items)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -94,9 +91,9 @@ result = process.partial(config=config_obj).expand(item=items)
 
     def test_detect_partial_with_multiple_fixed(self):
         """Detect partial() with multiple fixed parameters."""
-        code = '''
+        code = """
 result = transform.partial(conn_id="default", timeout=30).expand(data=records)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -107,9 +104,9 @@ result = transform.partial(conn_id="default", timeout=30).expand(data=records)
 
     def test_detect_partial_expand_complex_expression(self):
         """Detect partial/expand with function call as fixed param."""
-        code = '''
+        code = """
 results = load.partial(config=get_config()).expand(path=file_paths)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -121,9 +118,9 @@ class TestExtractExpandKwargs:
 
     def test_detect_expand_kwargs(self):
         """Detect task.expand_kwargs(list_of_dicts)."""
-        code = '''
+        code = """
 results = process.expand_kwargs(param_dicts)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -133,12 +130,12 @@ results = process.expand_kwargs(param_dicts)
 
     def test_detect_expand_kwargs_with_inline_list(self):
         """Detect expand_kwargs with inline list of dicts."""
-        code = '''
+        code = """
 results = send_email.expand_kwargs([
     {"to": "a@example.com", "subject": "Hello"},
     {"to": "b@example.com", "subject": "World"},
 ])
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -151,9 +148,9 @@ class TestMapIndexTemplateWarning:
 
     def test_expand_with_map_index_template(self):
         """Warn when map_index_template is used in expand()."""
-        code = '''
+        code = """
 result = process.expand(item=items, map_index_template="{{ task.op_kwargs['item'] }}")
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -161,9 +158,9 @@ result = process.expand(item=items, map_index_template="{{ task.op_kwargs['item'
 
     def test_map_index_template_in_conversion_warning(self):
         """Conversion should generate warning for map_index_template."""
-        code = '''
+        code = """
 result = process.expand(item=items, map_index_template="{{ task.op_kwargs['item'] }}")
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0])
 
@@ -177,9 +174,9 @@ class TestConvertExpand:
 
     def test_convert_simple_expand_to_map(self):
         """Convert task.expand(x=iter) to task.map(iter)."""
-        code = '''
+        code = """
 result = process_item.expand(item=items)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=False)
 
@@ -188,9 +185,9 @@ result = process_item.expand(item=items)
 
     def test_convert_expand_preserves_variable(self):
         """Converted code preserves assignment variable name."""
-        code = '''
+        code = """
 processed_results = transformer.expand(data=dataset)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=False)
 
@@ -198,9 +195,9 @@ processed_results = transformer.expand(data=dataset)
 
     def test_convert_expand_includes_comments(self):
         """Conversion includes educational comments when enabled."""
-        code = '''
+        code = """
 result = process.expand(item=items)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=True)
 
@@ -213,9 +210,9 @@ class TestConvertPartialExpand:
 
     def test_convert_partial_expand_to_map_with_fixed(self):
         """Convert partial().expand() to .map() with fixed args."""
-        code = '''
+        code = """
 result = process.partial(config=cfg).expand(item=items)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=False)
 
@@ -225,9 +222,9 @@ result = process.partial(config=cfg).expand(item=items)
 
     def test_convert_partial_expand_preserves_all_fixed_params(self):
         """All fixed parameters from partial() appear in conversion."""
-        code = '''
+        code = """
 result = load.partial(conn_id="pg", batch_size=100).expand(record=records)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=False)
 
@@ -240,9 +237,9 @@ class TestConvertExpandKwargs:
 
     def test_convert_expand_kwargs_to_submit_comprehension(self):
         """Convert expand_kwargs to list comprehension with .submit()."""
-        code = '''
+        code = """
 results = process.expand_kwargs(params_list)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=False)
 
@@ -251,9 +248,9 @@ results = process.expand_kwargs(params_list)
 
     def test_convert_expand_kwargs_includes_options(self):
         """Conversion shows multiple approaches when comments enabled."""
-        code = '''
+        code = """
 results = process.expand_kwargs(params_list)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         result = convert_dynamic_mapping(mappings[0], include_comments=True)
 
@@ -268,7 +265,7 @@ class TestConvertAllDynamicMappings:
 
     def test_convert_multiple_patterns(self):
         """Convert DAG with multiple dynamic mapping patterns."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task
 
 @dag
@@ -288,7 +285,7 @@ def my_dag():
     items = extract()
     transformed = transform.partial(multiplier=2).expand(x=items)
     load.expand(data=transformed)
-'''
+"""
         result = convert_all_dynamic_mappings(code)
 
         assert len(result["conversions"]) == 2
@@ -298,7 +295,7 @@ def my_dag():
 
     def test_no_patterns_returns_empty(self):
         """DAG without dynamic mapping returns empty result."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task
 
 @dag
@@ -308,7 +305,7 @@ def simple_dag():
         return 42
 
     my_task()
-'''
+"""
         result = convert_all_dynamic_mappings(code)
 
         assert len(result["conversions"]) == 0
@@ -316,10 +313,10 @@ def simple_dag():
 
     def test_collects_all_warnings(self):
         """All warnings from individual conversions are collected."""
-        code = '''
+        code = """
 a = task1.expand(x=xs, map_index_template="{{ x }}")
 b = task2.expand(y=ys, map_index_template="{{ y }}")
-'''
+"""
         result = convert_all_dynamic_mappings(code)
 
         assert len(result["warnings"]) >= 2
@@ -331,10 +328,10 @@ class TestEdgeCases:
 
     def test_invalid_syntax_returns_empty(self):
         """Invalid Python syntax returns empty list."""
-        code = '''
+        code = """
 def broken(
     # missing closing paren
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         assert mappings == []
 
@@ -342,18 +339,18 @@ def broken(
         """Regular .expand() method (not Airflow) is ignored."""
         # This might be a false positive in naive detection,
         # but we detect based on the pattern structure
-        code = '''
+        code = """
 my_list = [1, 2, 3]
 result = some_object.process(my_list)
-'''
+"""
         mappings = extract_dynamic_mapping(code)
         assert len(mappings) == 0
 
     def test_nested_expand_calls(self):
         """Handle nested function calls in expand parameters."""
-        code = '''
+        code = """
 result = task.expand(data=generate_data(size=10))
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1
@@ -361,7 +358,7 @@ result = task.expand(data=generate_data(size=10))
 
     def test_expand_in_complex_dag_structure(self):
         """Detect expand in realistic DAG with imports and decorators."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task
 from datetime import datetime
 
@@ -394,7 +391,7 @@ def my_pipeline():
     aggregate(processed)
 
 dag_instance = my_pipeline()
-'''
+"""
         mappings = extract_dynamic_mapping(code)
 
         assert len(mappings) == 1

@@ -21,7 +21,7 @@ jobs:
         run: uv python install 3.11
 
       - name: Install ruff
-        run: uv pip install ruff
+        run: uv pip install --system ruff
 
       - name: Run ruff check
         run: ruff check .

@@ -61,6 +61,10 @@ packages = ["src/airflow_unfactor"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = [
+    "tests/fixtures/astronomer-*",  # External fixture files
+    ".ralph/",  # Generated files
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "TCH"]

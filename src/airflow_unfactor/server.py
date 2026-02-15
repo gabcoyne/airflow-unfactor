@@ -4,7 +4,6 @@ Converts Apache Airflow DAGs to Prefect flows with AI assistance.
 Built with FastMCP - the fast, Pythonic way to build MCP servers.
 """
 
-
 from fastmcp import FastMCP
 
 from airflow_unfactor.tools.analyze import analyze_dag
@@ -22,7 +21,9 @@ mcp = FastMCP(
 
 
 @mcp.tool
-async def analyze(path: str | None = None, content: str | None = None, include_external_context: bool = True) -> str:
+async def analyze(
+    path: str | None = None, content: str | None = None, include_external_context: bool = True
+) -> str:
     """Analyze an Airflow DAG to understand its structure.
 
     Args:
@@ -32,7 +33,9 @@ async def analyze(path: str | None = None, content: str | None = None, include_e
     Returns:
         JSON with operators, dependencies, XCom usage, and complexity score
     """
-    return await analyze_dag(path=path, content=content, include_external_context=include_external_context)
+    return await analyze_dag(
+        path=path, content=content, include_external_context=include_external_context
+    )
 
 
 @mcp.tool

@@ -1,15 +1,12 @@
 """Tests for runbook generation from DAG settings extraction."""
 
-import pytest
-
 from airflow_unfactor.converters.runbook import (
-    DAGSettings,
+    SCHEDULE_PRESETS,
     CallbackInfo,
-    DAGSettingsVisitor,
+    DAGSettings,
+    _convert_schedule_to_cron,
     extract_dag_settings,
     generate_runbook,
-    _convert_schedule_to_cron,
-    SCHEDULE_PRESETS,
 )
 
 
@@ -69,109 +66,109 @@ class TestExtractDAGSettingsFromDAGConstructor:
     """Test extraction from DAG() constructor."""
 
     def test_extract_dag_id_from_first_arg(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("my_etl_dag", schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == "my_etl_dag"
         assert settings.source_type == "DAG()"
 
     def test_extract_dag_id_from_keyword(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG(dag_id="keyword_dag", schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == "keyword_dag"
 
     def test_extract_schedule_interval(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", schedule_interval="@daily") as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.schedule == "@daily"
 
     def test_extract_schedule(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", schedule="0 2 * * *") as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.schedule == "0 2 * * *"
 
     def test_extract_catchup_false(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", catchup=False, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.catchup is False
 
     def test_extract_catchup_true(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", catchup=True, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.catchup is True
 
     def test_extract_max_active_runs(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", max_active_runs=3, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.max_active_runs == 3
 
     def test_extract_max_consecutive_failed_dag_runs(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", max_consecutive_failed_dag_runs=5, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.max_consecutive_failed_dag_runs == 5
 
     def test_extract_tags(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", tags=["production", "etl", "critical"], schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.tags == ["production", "etl", "critical"]
 
     def test_extract_default_args_inline(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", default_args={"retries": 3, "retry_delay": 300}, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.default_args["retries"] == 3
         assert settings.default_args["retry_delay"] == 300
 
     def test_extract_on_failure_callback(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 def notify_failure(context):
@@ -179,14 +176,14 @@ def notify_failure(context):
 
 with DAG("test", on_failure_callback=notify_failure, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert len(settings.callbacks) == 1
         assert settings.callbacks[0].callback_type == "on_failure_callback"
         assert settings.callbacks[0].function_name == "notify_failure"
 
     def test_extract_on_success_callback(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 def notify_success(context):
@@ -194,14 +191,14 @@ def notify_success(context):
 
 with DAG("test", on_success_callback=notify_success, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert len(settings.callbacks) == 1
         assert settings.callbacks[0].callback_type == "on_success_callback"
         assert settings.callbacks[0].function_name == "notify_success"
 
     def test_extract_sla_miss_callback(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 def sla_alert(dag, task_list, blocking_task_list, slas, blocking_tis):
@@ -209,14 +206,14 @@ def sla_alert(dag, task_list, blocking_task_list, slas, blocking_tis):
 
 with DAG("test", sla_miss_callback=sla_alert, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert len(settings.callbacks) == 1
         assert settings.callbacks[0].callback_type == "sla_miss_callback"
         assert settings.callbacks[0].function_name == "sla_alert"
 
     def test_extract_multiple_callbacks(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 def on_fail(context): pass
@@ -229,7 +226,7 @@ with DAG(
     schedule=None
 ) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert len(settings.callbacks) == 2
         callback_types = {c.callback_type for c in settings.callbacks}
@@ -237,33 +234,33 @@ with DAG(
         assert "on_success_callback" in callback_types
 
     def test_extract_concurrency(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", concurrency=10, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.concurrency == 10
 
     def test_extract_dagrun_timeout(self):
-        code = '''
+        code = """
 from airflow import DAG
 from datetime import timedelta
 
 with DAG("test", dagrun_timeout=timedelta(hours=2), schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert "timedelta" in str(settings.dagrun_timeout)
 
     def test_extract_description(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", description="This is my ETL pipeline", schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.description == "This is my ETL pipeline"
 
@@ -272,25 +269,25 @@ class TestExtractDAGSettingsFromDecorator:
     """Test extraction from @dag decorator."""
 
     def test_extract_bare_dag_decorator(self):
-        code = '''
+        code = """
 from airflow.decorators import dag
 
 @dag
 def my_taskflow_dag():
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == "my_taskflow_dag"
         assert settings.source_type == "@dag"
 
     def test_extract_dag_decorator_with_args(self):
-        code = '''
+        code = """
 from airflow.decorators import dag
 
 @dag(schedule="@daily", catchup=False)
 def daily_etl():
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == "daily_etl"
         assert settings.schedule == "@daily"
@@ -298,18 +295,18 @@ def daily_etl():
         assert settings.source_type == "@dag"
 
     def test_extract_dag_decorator_with_dag_id(self):
-        code = '''
+        code = """
 from airflow.decorators import dag
 
 @dag(dag_id="custom_dag_id", schedule=None)
 def my_function():
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == "custom_dag_id"
 
     def test_extract_dag_decorator_all_settings(self):
-        code = '''
+        code = """
 from airflow.decorators import dag
 
 @dag(
@@ -322,7 +319,7 @@ from airflow.decorators import dag
 )
 def complex_dag():
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.schedule == "0 2 * * *"
         assert settings.catchup is False
@@ -332,7 +329,7 @@ def complex_dag():
         assert settings.tags == ["production", "ml"]
 
     def test_extract_dag_decorator_with_callbacks(self):
-        code = '''
+        code = """
 from airflow.decorators import dag
 
 def notify(context):
@@ -341,7 +338,7 @@ def notify(context):
 @dag(on_failure_callback=notify, schedule=None)
 def my_dag():
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert len(settings.callbacks) == 1
         assert settings.callbacks[0].callback_type == "on_failure_callback"
@@ -358,45 +355,45 @@ class TestExtractDAGSettingsEdgeCases:
         assert settings.schedule is None
 
     def test_no_dag_returns_empty(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 def my_func():
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == ""
 
     def test_dag_assignment_not_context_manager(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 dag = DAG("assigned_dag", schedule="@hourly")
-'''
+"""
         settings = extract_dag_settings(code)
         assert settings.dag_id == "assigned_dag"
         assert settings.schedule == "@hourly"
 
     def test_lambda_callback(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 with DAG("test", on_failure_callback=lambda ctx: print(ctx), schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert len(settings.callbacks) == 1
         assert settings.callbacks[0].function_name == "<lambda>"
 
     def test_variable_reference_default_args(self):
-        code = '''
+        code = """
 from airflow import DAG
 
 default_args = {"retries": 3}
 
 with DAG("test", default_args=default_args, schedule=None) as dag:
     pass
-'''
+"""
         settings = extract_dag_settings(code)
         assert "_variable_ref" in settings.default_args or isinstance(
             settings.default_args.get("_variable_ref", ""), str
@@ -803,7 +800,7 @@ class TestGenerateRunbookIntegration:
 
     def test_extract_and_generate_integration(self):
         """Test full pipeline: extract settings then generate runbook."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task
 
 def notify(context):
@@ -823,7 +820,7 @@ def analytics_pipeline():
         return "data"
 
     extract()
-'''
+"""
         settings = extract_dag_settings(code)
         runbook = generate_runbook(settings)
 

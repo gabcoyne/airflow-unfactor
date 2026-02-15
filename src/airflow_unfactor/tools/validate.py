@@ -33,8 +33,8 @@ class GraphInfo:
 
     tasks: dict[str, TaskInfo] = field(default_factory=dict)
     edges: list[tuple[str, str]] = field(default_factory=list)  # (upstream, downstream)
-    xcom_pushes: list[dict[str, str]] = field(default_factory=list)
-    xcom_pulls: list[dict[str, str]] = field(default_factory=list)
+    xcom_pushes: list[dict[str, Any]] = field(default_factory=list)
+    xcom_pulls: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def task_count(self) -> int:
@@ -136,18 +136,22 @@ class DAGGraphExtractor(ast.NodeVisitor):
 
         if func_name == "xcom_push":
             key = self._extract_kwarg(node, "key") or "return_value"
-            self.graph.xcom_pushes.append({
-                "key": key,
-                "line": node.lineno,
-            })
+            self.graph.xcom_pushes.append(
+                {
+                    "key": key,
+                    "line": node.lineno,
+                }
+            )
         elif func_name == "xcom_pull":
             task_ids = self._extract_kwarg(node, "task_ids")
             key = self._extract_kwarg(node, "key") or "return_value"
-            self.graph.xcom_pulls.append({
-                "task_ids": task_ids,
-                "key": key,
-                "line": node.lineno,
-            })
+            self.graph.xcom_pulls.append(
+                {
+                    "task_ids": task_ids,
+                    "key": key,
+                    "line": node.lineno,
+                }
+            )
         elif func_name in ("set_upstream", "set_downstream"):
             # Handle task.set_upstream(other) style
             if isinstance(node.func, ast.Attribute):
@@ -181,14 +185,14 @@ class DAGGraphExtractor(ast.NodeVisitor):
         """Extract task_id from operator call."""
         for kw in node.keywords:
             if kw.arg == "task_id" and isinstance(kw.value, ast.Constant):
-                return kw.value.value
+                return str(kw.value.value)
         return None
 
     def _extract_kwarg(self, node: ast.Call, key: str) -> str | None:
         """Extract keyword argument value."""
         for kw in node.keywords:
             if kw.arg == key and isinstance(kw.value, ast.Constant):
-                return kw.value.value
+                return str(kw.value.value)
         return None
 
     def _is_operator(self, name: str) -> bool:
@@ -422,20 +426,24 @@ def compare_task_counts(
     extra = flow_tasks - dag_tasks
 
     if missing:
-        issues.append(ValidationIssue(
-            severity="error",
-            category="task_count",
-            message=f"Missing {len(missing)} task(s) in converted flow",
-            details={"missing_tasks": list(missing)},
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="error",
+                category="task_count",
+                message=f"Missing {len(missing)} task(s) in converted flow",
+                details={"missing_tasks": list(missing)},
+            )
+        )
 
     if extra:
-        issues.append(ValidationIssue(
-            severity="warning",
-            category="task_count",
-            message=f"Flow has {len(extra)} additional task(s) not in original DAG",
-            details={"extra_tasks": list(extra)},
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="warning",
+                category="task_count",
+                message=f"Flow has {len(extra)} additional task(s) not in original DAG",
+                details={"extra_tasks": list(extra)},
+            )
+        )
 
     return len(issues) == 0 or all(i.severity != "error" for i in issues), issues
 
@@ -461,12 +469,10 @@ def compare_dependencies(
     # Filter edges to only include those between actual tasks
     # This automatically excludes edges involving DummyOperator/EmptyOperator
     dag_edges = {
-        (up, down) for up, down in dag_graph.edges
-        if up in dag_tasks and down in dag_tasks
+        (up, down) for up, down in dag_graph.edges if up in dag_tasks and down in dag_tasks
     }
     flow_edges = {
-        (up, down) for up, down in flow_graph.edges
-        if up in flow_tasks and down in flow_tasks
+        (up, down) for up, down in flow_graph.edges if up in flow_tasks and down in flow_tasks
     }
 
     # Find missing and extra edges
@@ -474,31 +480,29 @@ def compare_dependencies(
     extra = flow_edges - dag_edges
 
     if missing:
-        issues.append(ValidationIssue(
-            severity="error",
-            category="dependency",
-            message=f"Missing {len(missing)} dependency edge(s) in flow",
-            details={
-                "missing_edges": [
-                    {"upstream": up, "downstream": down}
-                    for up, down in missing
-                ]
-            },
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="error",
+                category="dependency",
+                message=f"Missing {len(missing)} dependency edge(s) in flow",
+                details={
+                    "missing_edges": [{"upstream": up, "downstream": down} for up, down in missing]
+                },
+            )
+        )
 
     if extra:
         # Extra edges are usually fine (more explicit dependencies)
-        issues.append(ValidationIssue(
-            severity="info",
-            category="dependency",
-            message=f"Flow has {len(extra)} additional dependency edge(s)",
-            details={
-                "extra_edges": [
-                    {"upstream": up, "downstream": down}
-                    for up, down in extra
-                ]
-            },
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="info",
+                category="dependency",
+                message=f"Flow has {len(extra)} additional dependency edge(s)",
+                details={
+                    "extra_edges": [{"upstream": up, "downstream": down} for up, down in extra]
+                },
+            )
+        )
 
     return len(missing) == 0, issues
 
@@ -518,39 +522,42 @@ def compare_data_flow(
 
     # Check if XCom pulls have corresponding task parameters
     xcom_pull_count = len(dag_graph.xcom_pulls)
-    tasks_with_params = {
-        name for name, info in flow_graph.tasks.items()
-        if info.parameters
-    }
+    tasks_with_params = {name for name, info in flow_graph.tasks.items() if info.parameters}
 
     # If DAG has XCom usage, flow should have data passing
     if xcom_pull_count > 0 and not tasks_with_params:
-        issues.append(ValidationIssue(
-            severity="warning",
-            category="data_flow",
-            message="DAG uses XCom pulls but flow tasks have no parameters",
-            details={
-                "xcom_pull_count": xcom_pull_count,
-                "tasks_with_params": list(tasks_with_params),
-            },
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="warning",
+                category="data_flow",
+                message="DAG uses XCom pulls but flow tasks have no parameters",
+                details={
+                    "xcom_pull_count": xcom_pull_count,
+                    "tasks_with_params": list(tasks_with_params),
+                },
+            )
+        )
 
     # Check for any explicit XCom usage patterns that weren't converted
     if dag_graph.xcom_pushes:
-        issues.append(ValidationIssue(
-            severity="info",
-            category="data_flow",
-            message=f"DAG has {len(dag_graph.xcom_pushes)} XCom push(es) - verify return values in flow",
-            details={"xcom_pushes": dag_graph.xcom_pushes},
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="info",
+                category="data_flow",
+                message=f"DAG has {len(dag_graph.xcom_pushes)} XCom push(es) - verify return values in flow",
+                details={"xcom_pushes": dag_graph.xcom_pushes},
+            )
+        )
 
     if dag_graph.xcom_pulls:
-        issues.append(ValidationIssue(
-            severity="info",
-            category="data_flow",
-            message=f"DAG has {len(dag_graph.xcom_pulls)} XCom pull(s) - verify parameters in flow",
-            details={"xcom_pulls": dag_graph.xcom_pulls},
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="info",
+                category="data_flow",
+                message=f"DAG has {len(dag_graph.xcom_pulls)} XCom pull(s) - verify parameters in flow",
+                details={"xcom_pulls": dag_graph.xcom_pulls},
+            )
+        )
 
     # Data flow is preserved if no errors
     return all(i.severity != "error" for i in issues), issues
@@ -578,7 +585,9 @@ def calculate_confidence(
     elif abs(dag_graph.task_count - flow_graph.task_count) <= 1:
         score += 30
     elif dag_graph.task_count > 0:
-        ratio = min(dag_graph.task_count, flow_graph.task_count) / max(dag_graph.task_count, flow_graph.task_count)
+        ratio = min(dag_graph.task_count, flow_graph.task_count) / max(
+            dag_graph.task_count, flow_graph.task_count
+        )
         score += int(40 * ratio)
 
     # Dependency contribution
@@ -675,13 +684,9 @@ def validate_conversion_sync(
             "task_count": flow_graph.task_count,
             "edge_count": flow_graph.edge_count,
             "tasks": list(flow_graph.tasks.keys()),
-            "returning_tasks": [
-                name for name, info in flow_graph.tasks.items()
-                if info.has_return
-            ],
+            "returning_tasks": [name for name, info in flow_graph.tasks.items() if info.has_return],
             "tasks_with_params": [
-                name for name, info in flow_graph.tasks.items()
-                if info.parameters
+                name for name, info in flow_graph.tasks.items() if info.parameters
             ],
         },
     )

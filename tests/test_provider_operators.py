@@ -21,34 +21,34 @@ class TestOperatorMappings:
 
     def test_s3_operator_mapping(self):
         mapping = get_operator_mapping("S3CreateObjectOperator")
-        
+
         assert mapping is not None
         assert mapping.prefect_integration == "prefect-aws"
         assert "prefect-aws" in mapping.pip_packages
 
     def test_bigquery_operator_mapping(self):
         mapping = get_operator_mapping("BigQueryInsertJobOperator")
-        
+
         assert mapping is not None
         assert mapping.prefect_integration == "prefect-gcp"
         assert "bigquery" in mapping.prefect_function
 
     def test_postgres_operator_mapping(self):
         mapping = get_operator_mapping("PostgresOperator")
-        
+
         assert mapping is not None
         assert "sqlalchemy" in mapping.prefect_integration.lower()
         assert "psycopg" in mapping.pip_packages[1]
 
     def test_snowflake_operator_mapping(self):
         mapping = get_operator_mapping("SnowflakeOperator")
-        
+
         assert mapping is not None
         assert "snowflake" in mapping.prefect_integration.lower()
 
     def test_slack_operator_mapping(self):
         mapping = get_operator_mapping("SlackWebhookOperator")
-        
+
         assert mapping is not None
         assert "slack" in mapping.prefect_integration.lower()
         assert "send_message" in mapping.prefect_function
@@ -59,7 +59,7 @@ class TestOperatorMappings:
 
     def test_all_mappings_returns_dict(self):
         mappings = get_all_mappings()
-        
+
         assert isinstance(mappings, dict)
         assert len(mappings) > 5  # We have several mappings
         assert all(isinstance(v, OperatorMapping) for v in mappings.values())
@@ -74,7 +74,7 @@ class TestGenerateConversionCode:
             task_id="upload_data",
             parameters={"bucket_name": "my-bucket", "key": "data.csv"},
         )
-        
+
         assert "@task" in result["code"]
         assert "S3Bucket" in result["code"]
         assert "prefect-aws" in result["packages"]
@@ -85,7 +85,7 @@ class TestGenerateConversionCode:
             task_id="run_query",
             parameters={"sql": "SELECT * FROM table"},
         )
-        
+
         assert "bigquery" in result["code"].lower()
         assert "prefect-gcp" in result["packages"]
 
@@ -95,7 +95,7 @@ class TestGenerateConversionCode:
             task_id="custom_task",
             parameters={"param": "value"},
         )
-        
+
         assert "NotImplementedError" in result["code"]
         assert "Manual conversion" in result["notes"][0]
 
@@ -117,7 +117,7 @@ class TestGenerateConversionCode:
             parameters={},
             include_comments=True,
         )
-        
+
         assert "Converted from Airflow" in result["code"]
 
     def test_excludes_comments_when_not_requested(self):
@@ -127,7 +127,7 @@ class TestGenerateConversionCode:
             parameters={},
             include_comments=False,
         )
-        
+
         assert "Converted from Airflow" not in result["code"]
 
 
@@ -349,7 +349,7 @@ class TestCodeValidation:
 
     def test_all_operator_code_compiles(self):
         """All operator code templates should be valid Python."""
-        for op_name, mapping in OPERATOR_MAPPINGS.items():
+        for op_name in OPERATOR_MAPPINGS:
             try:
                 # The code_template alone may not compile (needs decorator context)
                 # So we wrap it in the full generated code

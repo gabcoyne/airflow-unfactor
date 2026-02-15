@@ -84,11 +84,11 @@ class TestExtractVariables:
 
     def test_simple_variable_get(self):
         """Detect Variable.get with string literal."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 value = Variable.get("my_config")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -98,11 +98,11 @@ value = Variable.get("my_config")
 
     def test_variable_get_with_default_var_keyword(self):
         """Detect Variable.get with default_var keyword argument."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 value = Variable.get("my_config", default_var="fallback")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -111,11 +111,11 @@ value = Variable.get("my_config", default_var="fallback")
 
     def test_variable_get_with_positional_default(self):
         """Detect Variable.get with positional default argument."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 value = Variable.get("my_config", "default_value")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -123,11 +123,11 @@ value = Variable.get("my_config", "default_value")
 
     def test_variable_set(self):
         """Detect Variable.set calls."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 Variable.set("last_run", "2024-01-01")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -136,13 +136,13 @@ Variable.set("last_run", "2024-01-01")
 
     def test_sensitive_variable_detected(self):
         """Sensitive variable names are classified correctly."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 api_key = Variable.get("api_key")
 password = Variable.get("db_password")
 bucket = Variable.get("bucket_name")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 3
@@ -157,13 +157,13 @@ bucket = Variable.get("bucket_name")
 
     def test_multiple_variables(self):
         """Detect multiple Variable usages."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 env = Variable.get("environment")
 bucket = Variable.get("s3_bucket", default_var="default-bucket")
 Variable.set("processed_date", "2024-01-01")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 3
@@ -175,11 +175,11 @@ Variable.set("processed_date", "2024-01-01")
 
     def test_variable_with_models_prefix(self):
         """Detect Variable.get with models.Variable pattern."""
-        code = '''
+        code = """
 from airflow import models
 
 value = models.Variable.get("config")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -187,14 +187,14 @@ value = models.Variable.get("config")
 
     def test_line_number_captured(self):
         """Line numbers are captured correctly."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 # Line 4
 value1 = Variable.get("var1")
 # Line 6
 value2 = Variable.get("var2")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 2
@@ -210,11 +210,11 @@ value2 = Variable.get("var2")
 
     def test_no_variables_returns_empty(self):
         """Code without Variables returns empty list."""
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 task = PythonOperator(task_id="task", python_callable=lambda: None)
-'''
+"""
         variables = extract_variables(code)
 
         assert variables == []
@@ -321,7 +321,7 @@ class TestConvertAllVariables:
 
     def test_full_dag_with_variables(self):
         """Convert a DAG with multiple variable patterns."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
@@ -335,7 +335,7 @@ with DAG("my_dag") as dag:
         Variable.set("last_run", "2024-01-01")
 
     task = PythonOperator(task_id="process", python_callable=process)
-'''
+"""
         result = convert_all_variables(code)
 
         assert len(result["variables"]) == 4
@@ -348,13 +348,13 @@ with DAG("my_dag") as dag:
 
     def test_no_variables_returns_empty_result(self):
         """DAG without variables returns appropriate empty result."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
 with DAG("my_dag") as dag:
     task = PythonOperator(task_id="task", python_callable=lambda: None)
-'''
+"""
         result = convert_all_variables(code)
 
         assert result["variables"] == []
@@ -365,14 +365,14 @@ with DAG("my_dag") as dag:
 
     def test_duplicate_variable_names_handled(self):
         """Same variable name used multiple times generates one scaffold."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 # Used in multiple places
 value1 = Variable.get("config")
 value2 = Variable.get("config")
 value3 = Variable.get("config", default_var="fallback")
-'''
+"""
         result = convert_all_variables(code)
 
         # Three usages detected
@@ -383,13 +383,13 @@ value3 = Variable.get("config", default_var="fallback")
 
     def test_sensitive_detection_in_batch(self):
         """Batch conversion correctly identifies sensitive variables."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 password = Variable.get("db_password")
 host = Variable.get("db_host")
 secret = Variable.get("aws_secret_key")
-'''
+"""
         result = convert_all_variables(code)
 
         assert result["has_sensitive"] is True
@@ -403,12 +403,12 @@ secret = Variable.get("aws_secret_key")
 
     def test_write_detection_in_batch(self):
         """Batch conversion correctly identifies write operations."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 value = Variable.get("config")
 Variable.set("last_run", "2024-01-01")
-'''
+"""
         result = convert_all_variables(code)
 
         assert result["has_writes"] is True
@@ -416,12 +416,12 @@ Variable.set("last_run", "2024-01-01")
 
     def test_warnings_aggregated(self):
         """All warnings are collected in all_warnings."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 Variable.set("state1", "value1")
 Variable.set("state2", "value2")
-'''
+"""
         result = convert_all_variables(code)
 
         # Should have warnings for both Variable.set calls
@@ -433,35 +433,35 @@ class TestEdgeCases:
 
     def test_variable_in_function(self):
         """Detect Variable usage inside functions."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 def get_config():
     return Variable.get("config")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
 
     def test_variable_in_lambda(self):
         """Detect Variable usage in lambda expressions."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 get_val = lambda: Variable.get("value")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
 
     def test_variable_with_f_string_name(self):
         """Handle dynamic variable names (f-strings)."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 env = "prod"
 value = Variable.get(f"config_{env}")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -470,11 +470,11 @@ value = Variable.get(f"config_{env}")
 
     def test_variable_get_deserialize(self):
         """Handle Variable.get with deserialize_json parameter."""
-        code = '''
+        code = """
 from airflow.models import Variable
 
 config = Variable.get("json_config", deserialize_json=True)
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 1
@@ -482,17 +482,17 @@ config = Variable.get("json_config", deserialize_json=True)
 
     def test_non_variable_get_ignored(self):
         """Other .get() calls are ignored."""
-        code = '''
+        code = """
 my_dict = {"key": "value"}
 value = my_dict.get("key")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 0
 
     def test_non_variable_set_ignored(self):
         """Other .set() calls are ignored."""
-        code = '''
+        code = """
 my_set = set()
 my_set.add("value")
 
@@ -502,7 +502,7 @@ class Config:
         pass
 
 Config.set("key", "value")
-'''
+"""
         variables = extract_variables(code)
 
         assert len(variables) == 0

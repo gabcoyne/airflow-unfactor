@@ -1,11 +1,10 @@
 """Tests for TaskGroup to Prefect subflow converter."""
 
-import pytest
 from airflow_unfactor.converters.taskgroup import (
-    extract_task_groups,
-    convert_task_group,
-    convert_all_task_groups,
     TaskGroupInfo,
+    convert_all_task_groups,
+    convert_task_group,
+    extract_task_groups,
 )
 
 
@@ -14,7 +13,7 @@ class TestExtractTaskGroups:
 
     def test_extract_task_group_decorator(self):
         """Extract @task_group decorated function."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @dag()
@@ -32,7 +31,7 @@ def my_dag():
         transform(extract())
 
     process_data()
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -42,13 +41,13 @@ def my_dag():
 
     def test_extract_task_group_with_group_id(self):
         """Extract @task_group with explicit group_id."""
-        code = '''
+        code = """
 from airflow.decorators import task_group
 
 @task_group(group_id="custom_group_name")
 def my_group():
     pass
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -57,7 +56,7 @@ def my_group():
 
     def test_extract_task_group_context_manager(self):
         """Extract TaskGroup context manager pattern."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.python import PythonOperator
@@ -66,7 +65,7 @@ with DAG("my_dag") as dag:
     with TaskGroup("extraction_group") as extract:
         task1 = PythonOperator(task_id="task1", python_callable=lambda: 1)
         task2 = PythonOperator(task_id="task2", python_callable=lambda: 2)
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -76,13 +75,13 @@ with DAG("my_dag") as dag:
 
     def test_extract_task_group_context_manager_without_as(self):
         """Extract TaskGroup context manager without 'as' clause."""
-        code = '''
+        code = """
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.empty import EmptyOperator
 
 with TaskGroup("my_group"):
     t1 = EmptyOperator(task_id="t1")
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -90,7 +89,7 @@ with TaskGroup("my_group"):
 
     def test_extract_task_group_with_expand(self):
         """Detect .expand() on TaskGroup function."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @dag()
@@ -104,7 +103,7 @@ def my_dag():
 
     # Dynamic mapping
     process_file.expand(filename=["a.txt", "b.txt", "c.txt"])
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -114,7 +113,7 @@ def my_dag():
 
     def test_extract_multiple_task_groups(self):
         """Extract multiple TaskGroups from same DAG."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task_group
 
 @dag()
@@ -132,7 +131,7 @@ def pipeline():
         pass
 
     extract_group() >> transform_group() >> load_group()
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 3
@@ -141,13 +140,13 @@ def pipeline():
 
     def test_extract_task_group_with_args(self):
         """Extract TaskGroup with function arguments."""
-        code = '''
+        code = """
 from airflow.decorators import task_group
 
 @task_group
 def process_item(item_id, config=None):
     pass
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -155,7 +154,7 @@ def process_item(item_id, config=None):
 
     def test_extract_nested_tasks(self):
         """Extract tasks defined within @task_group."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @task_group
@@ -171,7 +170,7 @@ def etl_group():
     @task
     def load(data):
         print(data)
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -308,7 +307,7 @@ class TestConvertAllTaskGroups:
 
     def test_convert_dag_with_task_groups(self):
         """Convert DAG with multiple TaskGroups."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @dag()
@@ -329,7 +328,7 @@ def my_pipeline():
 
     data = extract()
     transform(data)
-'''
+"""
         result = convert_all_task_groups(code)
 
         assert len(result["conversions"]) == 2
@@ -338,7 +337,7 @@ def my_pipeline():
 
     def test_no_task_groups_returns_empty(self):
         """Non-TaskGroup code returns empty result."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task
 
 @dag()
@@ -347,7 +346,7 @@ def simple_dag():
     def my_task():
         return 1
     my_task()
-'''
+"""
         result = convert_all_task_groups(code)
 
         assert result["conversions"] == []
@@ -356,7 +355,7 @@ def simple_dag():
 
     def test_mixed_decorator_and_context_manager(self):
         """Handle mix of decorator and context manager patterns."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.python import PythonOperator
@@ -369,7 +368,7 @@ def mixed_dag():
 
     with TaskGroup("context_group") as cg:
         t = PythonOperator(task_id="t", python_callable=lambda: 1)
-'''
+"""
         result = convert_all_task_groups(code)
 
         assert len(result["conversions"]) == 2
@@ -378,7 +377,7 @@ def mixed_dag():
 
     def test_produces_valid_python(self):
         """Output should be valid Python."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @dag()
@@ -391,7 +390,7 @@ def my_dag():
         step()
 
     process()
-'''
+"""
         result = convert_all_task_groups(code)
 
         # Should compile without errors
@@ -403,7 +402,7 @@ class TestTaskGroupWithExpand:
 
     def test_expand_detection(self):
         """Detect .expand() call on TaskGroup."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @dag()
@@ -416,7 +415,7 @@ def batch_processing():
         return process(batch_id)
 
     process_batch.expand(batch_id=[1, 2, 3, 4, 5])
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -425,7 +424,7 @@ def batch_processing():
 
     def test_expand_conversion_generates_wrapper(self):
         """Generate wrapper task for .expand() pattern."""
-        code = '''
+        code = """
 from airflow.decorators import dag, task, task_group
 
 @dag()
@@ -435,7 +434,7 @@ def my_dag():
         pass
 
     process_file.expand(filepath=files_list)
-'''
+"""
         result = convert_all_task_groups(code)
 
         # Should have both the subflow and wrapper
@@ -446,7 +445,7 @@ def my_dag():
 
     def test_expand_with_multiple_params(self):
         """Handle .expand() with multiple parameters."""
-        code = '''
+        code = """
 from airflow.decorators import task_group
 
 @task_group
@@ -454,7 +453,7 @@ def process(file, config):
     pass
 
 process.expand(file=files, config=configs)
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1
@@ -468,24 +467,24 @@ class TestEdgeCases:
 
     def test_syntax_error_returns_empty(self):
         """Handle syntax errors gracefully."""
-        code = '''
+        code = """
 def broken(
     @task_group
     def missing_parens:
-'''
+"""
         groups = extract_task_groups(code)
 
         assert groups == []
 
     def test_empty_task_group(self):
         """Handle TaskGroup with only pass."""
-        code = '''
+        code = """
 from airflow.decorators import task_group
 
 @task_group
 def empty_group():
     pass
-'''
+"""
         groups = extract_task_groups(code)
         code_out, _ = convert_task_group(groups[0])
 
@@ -494,13 +493,13 @@ def empty_group():
 
     def test_task_group_with_tooltip(self):
         """Handle TaskGroup tooltip parameter."""
-        code = '''
+        code = """
 from airflow.decorators import task_group
 
 @task_group(group_id="etl", tooltip="Extract-Transform-Load pipeline")
 def etl_pipeline():
     pass
-'''
+"""
         groups = extract_task_groups(code)
 
         assert len(groups) == 1

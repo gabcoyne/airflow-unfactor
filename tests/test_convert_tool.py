@@ -6,8 +6,8 @@ import asyncio
 import json
 import os
 
+from airflow_unfactor.metrics import clear_metrics, get_all_metrics
 from airflow_unfactor.tools.convert import convert_dag
-from airflow_unfactor.metrics import get_all_metrics, clear_metrics
 
 
 def test_convert_includes_runbook_and_dataset_outputs() -> None:
@@ -40,7 +40,9 @@ def sales_flow():
     assert "Migration Checklist" in result["conversion_runbook_md"]
     assert "dataset_conversion" in result
     assert "materialization_code" in result["dataset_conversion"]
-    assert '@materialize("s3://sales/daily")' in result["dataset_conversion"]["materialization_code"]
+    assert (
+        '@materialize("s3://sales/daily")' in result["dataset_conversion"]["materialization_code"]
+    )
 
 
 def test_convert_runbook_present_without_dataset_patterns(simple_etl_dag: str) -> None:

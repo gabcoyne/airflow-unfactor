@@ -15,6 +15,7 @@ from typing import Any
 @dataclass
 class BlockInfo:
     """Information about a Prefect Block type."""
+
     block_class: str  # e.g., "SqlAlchemyConnector"
     import_statement: str  # e.g., "from prefect_sqlalchemy import SqlAlchemyConnector"
     pip_package: str  # e.g., "prefect-sqlalchemy"
@@ -311,6 +312,7 @@ Use the paramiko library for SFTP operations.
 @dataclass
 class ConnectionInfo:
     """Information about a detected Airflow connection."""
+
     name: str  # Connection ID (e.g., "my_postgres_conn")
     conn_type: str | None  # Inferred connection type (e.g., "postgres")
     hook_class: str | None  # Hook class if detected (e.g., "PostgresHook")
@@ -408,12 +410,14 @@ class ConnectionVisitor(ast.NodeVisitor):
                 conn_id = self._get_string_value(kw.value)
                 if conn_id and conn_id not in self._seen_conn_ids:
                     self._seen_conn_ids.add(conn_id)
-                    self.connections.append(ConnectionInfo(
-                        name=conn_id,
-                        conn_type=conn_type or infer_conn_type_from_id(conn_id),
-                        hook_class=func_name,
-                        line_number=node.lineno,
-                    ))
+                    self.connections.append(
+                        ConnectionInfo(
+                            name=conn_id,
+                            conn_type=conn_type or infer_conn_type_from_id(conn_id),
+                            hook_class=func_name,
+                            line_number=node.lineno,
+                        )
+                    )
 
     def _check_base_hook_get_connection(self, node: ast.Call):
         """Check for BaseHook.get_connection("conn_id") pattern."""
@@ -425,12 +429,14 @@ class ConnectionVisitor(ast.NodeVisitor):
                     conn_id = self._get_string_value(node.args[0])
                     if conn_id and conn_id not in self._seen_conn_ids:
                         self._seen_conn_ids.add(conn_id)
-                        self.connections.append(ConnectionInfo(
-                            name=conn_id,
-                            conn_type=infer_conn_type_from_id(conn_id),
-                            hook_class=None,
-                            line_number=node.lineno,
-                        ))
+                        self.connections.append(
+                            ConnectionInfo(
+                                name=conn_id,
+                                conn_type=infer_conn_type_from_id(conn_id),
+                                hook_class=None,
+                                line_number=node.lineno,
+                            )
+                        )
 
     def _check_operator_conn_id(self, node: ast.Call):
         """Check for Operator instantiation with conn_id parameters."""
@@ -466,12 +472,14 @@ class ConnectionVisitor(ast.NodeVisitor):
                     if not conn_type:
                         conn_type = infer_conn_type_from_id(conn_id)
 
-                    self.connections.append(ConnectionInfo(
-                        name=conn_id,
-                        conn_type=conn_type,
-                        hook_class=None,
-                        line_number=node.lineno,
-                    ))
+                    self.connections.append(
+                        ConnectionInfo(
+                            name=conn_id,
+                            conn_type=conn_type,
+                            hook_class=None,
+                            line_number=node.lineno,
+                        )
+                    )
 
     def _get_func_name(self, node: ast.Call) -> str:
         """Extract function/class name from Call node."""
@@ -536,8 +544,7 @@ def generate_block_scaffold(
     if not block_info:
         # Unknown connection type
         warnings.append(
-            f"Unknown connection type for '{info.name}'. "
-            f"Manual configuration required."
+            f"Unknown connection type for '{info.name}'. Manual configuration required."
         )
         code_lines = []
         if include_comments:
@@ -551,7 +558,7 @@ def generate_block_scaffold(
         code_lines.append("# Manual configuration required for this connection")
         code_lines.append(f'# Original Airflow connection ID: "{info.name}"')
 
-        setup = f"""Unknown connection type: {info.conn_type or 'unknown'}
+        setup = f"""Unknown connection type: {info.conn_type or "unknown"}
 
 The connection '{info.name}' uses an unrecognized connection type.
 You'll need to:

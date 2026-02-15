@@ -138,16 +138,14 @@ class CustomOperatorVisitor(ast.NodeVisitor):
 
         return True
 
-    def _extract_operator_info(
-        self, node: ast.Call, class_name: str
-    ) -> CustomOperatorInfo | None:
+    def _extract_operator_info(self, node: ast.Call, class_name: str) -> CustomOperatorInfo | None:
         """Extract information about an operator instantiation."""
         params = {}
         task_id = "unknown_task"
 
         for kw in node.keywords:
             if kw.arg == "task_id" and isinstance(kw.value, ast.Constant):
-                task_id = kw.value.value
+                task_id = str(kw.value.value)
             elif kw.arg:
                 try:
                     params[kw.arg] = ast.literal_eval(kw.value)
@@ -210,8 +208,7 @@ class CustomOperatorVisitor(ast.NodeVisitor):
 
         # Dedent
         dedented = [
-            line[min_indent:] if len(line) > min_indent else line.lstrip()
-            for line in body_lines
+            line[min_indent:] if len(line) > min_indent else line.lstrip() for line in body_lines
         ]
 
         return "\n".join(dedented)

@@ -1,12 +1,12 @@
 """Tests for HTTP server."""
 
-import json
 import pytest
 
 # Skip tests if aiohttp not installed
 pytest.importorskip("aiohttp")
 
 from aiohttp.test_utils import AioHTTPTestCase
+
 from airflow_unfactor.http_server import create_app
 
 
@@ -34,7 +34,7 @@ class TestAnalyzeEndpoint(AioHTTPTestCase):
 
     async def test_analyze_with_content(self):
         """Analyze endpoint works with content."""
-        dag_code = '''
+        dag_code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
@@ -48,7 +48,7 @@ with DAG(
     schedule="@daily",
 ) as dag:
     task = PythonOperator(task_id="test_task", python_callable=my_callable)
-'''
+"""
         response = await self.client.post(
             "/api/analyze",
             json={"content": dag_code},
@@ -83,7 +83,7 @@ class TestConvertEndpoint(AioHTTPTestCase):
 
     async def test_convert_with_content(self):
         """Convert endpoint works with content."""
-        dag_code = '''
+        dag_code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -92,7 +92,7 @@ def my_func():
 
 with DAG("test_dag") as dag:
     task = PythonOperator(task_id="test", python_callable=my_func)
-'''
+"""
         response = await self.client.post(
             "/api/convert",
             json={
@@ -127,14 +127,14 @@ class TestValidateEndpoint(AioHTTPTestCase):
 
     async def test_validate_with_content(self):
         """Validate endpoint works with content."""
-        dag_code = '''
+        dag_code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
 with DAG("test_dag") as dag:
     task = PythonOperator(task_id="test", python_callable=lambda: None)
-'''
-        flow_code = '''
+"""
+        flow_code = """
 from prefect import flow, task
 
 @task
@@ -144,7 +144,7 @@ def test():
 @flow
 def test_dag():
     test()
-'''
+"""
         response = await self.client.post(
             "/api/validate",
             json={

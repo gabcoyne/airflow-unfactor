@@ -2,19 +2,16 @@
 
 import asyncio
 import json
-import pytest
-from pathlib import Path
-import tempfile
 
 from airflow_unfactor.tools.scaffold import (
-    scaffold_project,
+    _write_conftest,
+    _write_docker_compose,
+    _write_dockerfile,
+    _write_github_workflow,
+    _write_prefect_yaml,
     _write_pyproject_toml,
     _write_readme,
-    _write_conftest,
-    _write_prefect_yaml,
-    _write_dockerfile,
-    _write_docker_compose,
-    _write_github_workflow,
+    scaffold_project,
 )
 
 
@@ -27,10 +24,12 @@ class TestScaffoldProject:
         dags_dir.mkdir()
         output_dir = tmp_path / "output"
 
-        result_json = asyncio.run(scaffold_project(
-            dags_directory=str(dags_dir),
-            output_directory=str(output_dir),
-        ))
+        result_json = asyncio.run(
+            scaffold_project(
+                dags_directory=str(dags_dir),
+                output_directory=str(output_dir),
+            )
+        )
         result = json.loads(result_json)
 
         assert result["converted"] == 0
@@ -47,7 +46,7 @@ class TestScaffoldProject:
         output_dir = tmp_path / "output"
 
         # Write a simple DAG
-        dag_content = '''
+        dag_content = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -56,14 +55,16 @@ def my_task():
 
 with DAG("simple_dag") as dag:
     t1 = PythonOperator(task_id="task1", python_callable=my_task)
-'''
+"""
         (dags_dir / "simple_dag.py").write_text(dag_content)
 
-        result_json = asyncio.run(scaffold_project(
-            dags_directory=str(dags_dir),
-            output_directory=str(output_dir),
-            project_name="my_project",
-        ))
+        result_json = asyncio.run(
+            scaffold_project(
+                dags_directory=str(dags_dir),
+                output_directory=str(output_dir),
+                project_name="my_project",
+            )
+        )
         result = json.loads(result_json)
 
         assert result["converted"] == 1
@@ -81,10 +82,12 @@ with DAG("simple_dag") as dag:
         (dags_dir / "__init__.py").write_text("")
         (dags_dir / "__pycache__").mkdir()
 
-        result_json = asyncio.run(scaffold_project(
-            dags_directory=str(dags_dir),
-            output_directory=str(output_dir),
-        ))
+        result_json = asyncio.run(
+            scaffold_project(
+                dags_directory=str(dags_dir),
+                output_directory=str(output_dir),
+            )
+        )
         result = json.loads(result_json)
 
         assert result["converted"] == 0
@@ -95,11 +98,13 @@ with DAG("simple_dag") as dag:
         dags_dir.mkdir()
         output_dir = tmp_path / "output"
 
-        asyncio.run(scaffold_project(
-            dags_directory=str(dags_dir),
-            output_directory=str(output_dir),
-            include_docker=False,
-        ))
+        asyncio.run(
+            scaffold_project(
+                dags_directory=str(dags_dir),
+                output_directory=str(output_dir),
+                include_docker=False,
+            )
+        )
 
         assert not (output_dir / "Dockerfile").exists()
         assert not (output_dir / "docker-compose.yml").exists()
@@ -110,11 +115,13 @@ with DAG("simple_dag") as dag:
         dags_dir.mkdir()
         output_dir = tmp_path / "output"
 
-        asyncio.run(scaffold_project(
-            dags_directory=str(dags_dir),
-            output_directory=str(output_dir),
-            include_github_actions=False,
-        ))
+        asyncio.run(
+            scaffold_project(
+                dags_directory=str(dags_dir),
+                output_directory=str(output_dir),
+                include_github_actions=False,
+            )
+        )
 
         assert not (output_dir / ".github").exists()
 
@@ -128,7 +135,7 @@ class TestWritePyprojectToml:
         content = (tmp_path / "pyproject.toml").read_text()
 
         assert 'name = "test_project"' in content
-        assert 'prefect>=3.0.0' in content
+        assert "prefect>=3.0.0" in content
         assert 'requires-python = ">=3.11"' in content
 
 

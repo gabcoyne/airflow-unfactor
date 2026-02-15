@@ -13,7 +13,6 @@ from airflow.decorators import dag, task
     tags=["@task.bash", "toy"],
 )
 def toy_taskflow_bash():
-
     @task
     def upstream_task():
         dog_owner_data = {
@@ -27,7 +26,7 @@ def toy_taskflow_bash():
     @task.bash
     def bash_task(dog_owner_data):
         names_of_dogless_people = []
-        for name, dog in zip(dog_owner_data["names"], dog_owner_data["dogs"]):
+        for name, dog in zip(dog_owner_data["names"], dog_owner_data["dogs"], strict=False):
             if dog < 1:
                 names_of_dogless_people.append(name)
 
@@ -38,10 +37,9 @@ def toy_taskflow_bash():
                 names_of_dogless_people_str = " and ".join(names_of_dogless_people)
                 return f'echo "{names_of_dogless_people_str} urgently need a dog!"'
         else:
-            return f'echo "All good, everyone has at least one dog!"'
+            return 'echo "All good, everyone has at least one dog!"'
 
     bash_task(dog_owner_data=upstream_task())
 
 
 toy_taskflow_bash()
-

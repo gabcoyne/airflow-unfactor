@@ -10,6 +10,7 @@ from typing import Any
 @dataclass
 class OperatorMapping:
     """Mapping from Airflow operator to Prefect equivalent."""
+
     airflow_operator: str
     prefect_integration: str | None  # e.g., "prefect-aws"
     prefect_function: str  # e.g., "s3_upload"
@@ -105,7 +106,6 @@ def transform_s3_file(source_key: str, dest_key: str, transform_script: str):
     return dest_key""",
         notes="Transform script receives source and dest file paths as arguments",
     ),
-
     # ==========================================================================
     # AWS Compute Operators
     # ==========================================================================
@@ -204,7 +204,6 @@ def run_eks_pod(
     return job.run()""",
         notes="Configure KubernetesCredentials block with EKS kubeconfig",
     ),
-
     # ==========================================================================
     # AWS Data Operators
     # ==========================================================================
@@ -301,7 +300,6 @@ def execute_redshift_sql(sql: str, cluster_identifier: str, database: str, db_us
     return None""",
         notes="Uses Redshift Data API for serverless execution",
     ),
-
     # ==========================================================================
     # GCP Storage Operators
     # ==========================================================================
@@ -434,7 +432,6 @@ def transform_gcs_file(
 
     return f"gs://{destination_bucket}/{destination_object}" """,
     ),
-
     # ==========================================================================
     # GCP Compute Operators
     # ==========================================================================
@@ -501,7 +498,6 @@ def create_dataproc_cluster(
     return response.cluster_name""",
         notes="Long-running operation - consider async polling pattern",
     ),
-
     # ==========================================================================
     # GCP Messaging Operators
     # ==========================================================================
@@ -561,7 +557,6 @@ def create_pubsub_subscription(
     )
     return sub.name""",
     ),
-
     # ==========================================================================
     # Azure Operators
     # ==========================================================================
@@ -634,7 +629,6 @@ def run_adf_pipeline(
     return run_id""",
         notes="Configure Azure credentials via environment or managed identity",
     ),
-
     # ==========================================================================
     # Databricks Operators
     # ==========================================================================
@@ -729,7 +723,6 @@ def execute_databricks_sql(
     return result""",
         notes="Configure Databricks SQL warehouse credentials via block",
     ),
-
     # ==========================================================================
     # dbt Operators
     # ==========================================================================
@@ -808,7 +801,6 @@ def run_dbt(
     return dbt_op.run()""",
         notes="For cosmos integration, use DbtDag patterns",
     ),
-
     # ==========================================================================
     # Database Operators
     "PostgresOperator": OperatorMapping(
@@ -848,7 +840,6 @@ def execute_snowflake(query: str):
     return connector.fetch_all(query)""",
         notes="Configure SnowflakeConnector block in Prefect UI",
     ),
-    
     # Notification Operators
     "SlackWebhookOperator": OperatorMapping(
         airflow_operator="SlackWebhookOperator",
@@ -878,7 +869,6 @@ def send_email(to: list[str], subject: str, body: str):
         email_to=to,
     )""",
     ),
-    
     # Generic/Utility Operators
     "SimpleHttpOperator": OperatorMapping(
         airflow_operator="SimpleHttpOperator",
@@ -897,10 +887,10 @@ def http_request(method: str, url: str, data: dict = None):
 
 def get_operator_mapping(operator_name: str) -> OperatorMapping | None:
     """Get the Prefect mapping for an Airflow operator.
-    
+
     Args:
         operator_name: Name of the Airflow operator
-        
+
     Returns:
         OperatorMapping if found, None otherwise
     """
@@ -919,18 +909,18 @@ def generate_conversion_code(
     include_comments: bool = True,
 ) -> dict[str, Any]:
     """Generate Prefect code for an Airflow operator.
-    
+
     Args:
         operator_name: Name of the Airflow operator
         task_id: The task_id from Airflow
         parameters: Operator parameters
         include_comments: Include educational comments
-        
+
     Returns:
         Dictionary with code, imports, packages, notes
     """
     mapping = get_operator_mapping(operator_name)
-    
+
     if not mapping:
         # Unknown operator - generate generic task
         return {
@@ -944,9 +934,9 @@ def {task_id}():
             "packages": [],
             "notes": [f"Unknown operator: {operator_name}. Manual conversion required."],
         }
-    
+
     lines = []
-    
+
     if include_comments:
         lines.append(f"# Converted from Airflow {operator_name}")
         if mapping.prefect_integration:
@@ -954,15 +944,15 @@ def {task_id}():
         if mapping.notes:
             lines.append(f"# Note: {mapping.notes}")
         lines.append("")
-    
+
     lines.append(mapping.import_statement)
     lines.append("from prefect import task")
     lines.append("")
-    
+
     # Customize code template with task_id
     code = mapping.code_template.replace("@task\ndef ", f"@task\ndef {task_id}_")
     lines.append(code)
-    
+
     return {
         "code": "\n".join(lines),
         "imports": [mapping.import_statement, "from prefect import task"],
@@ -978,41 +968,60 @@ def summarize_operator_support() -> str:
     # Group by category
     categories = {
         "AWS S3": [
-            "S3CreateObjectOperator", "S3DeleteObjectsOperator", "S3CopyObjectOperator",
-            "S3ListOperator", "S3FileTransformOperator",
+            "S3CreateObjectOperator",
+            "S3DeleteObjectsOperator",
+            "S3CopyObjectOperator",
+            "S3ListOperator",
+            "S3FileTransformOperator",
         ],
         "AWS Compute": [
-            "LambdaInvokeFunctionOperator", "EcsRunTaskOperator",
-            "EksCreateClusterOperator", "EksPodOperator",
+            "LambdaInvokeFunctionOperator",
+            "EcsRunTaskOperator",
+            "EksCreateClusterOperator",
+            "EksPodOperator",
         ],
         "AWS Data": [
-            "GlueJobOperator", "GlueCrawlerOperator", "RedshiftSQLOperator",
+            "GlueJobOperator",
+            "GlueCrawlerOperator",
+            "RedshiftSQLOperator",
         ],
         "GCP Storage": [
-            "BigQueryInsertJobOperator", "BigQueryExecuteQueryOperator",
-            "GCSCreateBucketOperator", "GCSToGCSOperator",
-            "GCSDeleteObjectsOperator", "GCSFileTransformOperator",
+            "BigQueryInsertJobOperator",
+            "BigQueryExecuteQueryOperator",
+            "GCSCreateBucketOperator",
+            "GCSToGCSOperator",
+            "GCSDeleteObjectsOperator",
+            "GCSFileTransformOperator",
         ],
         "GCP Compute": [
-            "DataprocSubmitJobOperator", "DataprocCreateClusterOperator",
+            "DataprocSubmitJobOperator",
+            "DataprocCreateClusterOperator",
         ],
         "GCP Messaging": [
-            "PubSubPublishMessageOperator", "PubSubCreateSubscriptionOperator",
+            "PubSubPublishMessageOperator",
+            "PubSubCreateSubscriptionOperator",
         ],
         "Azure": [
-            "WasbBlobOperator", "AzureDataFactoryRunPipelineOperator",
+            "WasbBlobOperator",
+            "AzureDataFactoryRunPipelineOperator",
         ],
         "Databricks": [
-            "DatabricksRunNowOperator", "DatabricksSubmitRunOperator", "DatabricksSqlOperator",
+            "DatabricksRunNowOperator",
+            "DatabricksSubmitRunOperator",
+            "DatabricksSqlOperator",
         ],
         "dbt": [
-            "DbtCloudRunJobOperator", "DbtRunOperator",
+            "DbtCloudRunJobOperator",
+            "DbtRunOperator",
         ],
         "Database": [
-            "PostgresOperator", "MySqlOperator", "SnowflakeOperator",
+            "PostgresOperator",
+            "MySqlOperator",
+            "SnowflakeOperator",
         ],
         "Notifications": [
-            "SlackWebhookOperator", "EmailOperator",
+            "SlackWebhookOperator",
+            "EmailOperator",
         ],
         "HTTP": [
             "SimpleHttpOperator",
@@ -1035,41 +1044,60 @@ def get_operators_by_category() -> dict[str, list[str]]:
     """Get operators grouped by provider category."""
     return {
         "aws_s3": [
-            "S3CreateObjectOperator", "S3DeleteObjectsOperator", "S3CopyObjectOperator",
-            "S3ListOperator", "S3FileTransformOperator",
+            "S3CreateObjectOperator",
+            "S3DeleteObjectsOperator",
+            "S3CopyObjectOperator",
+            "S3ListOperator",
+            "S3FileTransformOperator",
         ],
         "aws_compute": [
-            "LambdaInvokeFunctionOperator", "EcsRunTaskOperator",
-            "EksCreateClusterOperator", "EksPodOperator",
+            "LambdaInvokeFunctionOperator",
+            "EcsRunTaskOperator",
+            "EksCreateClusterOperator",
+            "EksPodOperator",
         ],
         "aws_data": [
-            "GlueJobOperator", "GlueCrawlerOperator", "RedshiftSQLOperator",
+            "GlueJobOperator",
+            "GlueCrawlerOperator",
+            "RedshiftSQLOperator",
         ],
         "gcp_storage": [
-            "BigQueryInsertJobOperator", "BigQueryExecuteQueryOperator",
-            "GCSCreateBucketOperator", "GCSToGCSOperator",
-            "GCSDeleteObjectsOperator", "GCSFileTransformOperator",
+            "BigQueryInsertJobOperator",
+            "BigQueryExecuteQueryOperator",
+            "GCSCreateBucketOperator",
+            "GCSToGCSOperator",
+            "GCSDeleteObjectsOperator",
+            "GCSFileTransformOperator",
         ],
         "gcp_compute": [
-            "DataprocSubmitJobOperator", "DataprocCreateClusterOperator",
+            "DataprocSubmitJobOperator",
+            "DataprocCreateClusterOperator",
         ],
         "gcp_messaging": [
-            "PubSubPublishMessageOperator", "PubSubCreateSubscriptionOperator",
+            "PubSubPublishMessageOperator",
+            "PubSubCreateSubscriptionOperator",
         ],
         "azure": [
-            "WasbBlobOperator", "AzureDataFactoryRunPipelineOperator",
+            "WasbBlobOperator",
+            "AzureDataFactoryRunPipelineOperator",
         ],
         "databricks": [
-            "DatabricksRunNowOperator", "DatabricksSubmitRunOperator", "DatabricksSqlOperator",
+            "DatabricksRunNowOperator",
+            "DatabricksSubmitRunOperator",
+            "DatabricksSqlOperator",
         ],
         "dbt": [
-            "DbtCloudRunJobOperator", "DbtRunOperator",
+            "DbtCloudRunJobOperator",
+            "DbtRunOperator",
         ],
         "database": [
-            "PostgresOperator", "MySqlOperator", "SnowflakeOperator",
+            "PostgresOperator",
+            "MySqlOperator",
+            "SnowflakeOperator",
         ],
         "notifications": [
-            "SlackWebhookOperator", "EmailOperator",
+            "SlackWebhookOperator",
+            "EmailOperator",
         ],
         "http": [
             "SimpleHttpOperator",

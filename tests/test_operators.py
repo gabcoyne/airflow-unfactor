@@ -1,11 +1,10 @@
 """Tests for operator-specific converters."""
 
-import pytest
 from airflow_unfactor.converters.operators import (
-    extract_functions,
-    convert_python_operator,
     convert_bash_operator,
     convert_branch_operator,
+    convert_python_operator,
+    extract_functions,
 )
 
 
@@ -29,11 +28,11 @@ def my_task():
 
     def test_extract_function_with_ti_param(self):
         """Extract a function that uses TaskInstance."""
-        code = '''
+        code = """
 def transform(ti):
     data = ti.xcom_pull(task_ids="extract")
     return data * 2
-'''
+"""
         funcs = extract_functions(code)
         assert "transform" in funcs
         func = funcs["transform"]
@@ -42,11 +41,11 @@ def transform(ti):
 
     def test_extract_function_with_kwargs(self):
         """Extract a function with **kwargs."""
-        code = '''
+        code = """
 def task_with_context(**kwargs):
     ds = kwargs.get("ds")
     return ds
-'''
+"""
         funcs = extract_functions(code)
         func = funcs["task_with_context"]
         assert func.has_context
@@ -57,10 +56,10 @@ class TestConvertPythonOperator:
 
     def test_convert_simple_function(self):
         """Convert a simple function."""
-        code = '''
+        code = """
 def extract():
     return {"users": [1, 2, 3]}
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="extract",
@@ -74,11 +73,11 @@ def extract():
 
     def test_convert_xcom_function(self):
         """Convert a function that uses XCom."""
-        code = '''
+        code = """
 def transform(ti):
     data = ti.xcom_pull(task_ids="extract")
     return {"result": data}
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="transform",
@@ -93,11 +92,11 @@ def transform(ti):
 
     def test_convert_xcom_with_dynamic_task_ids(self):
         """Convert function with dynamic task_ids warns about manual conversion."""
-        code = '''
+        code = """
 def process(ti, task_list):
     results = ti.xcom_pull(task_ids=task_list)
     return results
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="process",
@@ -114,12 +113,12 @@ def process(ti, task_list):
 
     def test_convert_xcom_with_custom_key(self):
         """Convert function with custom XCom key warns about manual conversion."""
-        code = '''
+        code = """
 def load(ti):
     schema = ti.xcom_pull(task_ids="extract", key="schema")
     data = ti.xcom_pull(task_ids="extract", key="data")
     return {"schema": schema, "data": data}
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="load",
@@ -133,11 +132,11 @@ def load(ti):
 
     def test_convert_xcom_push_to_return(self):
         """Convert xcom_push to return statement."""
-        code = '''
+        code = """
 def produce(ti):
     result = {"processed": True}
     ti.xcom_push(key="result", value=result)
-'''
+"""
         funcs = extract_functions(code)
         result = convert_python_operator(
             task_id="produce",

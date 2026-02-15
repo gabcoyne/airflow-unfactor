@@ -16,14 +16,12 @@ TRIGGER_RULE_PATTERNS: dict[str, str] = {
 # Task runs only if all upstream tasks succeed.
 # In Prefect, this is the default behavior - just call the task normally.
 {task_id}_result = {task_id}({upstream_args})""",
-
     "all_done": """\
 # Trigger rule: all_done
 # Task runs when all upstream tasks complete, regardless of success/failure.
 # In Prefect, use return_state=True to get state without raising on failure.
 {upstream_states_code}
 {task_id}_result = {task_id}({upstream_args})""",
-
     "all_failed": """\
 # Trigger rule: all_failed
 # Task runs only if ALL upstream tasks failed.
@@ -33,7 +31,6 @@ if all(state.is_failed() for state in [{upstream_state_vars}]):
     {task_id}_result = {task_id}({upstream_args})
 else:
     {task_id}_result = None  # Skip: not all upstream tasks failed""",
-
     "one_failed": """\
 # Trigger rule: one_failed
 # Task runs if ANY upstream task failed.
@@ -43,7 +40,6 @@ if any(state.is_failed() for state in [{upstream_state_vars}]):
     {task_id}_result = {task_id}({upstream_args})
 else:
     {task_id}_result = None  # Skip: no upstream task failed""",
-
     "one_success": """\
 # Trigger rule: one_success
 # Task runs if ANY upstream task succeeded.
@@ -53,7 +49,6 @@ if any(state.is_completed() for state in [{upstream_state_vars}]):
     {task_id}_result = {task_id}({upstream_args})
 else:
     {task_id}_result = None  # Skip: no upstream task succeeded""",
-
     "none_failed": """\
 # Trigger rule: none_failed
 # Task runs if NO upstream task failed (allows skipped/success).
@@ -63,7 +58,6 @@ if not any(state.is_failed() for state in [{upstream_state_vars}]):
     {task_id}_result = {task_id}({upstream_args})
 else:
     {task_id}_result = None  # Skip: at least one upstream task failed""",
-
     "none_failed_min_one_success": """\
 # Trigger rule: none_failed_min_one_success
 # Task runs if no upstream failed AND at least one succeeded.
@@ -73,7 +67,6 @@ if not any(s.is_failed() for s in states) and any(s.is_completed() for s in stat
     {task_id}_result = {task_id}({upstream_args})
 else:
     {task_id}_result = None  # Skip: condition not met""",
-
     "none_skipped": """\
 # Trigger rule: none_skipped
 # Task runs if no upstream task was skipped.
@@ -84,14 +77,12 @@ if all(result is not None for result in [{upstream_result_vars}]):
     {task_id}_result = {task_id}({upstream_args})
 else:
     {task_id}_result = None  # Skip: upstream task was skipped""",
-
     "always": """\
 # Trigger rule: always
 # Task ALWAYS runs, regardless of upstream state.
 # Use return_state=True and ignore failures.
 {upstream_states_code}
 {task_id}_result = {task_id}({upstream_args})""",
-
     "dummy": """\
 # Trigger rule: dummy (deprecated alias for always)
 # Task ALWAYS runs, regardless of upstream state.
@@ -103,6 +94,7 @@ else:
 @dataclass
 class TriggerRuleInfo:
     """Information about a task's trigger rule."""
+
     task_id: str
     rule: str
     upstream_tasks: list[str] = field(default_factory=list)
@@ -142,10 +134,10 @@ class TriggerRuleVisitor(ast.NodeVisitor):
 
         for kw in node.keywords:
             if kw.arg == "task_id" and isinstance(kw.value, ast.Constant):
-                task_id = kw.value.value
+                task_id = str(kw.value.value)
             elif kw.arg == "trigger_rule":
                 if isinstance(kw.value, ast.Constant):
-                    trigger_rule = kw.value.value
+                    trigger_rule = str(kw.value.value)
                 elif isinstance(kw.value, ast.Attribute):
                     # Handle TriggerRule.ALL_DONE style
                     trigger_rule = kw.value.attr.lower()
@@ -215,15 +207,23 @@ def generate_trigger_rule_code(info: TriggerRuleInfo) -> tuple[str, list[str]]:
             upstream_result_vars.append(f"{upstream}_result")
 
             # For rules that need state inspection, call with return_state=True
-            if info.rule in ("all_done", "all_failed", "one_failed", "one_success",
-                           "none_failed", "none_failed_min_one_success", "always", "dummy"):
-                upstream_states_lines.append(
-                    f"{state_var} = {upstream}.submit(return_state=True)"
-                )
+            if info.rule in (
+                "all_done",
+                "all_failed",
+                "one_failed",
+                "one_success",
+                "none_failed",
+                "none_failed_min_one_success",
+                "always",
+                "dummy",
+            ):
+                upstream_states_lines.append(f"{state_var} = {upstream}.submit(return_state=True)")
 
         upstream_args = ", ".join(upstream_result_vars) if upstream_result_vars else ""
 
-    upstream_states_code = "\n".join(upstream_states_lines) if upstream_states_lines else "# No upstream tasks"
+    upstream_states_code = (
+        "\n".join(upstream_states_lines) if upstream_states_lines else "# No upstream tasks"
+    )
 
     # Format the pattern
     code = pattern.format(

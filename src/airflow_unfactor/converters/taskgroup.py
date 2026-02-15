@@ -113,10 +113,7 @@ class TaskGroupVisitor(ast.NodeVisitor):
     def _is_task_group_decorator(self, decorator: ast.expr) -> bool:
         """Check if decorator is @task_group or @task_group(...)."""
         dec_str = ast.unparse(decorator)
-        return (
-            dec_str == "task_group"
-            or dec_str.startswith("task_group(")
-        )
+        return dec_str == "task_group" or dec_str.startswith("task_group(")
 
     def _is_task_group_context(self, expr: ast.expr) -> bool:
         """Check if expression is TaskGroup(...)."""
@@ -287,8 +284,7 @@ class TaskGroupVisitor(ast.NodeVisitor):
 
         min_indent = min(len(line) - len(line.lstrip()) for line in non_empty)
         dedented = [
-            line[min_indent:] if len(line) > min_indent else line.lstrip()
-            for line in body_lines
+            line[min_indent:] if len(line) > min_indent else line.lstrip() for line in body_lines
         ]
 
         return "\n".join(dedented)
@@ -311,8 +307,7 @@ class TaskGroupVisitor(ast.NodeVisitor):
 
         min_indent = min(len(line) - len(line.lstrip()) for line in non_empty)
         dedented = [
-            line[min_indent:] if len(line) > min_indent else line.lstrip()
-            for line in body_lines
+            line[min_indent:] if len(line) > min_indent else line.lstrip() for line in body_lines
         ]
 
         return "\n".join(dedented)
@@ -347,9 +342,7 @@ def extract_task_groups(dag_code: str) -> list[TaskGroupInfo]:
     return visitor.task_groups
 
 
-def convert_task_group(
-    info: TaskGroupInfo, include_comments: bool = True
-) -> tuple[str, list[str]]:
+def convert_task_group(info: TaskGroupInfo, include_comments: bool = True) -> tuple[str, list[str]]:
     """Convert a TaskGroup to Prefect subflow code.
 
     Args:
@@ -365,7 +358,9 @@ def convert_task_group(
     if include_comments:
         lines.append(f"# Converted from Airflow TaskGroup: {info.name}")
         lines.append("# ")
-        lines.append("# In Prefect, subflows provide the same organizational benefits as TaskGroups,")
+        lines.append(
+            "# In Prefect, subflows provide the same organizational benefits as TaskGroups,"
+        )
         lines.append("# plus better observability and native retry handling at the subflow level.")
         lines.append("")
 
@@ -466,11 +461,11 @@ def _generate_expanded_task_group(
 
         if include_comments:
             lines.append(f"# Usage: {wrapper_name}.map({primary_value})")
-            lines.append(f"# This replaces: {info.function_name}.expand({primary_param}={primary_value})")
+            lines.append(
+                f"# This replaces: {info.function_name}.expand({primary_param}={primary_value})"
+            )
     else:
-        warnings.append(
-            f"TaskGroup '{info.name}' uses .expand() but no parameters were detected."
-        )
+        warnings.append(f"TaskGroup '{info.name}' uses .expand() but no parameters were detected.")
 
     warnings.append(
         f"TaskGroup.expand() for '{info.name}' converted to wrapper task pattern. "
@@ -509,11 +504,13 @@ def convert_all_task_groups(
 
     for group in task_groups:
         code, warnings = convert_task_group(group, include_comments)
-        conversions.append({
-            "task_group": group,
-            "code": code,
-            "warnings": warnings,
-        })
+        conversions.append(
+            {
+                "task_group": group,
+                "code": code,
+                "warnings": warnings,
+            }
+        )
         all_warnings.extend(warnings)
         all_code.append(code)
 

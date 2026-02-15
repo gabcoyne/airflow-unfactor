@@ -15,27 +15,30 @@ import httpx
 
 class TransportType(str, Enum):
     """Supported MCP transport types."""
-    HTTP_POST = "http_post"      # POST /tools/{tool}
-    HTTP_RPC = "http_rpc"        # POST / with {"method": "tools/call", ...}
-    STDIO = "stdio"              # Not implemented - placeholder for future
+
+    HTTP_POST = "http_post"  # POST /tools/{tool}
+    HTTP_RPC = "http_rpc"  # POST / with {"method": "tools/call", ...}
+    STDIO = "stdio"  # Not implemented - placeholder for future
 
 
 class FallbackMode(str, Enum):
     """How to handle MCP call failures."""
-    SILENT = "silent"            # Return empty result, no error
-    ERROR = "error"              # Return error in response
-    RAISE = "raise"              # Raise exception
+
+    SILENT = "silent"  # Return empty result, no error
+    ERROR = "error"  # Return error in response
+    RAISE = "raise"  # Raise exception
 
 
 @dataclass
 class ProviderContract:
     """Contract defining how to invoke a specific MCP provider."""
+
     name: str
     url: str
     transport: TransportType = TransportType.HTTP_POST
-    tool_name: str = ""           # Actual tool name to call
+    tool_name: str = ""  # Actual tool name to call
     tool_path: str = "/tools/{tool}"  # URL path template
-    payload_wrapper: str = "input"     # Key to wrap payload in
+    payload_wrapper: str = "input"  # Key to wrap payload in
     headers: dict[str, str] = field(default_factory=dict)
     timeout: float = 8.0
     fallback_mode: FallbackMode = FallbackMode.ERROR
@@ -69,6 +72,7 @@ DEFAULT_ASTRONOMER_CONTRACT = ProviderContract(
 @dataclass
 class MCPServerConfig:
     """Legacy config - kept for backward compatibility."""
+
     name: str
     url: str
     transport: str = "http"
@@ -122,7 +126,9 @@ class ExternalMCPClient:
         """Call Prefect MCP Search tool."""
         return await self._call_provider(self.prefect, {"query": query}, timeout)
 
-    async def call_astronomer_migration(self, query: str, timeout: float | None = None) -> dict[str, Any]:
+    async def call_astronomer_migration(
+        self, query: str, timeout: float | None = None
+    ) -> dict[str, Any]:
         """Call Astronomer MCP migration tool."""
         return await self._call_provider(self.astronomer, {"query": query}, timeout)
 

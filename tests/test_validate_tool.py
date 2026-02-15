@@ -1,9 +1,5 @@
 """Tests for the validate tool - behavioral equivalence checking."""
 
-import json
-
-import pytest
-
 from airflow_unfactor.tools.validate import (
     GraphInfo,
     ValidationIssue,
@@ -16,7 +12,6 @@ from airflow_unfactor.tools.validate import (
     extract_flow_graph,
     validate_conversion_sync,
 )
-
 
 # =============================================================================
 # Test Fixtures: DAG and Flow Code Samples
@@ -140,6 +135,7 @@ def mismatched_flow():
 # Test DAG Graph Extraction
 # =============================================================================
 
+
 class TestDAGGraphExtraction:
     """Tests for extracting task graphs from Airflow DAGs."""
 
@@ -238,6 +234,7 @@ class TestFlowGraphExtraction:
 # =============================================================================
 # Test Comparison Functions
 # =============================================================================
+
 
 class TestTaskCountComparison:
     """Tests for compare_task_counts function."""
@@ -356,6 +353,7 @@ class TestDataFlowComparison:
 # Test Confidence Scoring
 # =============================================================================
 
+
 class TestConfidenceScore:
     """Tests for calculate_confidence function."""
 
@@ -373,11 +371,13 @@ class TestConfidenceScore:
         dag_graph = extract_dag_graph(SIMPLE_DAG)
         flow_graph = extract_flow_graph(MISMATCHED_FLOW)
 
-        issues = [ValidationIssue(
-            severity="error",
-            category="task_count",
-            message="Missing tasks",
-        )]
+        issues = [
+            ValidationIssue(
+                severity="error",
+                category="task_count",
+                message="Missing tasks",
+            )
+        ]
 
         score = calculate_confidence(dag_graph, flow_graph, issues)
 
@@ -406,6 +406,7 @@ class TestConfidenceScore:
 # =============================================================================
 # Test Full Validation
 # =============================================================================
+
 
 class TestValidateConversion:
     """Tests for the complete validate_conversion function."""
@@ -479,6 +480,7 @@ class TestValidateConversion:
 # =============================================================================
 # Test Edge Cases
 # =============================================================================
+
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""

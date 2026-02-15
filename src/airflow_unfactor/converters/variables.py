@@ -72,9 +72,7 @@ class VariableVisitor(ast.NodeVisitor):
                 return node.func.value.attr == "Variable"
         return False
 
-    def _extract_variable_info(
-        self, node: ast.Call, method_name: str
-    ) -> VariableInfo | None:
+    def _extract_variable_info(self, node: ast.Call, method_name: str) -> VariableInfo | None:
         """Extract variable information from a Variable.get/set call."""
         var_name: str | None = None
         default_value: str | None = None
@@ -279,7 +277,7 @@ def _generate_sensitive_setup(info: VariableInfo) -> list[str]:
         "# Create the Secret block via:",
         "#",
         "# 1. Prefect UI: Blocks > Add Block > Secret",
-        f'#    - Block Name: {info.name}',
+        f"#    - Block Name: {info.name}",
         "#    - Value: <your secret value>",
         "#",
         "# 2. CLI:",

@@ -4,12 +4,13 @@ Tests conversion of Airflow trigger_rule parameter to Prefect state-based patter
 """
 
 import pytest
+
 from airflow_unfactor.converters.trigger_rules import (
+    TRIGGER_RULE_PATTERNS,
+    TriggerRuleInfo,
+    convert_trigger_rules,
     detect_trigger_rules,
     generate_trigger_rule_code,
-    convert_trigger_rules,
-    TriggerRuleInfo,
-    TRIGGER_RULE_PATTERNS,
 )
 
 
@@ -17,7 +18,7 @@ class TestDetectTriggerRules:
     """Test trigger rule detection."""
 
     def test_detect_all_done(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 from airflow.utils.trigger_rule import TriggerRule
 
@@ -26,7 +27,7 @@ cleanup = PythonOperator(
     python_callable=do_cleanup,
     trigger_rule=TriggerRule.ALL_DONE,
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 1
@@ -34,7 +35,7 @@ cleanup = PythonOperator(
         assert rules[0].rule == "all_done"
 
     def test_detect_string_trigger_rule(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 notify = PythonOperator(
@@ -42,7 +43,7 @@ notify = PythonOperator(
     python_callable=send_notification,
     trigger_rule="all_failed",
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 1
@@ -50,7 +51,7 @@ notify = PythonOperator(
         assert rules[0].rule == "all_failed"
 
     def test_detect_one_success(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 proceed = PythonOperator(
@@ -58,14 +59,14 @@ proceed = PythonOperator(
     python_callable=continue_processing,
     trigger_rule="one_success",
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 1
         assert rules[0].rule == "one_success"
 
     def test_detect_none_failed(self):
-        code = '''
+        code = """
 from airflow.operators.bash import BashOperator
 
 finalize = BashOperator(
@@ -73,7 +74,7 @@ finalize = BashOperator(
     bash_command="echo done",
     trigger_rule="none_failed",
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 1
@@ -81,7 +82,7 @@ finalize = BashOperator(
 
     def test_skip_default_all_success(self):
         """Default all_success should not be reported."""
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 # Explicit all_success
@@ -96,13 +97,13 @@ task2 = PythonOperator(
     task_id="task2",
     python_callable=func2,
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 0
 
     def test_detect_multiple_trigger_rules(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 cleanup = PythonOperator(
@@ -122,7 +123,7 @@ report = PythonOperator(
     python_callable=generate_report,
     trigger_rule="none_failed",
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 3
@@ -130,7 +131,7 @@ report = PythonOperator(
         assert rule_set == {"all_done", "one_failed", "none_failed"}
 
     def test_detect_always_trigger_rule(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 always_run = PythonOperator(
@@ -138,14 +139,14 @@ always_run = PythonOperator(
     python_callable=log_completion,
     trigger_rule="always",
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 1
         assert rules[0].rule == "always"
 
     def test_detect_trigger_rule_on_sensor(self):
-        code = '''
+        code = """
 from airflow.sensors.filesystem import FileSensor
 
 wait_for_file = FileSensor(
@@ -153,7 +154,7 @@ wait_for_file = FileSensor(
     filepath="/data/input.csv",
     trigger_rule="none_failed",
 )
-'''
+"""
         rules = detect_trigger_rules(code)
 
         assert len(rules) == 1
@@ -281,7 +282,7 @@ class TestConvertTriggerRules:
     """Test batch trigger rule conversion."""
 
     def test_convert_dag_with_trigger_rules(self):
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
@@ -311,7 +312,7 @@ with DAG("my_dag") as dag:
 
     [extract, transform] >> cleanup
     [extract, transform] >> notify_failure
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert len(result["trigger_rules"]) == 2
@@ -320,7 +321,7 @@ with DAG("my_dag") as dag:
         assert "2 trigger rule(s)" in result["summary"]
 
     def test_convert_no_trigger_rules(self):
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -329,7 +330,7 @@ with DAG("simple_dag") as dag:
         task_id="task",
         python_callable=do_work,
     )
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert result["trigger_rules"] == []
@@ -337,7 +338,7 @@ with DAG("simple_dag") as dag:
         assert "No non-default" in result["summary"]
 
     def test_warnings_for_failure_rules(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 alert = PythonOperator(
@@ -345,13 +346,13 @@ alert = PythonOperator(
     python_callable=alert,
     trigger_rule="one_failed",
 )
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert any("one_failed" in w for w in result["warnings"])
 
     def test_warnings_for_always_rule(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 always_task = PythonOperator(
@@ -359,19 +360,19 @@ always_task = PythonOperator(
     python_callable=func,
     trigger_rule="always",
 )
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert any("always" in w.lower() for w in result["warnings"])
 
     def test_summary_counts_rules(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 t1 = PythonOperator(task_id="t1", python_callable=f, trigger_rule="all_done")
 t2 = PythonOperator(task_id="t2", python_callable=f, trigger_rule="all_done")
 t3 = PythonOperator(task_id="t3", python_callable=f, trigger_rule="one_failed")
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert "3 trigger rule(s)" in result["summary"]
@@ -402,8 +403,9 @@ class TestTriggerRulePatterns:
     def test_patterns_contain_trigger_rule_comment(self):
         """Each pattern should document what trigger rule it handles."""
         for rule, pattern in TRIGGER_RULE_PATTERNS.items():
-            assert "Trigger rule:" in pattern or "trigger rule:" in pattern.lower(), \
+            assert "Trigger rule:" in pattern or "trigger rule:" in pattern.lower(), (
                 f"Pattern for {rule} missing trigger rule comment"
+            )
 
     def test_patterns_are_valid_python_templates(self):
         """Patterns should be formattable without errors."""
@@ -428,7 +430,7 @@ class TestIntegration:
 
     def test_etl_with_cleanup(self):
         """Common pattern: cleanup runs regardless of ETL success."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -443,7 +445,7 @@ with DAG("etl_dag") as dag:
     )
 
     extract >> transform >> load >> cleanup
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert len(result["trigger_rules"]) == 1
@@ -453,7 +455,7 @@ with DAG("etl_dag") as dag:
 
     def test_notification_on_failure(self):
         """Common pattern: send alert if any task fails."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -469,7 +471,7 @@ with DAG("monitored_dag") as dag:
     )
 
     [step1, step2, step3] >> send_failure_alert
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert len(result["trigger_rules"]) == 1
@@ -478,7 +480,7 @@ with DAG("monitored_dag") as dag:
 
     def test_branching_with_join(self):
         """Pattern: join after branches where one success is enough."""
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 
@@ -493,7 +495,7 @@ with DAG("branching_dag") as dag:
     )
 
     branch >> [path_a, path_b] >> join
-'''
+"""
         result = convert_trigger_rules(code)
 
         assert len(result["trigger_rules"]) == 1

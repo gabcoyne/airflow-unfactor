@@ -1,14 +1,13 @@
 """Tests for Airflow Connection to Prefect Block converter."""
 
-import pytest
 from airflow_unfactor.converters.connections import (
+    CONNECTION_TO_BLOCK,
+    ConnectionInfo,
+    _sanitize_block_name,
+    convert_all_connections,
     extract_connections,
     generate_block_scaffold,
-    convert_all_connections,
-    ConnectionInfo,
-    CONNECTION_TO_BLOCK,
     infer_conn_type_from_id,
-    _sanitize_block_name,
 )
 
 
@@ -16,13 +15,13 @@ class TestExtractConnections:
     """Test connection detection."""
 
     def test_detect_postgres_hook(self):
-        code = '''
+        code = """
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 def extract_data():
     hook = PostgresHook(postgres_conn_id="my_postgres_conn")
     return hook.get_records("SELECT * FROM users")
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 1
@@ -31,13 +30,13 @@ def extract_data():
         assert connections[0].hook_class == "PostgresHook"
 
     def test_detect_base_hook_get_connection(self):
-        code = '''
+        code = """
 from airflow.hooks.base import BaseHook
 
 def get_creds():
     conn = BaseHook.get_connection("my_aws_conn")
     return conn.extra_dejson
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 1
@@ -46,7 +45,7 @@ def get_creds():
         assert connections[0].hook_class is None
 
     def test_detect_operator_conn_id(self):
-        code = '''
+        code = """
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 
 task = PostgresOperator(
@@ -54,7 +53,7 @@ task = PostgresOperator(
     postgres_conn_id="warehouse_db",
     sql="SELECT 1",
 )
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 1
@@ -62,7 +61,7 @@ task = PostgresOperator(
         assert connections[0].conn_type == "postgres"
 
     def test_detect_multiple_connections(self):
-        code = '''
+        code = """
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
@@ -70,7 +69,7 @@ def etl():
     pg_hook = PostgresHook(postgres_conn_id="pg_conn")
     s3_hook = S3Hook(aws_conn_id="aws_conn")
     return pg_hook, s3_hook
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 2
@@ -78,11 +77,11 @@ def etl():
         assert conn_names == {"pg_conn", "aws_conn"}
 
     def test_detect_snowflake_hook(self):
-        code = '''
+        code = """
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
 
 hook = SnowflakeHook(snowflake_conn_id="sf_warehouse")
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 1
@@ -91,11 +90,11 @@ hook = SnowflakeHook(snowflake_conn_id="sf_warehouse")
         assert connections[0].hook_class == "SnowflakeHook"
 
     def test_detect_bigquery_hook(self):
-        code = '''
+        code = """
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 
 hook = BigQueryHook(gcp_conn_id="gcp_default")
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 1
@@ -103,11 +102,11 @@ hook = BigQueryHook(gcp_conn_id="gcp_default")
         assert connections[0].conn_type == "bigquery"
 
     def test_detect_slack_hook(self):
-        code = '''
+        code = """
 from airflow.providers.slack.hooks.slack_webhook import SlackWebhookHook
 
 hook = SlackWebhookHook(slack_webhook_conn_id="slack_alerts")
-'''
+"""
         connections = extract_connections(code)
 
         assert len(connections) == 1
@@ -115,7 +114,7 @@ hook = SlackWebhookHook(slack_webhook_conn_id="slack_alerts")
         assert connections[0].conn_type == "slack_webhook"
 
     def test_deduplicate_connections(self):
-        code = '''
+        code = """
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 def task1():
@@ -125,7 +124,7 @@ def task1():
 def task2():
     hook = PostgresHook(postgres_conn_id="shared_db")
     return hook.get_records("SELECT 2")
-'''
+"""
         connections = extract_connections(code)
 
         # Should only detect once
@@ -133,13 +132,13 @@ def task2():
         assert connections[0].name == "shared_db"
 
     def test_infer_type_from_conn_id_pattern(self):
-        code = '''
+        code = """
 from airflow.hooks.base import BaseHook
 
 conn1 = BaseHook.get_connection("postgres_warehouse")
 conn2 = BaseHook.get_connection("my_snowflake_db")
 conn3 = BaseHook.get_connection("bigquery_analytics")
-'''
+"""
         connections = extract_connections(code)
 
         conn_map = {c.name: c.conn_type for c in connections}
@@ -148,14 +147,14 @@ conn3 = BaseHook.get_connection("bigquery_analytics")
         assert conn_map["bigquery_analytics"] == "bigquery"
 
     def test_no_connections(self):
-        code = '''
+        code = """
 from airflow.operators.python import PythonOperator
 
 def my_func():
     print("Hello")
 
 task = PythonOperator(task_id="hello", python_callable=my_func)
-'''
+"""
         connections = extract_connections(code)
         assert connections == []
 
@@ -330,7 +329,7 @@ class TestConvertAllConnections:
     """Test batch connection conversion."""
 
     def test_convert_dag_with_multiple_connections(self):
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
@@ -344,7 +343,7 @@ with DAG("etl_dag") as dag:
     def load():
         s3 = S3Hook(aws_conn_id="data_lake")
         sf = SnowflakeHook(snowflake_conn_id="warehouse")
-'''
+"""
         result = convert_all_connections(code)
 
         assert len(result["connections"]) == 3
@@ -354,12 +353,12 @@ with DAG("etl_dag") as dag:
         assert "prefect-snowflake" in result["pip_packages"]
 
     def test_no_connections_returns_empty(self):
-        code = '''
+        code = """
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
 task = PythonOperator(task_id="hello", python_callable=lambda: None)
-'''
+"""
         result = convert_all_connections(code)
 
         assert result["connections"] == []
@@ -368,22 +367,22 @@ task = PythonOperator(task_id="hello", python_callable=lambda: None)
         assert "No Airflow connections" in result["combined_setup"]
 
     def test_combined_code_valid_python(self):
-        code = '''
+        code = """
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 hook = PostgresHook(postgres_conn_id="db")
-'''
+"""
         result = convert_all_connections(code)
 
         # Combined code should be valid Python
         compile(result["combined_code"], "<test>", "exec")
 
     def test_warnings_collected(self):
-        code = '''
+        code = """
 from airflow.hooks.base import BaseHook
 
 conn = BaseHook.get_connection("unknown_system_xyz")
-'''
+"""
         result = convert_all_connections(code)
 
         # Should have a warning for unknown connection type
@@ -483,13 +482,13 @@ with DAG(
         assert "S3Bucket" in result["combined_code"]
 
     def test_notification_dag(self):
-        code = '''
+        code = """
 from airflow.providers.slack.hooks.slack_webhook import SlackWebhookHook
 
 def send_alert():
     hook = SlackWebhookHook(slack_webhook_conn_id="team_alerts")
     hook.send_text("Pipeline completed!")
-'''
+"""
         result = convert_all_connections(code)
 
         assert len(result["connections"]) == 1
@@ -498,7 +497,7 @@ def send_alert():
         assert "prefect-slack" in result["pip_packages"]
 
     def test_multi_database_dag(self):
-        code = '''
+        code = """
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.mysql.hooks.mysql import MySqlHook
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
@@ -515,7 +514,7 @@ def sync_data():
     # Load to Snowflake warehouse
     sf = SnowflakeHook(snowflake_conn_id="analytics_sf")
     sf.run("INSERT INTO orders SELECT * FROM staging.orders")
-'''
+"""
         result = convert_all_connections(code)
 
         assert len(result["connections"]) == 3

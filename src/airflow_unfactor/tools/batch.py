@@ -20,7 +20,11 @@ async def batch_convert(
         JSON with conversion report
     """
     input_dir = Path(directory)
-    output_dir = Path(output_directory) if output_directory else input_dir.parent / f"{input_dir.name}_prefect"
+    output_dir = (
+        Path(output_directory)
+        if output_directory
+        else input_dir.parent / f"{input_dir.name}_prefect"
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     converted = 0
