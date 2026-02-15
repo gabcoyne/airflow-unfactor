@@ -20,11 +20,13 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: Install ruff
-        run: uv pip install --system ruff
+      - name: Create virtual environment and install ruff
+        run: |
+          uv venv
+          uv pip install ruff
 
       - name: Run ruff check
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Run ruff format check
-        run: ruff format --check .
+        run: uv run ruff format --check .
