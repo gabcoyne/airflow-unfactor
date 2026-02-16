@@ -52,14 +52,22 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     li: ({ children }) => <li className="leading-7">{children}</li>,
 
-    // Code
-    code: ({ children }) => (
-      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground">
-        {children}
-      </code>
-    ),
+    // Code - inline code only (code blocks use pre > code)
+    code: ({ children, className }) => {
+      // If className exists, it's likely a code block (has language class)
+      // In that case, don't add the inline styling
+      if (className) {
+        return <code className={`${className} font-mono text-sm`}>{children}</code>;
+      }
+      // Inline code styling
+      return (
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground">
+          {children}
+        </code>
+      );
+    },
     pre: ({ children }) => (
-      <pre className="mb-4 overflow-x-auto rounded-lg border border-border bg-muted/50 p-4">
+      <pre className="mb-4 overflow-x-auto rounded-lg border border-border bg-muted/50 p-4 text-sm">
         {children}
       </pre>
     ),
@@ -71,10 +79,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       </blockquote>
     ),
 
-    // Table
+    // Table - improved styling
     table: ({ children }) => (
-      <div className="mb-6 overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">{children}</table>
+      <div className="my-6 w-full overflow-x-auto">
+        <table className="w-full border-collapse text-sm">{children}</table>
       </div>
     ),
     thead: ({ children }) => (
@@ -83,14 +91,20 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     tbody: ({ children }) => (
       <tbody className="divide-y divide-border">{children}</tbody>
     ),
-    tr: ({ children }) => <tr className="transition-colors hover:bg-muted/30">{children}</tr>,
+    tr: ({ children }) => (
+      <tr className="border-b border-border transition-colors hover:bg-muted/30">
+        {children}
+      </tr>
+    ),
     th: ({ children }) => (
-      <th className="px-4 py-3 text-left font-semibold text-foreground">
+      <th className="border border-border bg-muted/50 px-4 py-3 text-left font-semibold text-foreground">
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td className="px-4 py-3 text-foreground/90">{children}</td>
+      <td className="border border-border px-4 py-3 text-foreground/90 align-top">
+        {children}
+      </td>
     ),
 
     // Horizontal rule
