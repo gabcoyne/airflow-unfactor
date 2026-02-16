@@ -1,8 +1,322 @@
-# Sensors → Triggers
+# Sensors → Event-Driven Patterns
 
-Sensors convert to polling tasks with retries and event-driven suggestions.
+Airflow sensors block task slots while waiting. Prefect offers more efficient alternatives: polling tasks with retries, or event-driven triggers.
 
-Examples:
-- `S3KeySensor` → polling with boto3 or S3 event trigger
-- `ExternalTaskSensor` → Prefect events
-- `HttpSensor` → polling task or webhook
+## Conversion Strategies
+
+| Strategy | Best For | Pros | Cons |
+|----------|----------|------|------|
+| Polling task | Simple waits, file checks | Easy to implement | Uses task slots |
+| Event trigger | External systems with webhooks | Efficient, no polling | Requires event source |
+| Scheduled retry | Periodic checks | No blocking | May miss exact timing |
+
+## Common Sensor Conversions
+
+### S3KeySensor → Polling Task
+
+**Airflow:**
+```python
+from airflow.sensors.s3_key_sensor import S3KeySensor
+
+wait_for_file = S3KeySensor(
+    task_id="wait_for_file",
+    bucket_name="my-bucket",
+    bucket_key="data/*.csv",
+    aws_conn_id="aws_default",
+    timeout=3600,
+    poke_interval=60,
+    mode="poke"
+)
+```
+
+**Prefect (Polling Task):**
+```python
+from prefect import task, flow
+from prefect_aws import AwsCredentials
+import boto3
+
+@task(retries=60, retry_delay_seconds=60)
+def wait_for_s3_file(bucket: str, prefix: str) -> str:
+    """Poll S3 until file exists, then return the key."""
+    aws_creds = AwsCredentials.load("aws-prod")
+    s3 = boto3.client("s3", **aws_creds.get_boto3_session().get_credentials())
+
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    if response.get("Contents"):
+        return response["Contents"][0]["Key"]
+
+    raise Exception(f"No files found matching {prefix}")
+
+@flow
+def process_new_data():
+    file_key = wait_for_s3_file("my-bucket", "data/")
+    process_file(file_key)
+```
+
+**Prefect (Event Trigger):**
+```yaml
+# prefect.yaml - S3 event trigger
+deployments:
+  - name: process-s3-upload
+    entrypoint: flows/process.py:process_new_data
+    triggers:
+      - type: event
+        match:
+          prefect.resource.id: "s3://my-bucket/*"
+        expect:
+          - s3.object.created
+```
+
+### ExternalTaskSensor → Event-Based Coordination
+
+**Airflow:**
+```python
+from airflow.sensors.external_task import ExternalTaskSensor
+
+wait_for_upstream = ExternalTaskSensor(
+    task_id="wait_for_upstream",
+    external_dag_id="upstream_dag",
+    external_task_id="final_task",
+    execution_date_fn=lambda dt: dt,
+    timeout=7200
+)
+```
+
+**Prefect (Event Trigger):**
+```yaml
+# prefect.yaml - trigger on upstream flow completion
+deployments:
+  - name: downstream-flow
+    entrypoint: flows/downstream.py:downstream_flow
+    triggers:
+      - type: event
+        match:
+          prefect.resource.id: "prefect.flow-run.*"
+        match_related:
+          - prefect.resource.role: flow
+            prefect.resource.id: "prefect.flow.upstream-flow"
+        expect:
+          - prefect.flow-run.Completed
+```
+
+**Prefect (Emit Event from Upstream):**
+```python
+from prefect import flow
+from prefect.events import emit_event
+
+@flow
+def upstream_flow():
+    result = do_work()
+
+    # Signal completion for downstream
+    emit_event(
+        event="upstream-flow.completed",
+        resource={"prefect.resource.id": "upstream-flow"}
+    )
+
+    return result
+```
+
+### HttpSensor → Polling or Webhook
+
+**Airflow:**
+```python
+from airflow.sensors.http_sensor import HttpSensor
+
+wait_for_api = HttpSensor(
+    task_id="wait_for_api",
+    http_conn_id="api_default",
+    endpoint="/health",
+    response_check=lambda response: response.json()["status"] == "ready",
+    timeout=1800,
+    poke_interval=30
+)
+```
+
+**Prefect (Polling):**
+```python
+import httpx
+from prefect import task, flow
+
+@task(retries=60, retry_delay_seconds=30)
+def wait_for_api_ready(url: str) -> bool:
+    """Poll API until ready."""
+    response = httpx.get(f"{url}/health")
+    response.raise_for_status()
+
+    if response.json()["status"] == "ready":
+        return True
+
+    raise Exception("API not ready yet")
+
+@flow
+def api_dependent_flow():
+    wait_for_api_ready("https://api.example.com")
+    call_api()
+```
+
+**Prefect (Webhook Trigger):**
+```yaml
+# prefect.yaml - webhook trigger
+deployments:
+  - name: api-ready-handler
+    entrypoint: flows/api.py:api_dependent_flow
+    triggers:
+      - type: webhook
+        match:
+          api.status: ready
+```
+
+### FileSensor → File Watcher
+
+**Airflow:**
+```python
+from airflow.sensors.filesystem import FileSensor
+
+wait_for_file = FileSensor(
+    task_id="wait_for_file",
+    filepath="/data/input/*.csv",
+    fs_conn_id="fs_default",
+    timeout=3600
+)
+```
+
+**Prefect:**
+```python
+from pathlib import Path
+from prefect import task, flow
+
+@task(retries=60, retry_delay_seconds=60)
+def wait_for_local_file(pattern: str) -> Path:
+    """Wait for file matching pattern to appear."""
+    matches = list(Path("/data/input").glob("*.csv"))
+    if matches:
+        return matches[0]
+
+    raise Exception(f"No files matching {pattern}")
+
+@flow
+def process_local_file():
+    file_path = wait_for_local_file("*.csv")
+    process(file_path)
+```
+
+### DateTimeSensor → Scheduled Deployment
+
+**Airflow:**
+```python
+from airflow.sensors.date_time import DateTimeSensor
+
+wait_until = DateTimeSensor(
+    task_id="wait_until_2pm",
+    target_time="14:00:00"
+)
+```
+
+**Prefect:**
+```yaml
+# Simply schedule the deployment for the desired time
+deployments:
+  - name: afternoon-job
+    entrypoint: flows/job.py:afternoon_job
+    schedules:
+      - cron: "0 14 * * *"  # Run at 2 PM daily
+        timezone: "America/New_York"
+```
+
+## Sensor Mode Equivalents
+
+### Poke Mode → Retry with Delay
+
+**Airflow poke mode** (blocks worker):
+```python
+sensor = S3KeySensor(mode="poke", poke_interval=60)
+```
+
+**Prefect equivalent:**
+```python
+@task(retries=60, retry_delay_seconds=60)
+def check_condition():
+    if not condition_met():
+        raise Exception("Not ready")
+    return result
+```
+
+### Reschedule Mode → Scheduled Subflow
+
+**Airflow reschedule mode** (releases worker between checks):
+```python
+sensor = S3KeySensor(mode="reschedule", poke_interval=300)
+```
+
+**Prefect equivalent** (trigger separate runs):
+```python
+@task
+def check_and_trigger():
+    if condition_met():
+        return process_data()
+    else:
+        # Schedule retry as new flow run
+        create_flow_run(
+            flow_name="check_condition",
+            scheduled_time=datetime.now() + timedelta(minutes=5)
+        )
+```
+
+## Advanced Patterns
+
+### Smart Retry with Backoff
+
+```python
+from prefect import task
+from prefect.tasks import exponential_backoff
+
+@task(
+    retries=10,
+    retry_delay_seconds=exponential_backoff(backoff_factor=2),
+    retry_jitter_factor=0.1
+)
+def wait_with_backoff():
+    """Exponential backoff: 2s, 4s, 8s, 16s..."""
+    check_condition()
+```
+
+### Timeout Handling
+
+```python
+@task(timeout_seconds=3600)  # 1 hour total
+def wait_with_timeout():
+    """Fails if condition not met within timeout."""
+    while True:
+        if condition_met():
+            return result
+        time.sleep(60)
+```
+
+### Multiple Conditions
+
+```python
+from prefect import task, flow, unmapped
+
+@task(retries=30, retry_delay_seconds=60)
+def wait_for_file(path: str) -> str:
+    if Path(path).exists():
+        return path
+    raise Exception(f"{path} not ready")
+
+@flow
+def wait_for_all_files():
+    paths = ["/data/a.csv", "/data/b.csv", "/data/c.csv"]
+    # Wait for all files in parallel
+    ready_files = wait_for_file.map(paths)
+    process_all(ready_files)
+```
+
+## Best Practices
+
+1. **Prefer events over polling**: More efficient and scalable
+2. **Set reasonable retry limits**: Avoid infinite polling
+3. **Use exponential backoff**: Reduce load on external systems
+4. **Add jitter**: Prevent thundering herd
+5. **Monitor sensor tasks**: Track wait times in Prefect UI
+6. **Consider timeouts**: Fail fast if condition won't be met

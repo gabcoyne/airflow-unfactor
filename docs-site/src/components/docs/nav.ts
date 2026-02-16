@@ -37,7 +37,6 @@ export const docsNav = [
   {
     title: "Guides",
     items: [
-      { title: "Enterprise Migration", href: "/docs/guides/enterprise-migration" },
       { title: "Prefect Cloud", href: "/docs/guides/prefect-cloud" },
     ],
   },

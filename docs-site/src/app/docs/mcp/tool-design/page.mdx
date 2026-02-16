@@ -1,40 +1,174 @@
-# Tool Design
+# Tool Design Principles
 
-We design tools that are safe, deterministic, and easy for agents to use.
+Our MCP tools are designed for LLM consumption—safe, deterministic, and composable.
 
-## Principles
+## Core Principles
 
-- **Single responsibility** per tool
-- **Structured outputs** (JSON) for predictable parsing
-- **Explicit error handling** with hints and warnings
-- **Composable**: tools can be chained cleanly
+### Single Responsibility
 
-## Example: convert
+Each tool does one thing well:
+
+| Tool | Responsibility |
+|------|----------------|
+| `analyze` | Extract comprehensive DAG structure and patterns |
+| `get_context` | Fetch relevant Prefect documentation and mappings |
+| `operator_mapping` | Get Prefect equivalent for a specific operator |
+| `connection_mapping` | Map Airflow connection to Prefect block type |
+| `validate` | Verify structural equivalence |
+
+### Structured Outputs
+
+All tools return JSON for predictable parsing:
 
 ```json
 {
-  "path": "dags/my_etl.py",
-  "include_comments": true,
-  "generate_tests": true
+  "status": "success",
+  "data": { ... },
+  "warnings": [],
+  "errors": []
 }
 ```
 
-**Returns**
+This allows LLMs to reliably extract information and chain tool calls.
+
+### Explicit Error Handling
+
+Errors include context and suggestions:
 
 ```json
 {
-  "flow_code": "...",
-  "test_code": "...",
-  "warnings": ["Schedule not converted; use deployments"],
-  "original_to_new_mapping": {"extract": "extract"},
-  "dataset_conversion": {
-    "events": ["dataset.s3.bucket.data"],
-    "deployment_yaml": "triggers: ...",
-    "materialization_code": "@materialize(\"s3://bucket/data\") ...",
-    "producer_code": "..."
+  "status": "error",
+  "error": {
+    "code": "PARSE_ERROR",
+    "message": "Failed to parse DAG file",
+    "line": 42,
+    "suggestion": "Check for syntax errors near line 42"
+  }
+}
+```
+
+### Composability
+
+Tools can be chained in a predictable workflow:
+
+```
+analyze → get_context → LLM generates → validate
+```
+
+Each tool's output is designed to feed into the next step.
+
+## Example: analyze Tool
+
+**Input Schema:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": { "type": "string", "description": "Path to DAG file" },
+    "content": { "type": "string", "description": "Raw DAG code (alternative to path)" },
+    "include_external_context": { "type": "boolean", "default": true }
   },
-  "conversion_runbook_md": "# Conversion Runbook: my_etl\n\n## Summary\n...\n\n## DAG Configuration\n\n**Schedule**: `@daily`\n- Configure via deployment schedule or `flow.serve(cron=...)`\n\n**Max Active Runs**: `3`\n- Configure concurrency limit in deployment settings\n\n**Retry Configuration**:\n- Retries: `3`\n- Retry delay: `300`\n- Configure via `@flow(retries=...)` and `@task(retries=...)` decorators\n\n**Tags**: `production`, `etl`\n- Add tags via `@flow(tags=[...])` decorator\n\n## Server/API Configuration Checklist\n..."
+  "oneOf": [
+    { "required": ["path"] },
+    { "required": ["content"] }
+  ]
 }
 ```
 
-The `conversion_runbook_md` field now includes DAG-specific configuration guidance extracted from the original DAG settings, providing targeted migration instructions for schedule, concurrency, retries, tags, and callbacks.
+**Output Structure:**
+```json
+{
+  "dag_id": "my_etl",
+  "airflow_version": "2.x",
+  "structure": {
+    "operators": [...],
+    "dependencies": [...],
+    "task_groups": [...],
+    "imports": [...]
+  },
+  "patterns": {
+    "xcom": [...],
+    "sensors": [...],
+    "trigger_rules": [...],
+    "connections": [...],
+    "variables": [...]
+  },
+  "dag_config": {
+    "schedule": "@daily",
+    "catchup": false,
+    "default_args": {...},
+    "tags": ["production", "etl"]
+  },
+  "complexity": {
+    "score": 45,
+    "factors": ["dynamic_tasks", "custom_operator"]
+  },
+  "migration_notes": [...],
+  "conversion_runbook_md": "# Migration Runbook\n\n...",
+  "original_code": "..."
+}
+```
+
+## Design Rationale
+
+### Why Analysis Instead of Generation?
+
+We intentionally **do not generate code**. LLMs are better at code generation when given rich context than any template system could be.
+
+**Template-based approach (deprecated):**
+- Rigid patterns that break on edge cases
+- Non-idiomatic output requiring manual fixes
+- Maintenance burden of keeping templates current
+
+**Analysis-based approach (current):**
+- Rich context enables LLM creativity
+- Idiomatic output matching target conventions
+- Extensible through better analysis, not more templates
+
+### Why Separate Tools?
+
+Separating concerns allows:
+
+1. **Targeted calls**: Only fetch what's needed
+2. **Caching**: Context doesn't change; analysis does
+3. **Debugging**: Isolate issues to specific tools
+4. **Evolution**: Update tools independently
+
+### Why JSON Schemas?
+
+JSON Schema provides:
+
+- **Validation**: Catch malformed input early
+- **Documentation**: Schema is the contract
+- **Tooling**: IDE support, type generation
+- **Determinism**: Agents know exactly what to send
+
+## Tool Categories
+
+### Analysis Tools
+
+Extract information without side effects:
+
+- `analyze` — Full DAG analysis
+- `operator_mapping` — Single operator lookup
+- `connection_mapping` — Single connection lookup
+
+### Context Tools
+
+Fetch external documentation:
+
+- `get_context` — Prefect docs and patterns
+
+### Validation Tools
+
+Verify correctness:
+
+- `validate` — Structural comparison
+
+## Best Practices for Tool Usage
+
+1. **Start with analyze** — Get the full picture first
+2. **Fetch context selectively** — Only request topics you need
+3. **Let the LLM generate** — Don't constrain its output
+4. **Always validate** — Catch issues before deployment
+5. **Review warnings** — They indicate potential problems

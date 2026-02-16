@@ -1,15 +1,231 @@
 # Airflow Version Detection
 
-We detect 1.x / 2.x / 3.x by imports and patterns.
+The analyze tool automatically detects Airflow version from imports and patterns, enabling version-appropriate conversion guidance.
 
-- `airflow.operators.python_operator` → 1.x
-- `airflow.decorators` → 2.x+
-- `airflow.datasets` → 2.4+
-- `airflow.assets` → 3.x
+## Detection Strategy
 
-Feature flags returned:
+Version detection uses a combination of:
 
-- TaskFlow
-- Datasets
-- Assets
-- Dynamic task mapping
+1. **Import patterns** — Most reliable indicator
+2. **API usage** — Decorator styles, method signatures
+3. **Feature presence** — Datasets, Assets, TaskFlow
+
+## Version Indicators
+
+### Airflow 1.x
+
+```python
+# 1.x-specific imports
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash_operator import BashOperator
+from airflow.hooks.base_hook import BaseHook
+
+# 1.x patterns
+t1.set_downstream(t2)
+t2.set_upstream(t1)
+```
+
+**Detection signals:**
+- `airflow.operators.python_operator` (renamed in 2.x)
+- `airflow.operators.bash_operator` (renamed in 2.x)
+- `set_downstream()` / `set_upstream()` methods
+- Missing `@task` / `@dag` decorators
+
+### Airflow 2.x
+
+```python
+# 2.x imports
+from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
+from airflow.decorators import dag, task
+from airflow.datasets import Dataset
+
+# 2.x patterns
+@dag
+def my_dag():
+    @task
+    def my_task():
+        ...
+```
+
+**Detection signals:**
+- `airflow.decorators` — TaskFlow API (2.0+)
+- `airflow.datasets` — Dataset scheduling (2.4+)
+- `from airflow.operators.python import` (not `python_operator`)
+- `>>` / `<<` dependency operators
+
+### Airflow 3.x
+
+```python
+# 3.x imports
+from airflow.assets import Asset
+from airflow.sdk import DAG, task
+
+# 3.x patterns
+my_asset = Asset("s3://bucket/data")
+
+@task(outlets=[my_asset])
+def produce_data():
+    ...
+```
+
+**Detection signals:**
+- `airflow.assets` — Asset API (replaces Dataset in 3.x)
+- `airflow.sdk` — New SDK module
+- Asset class with outlets/inlets
+
+## Feature Flags
+
+The analysis output includes detected feature flags:
+
+```json
+{
+  "airflow_version": "2.x",
+  "features": {
+    "taskflow": true,
+    "datasets": true,
+    "assets": false,
+    "dynamic_task_mapping": true,
+    "setup_teardown": false
+  }
+}
+```
+
+### TaskFlow API
+
+**Detected when:** `@dag` or `@task` decorators present
+
+**Conversion impact:** Maps directly to Prefect `@flow` / `@task`
+
+```python
+# Airflow TaskFlow
+@task
+def extract():
+    return data
+
+# Prefect equivalent
+@task
+def extract():
+    return data
+```
+
+### Datasets (2.4+)
+
+**Detected when:** `from airflow.datasets import Dataset`
+
+**Conversion impact:** Convert to Prefect events or triggers
+
+```python
+# Airflow Dataset
+Dataset("s3://bucket/data")
+
+# Prefect equivalent
+# Use events: emit_event("dataset.s3.bucket.data.updated")
+# Or triggers in prefect.yaml
+```
+
+### Assets (3.x)
+
+**Detected when:** `from airflow.assets import Asset`
+
+**Conversion impact:** Convert to Prefect asset materialization
+
+```python
+# Airflow Asset
+Asset("s3://bucket/data", name="sales_data")
+
+# Prefect equivalent
+@materialize("s3://bucket/data")
+def sales_data():
+    ...
+```
+
+### Dynamic Task Mapping
+
+**Detected when:** `.expand()` method calls
+
+**Conversion impact:** Convert to Prefect `.map()`
+
+```python
+# Airflow expand
+process.expand(item=items)
+
+# Prefect map
+process.map(items)
+```
+
+## Version-Specific Guidance
+
+The migration runbook includes version-specific notes:
+
+### From 1.x
+
+- Update all import paths
+- Replace `set_downstream`/`set_upstream` with `>>`/`<<`
+- Consider using TaskFlow for new task definitions
+- XCom pull/push → return values and parameters
+
+### From 2.x
+
+- TaskFlow maps directly
+- Datasets → Events or triggers
+- Connections → Blocks
+- Pools → Concurrency limits
+
+### From 3.x
+
+- Assets → Asset materialization
+- SDK patterns → Native Prefect patterns
+- Execution context → Run context
+
+## Analysis Output
+
+```json
+{
+  "airflow_version": "2.x",
+  "version_detection": {
+    "method": "imports",
+    "confidence": "high",
+    "signals": [
+      "airflow.decorators import",
+      "airflow.datasets import",
+      "@dag decorator usage"
+    ]
+  },
+  "features": {
+    "taskflow": true,
+    "datasets": true,
+    "dynamic_task_mapping": false
+  },
+  "migration_notes": [
+    "TaskFlow DAG - maps directly to Prefect @flow/@task",
+    "Datasets detected - convert to Prefect events",
+    "No dynamic mapping - straightforward conversion"
+  ]
+}
+```
+
+## Handling Ambiguity
+
+When version cannot be determined with high confidence:
+
+1. **Multiple indicators**: Most recent version wins
+2. **No clear indicators**: Defaults to 2.x patterns
+3. **Mixed patterns**: Warns in migration notes
+
+```json
+{
+  "version_detection": {
+    "method": "heuristic",
+    "confidence": "medium",
+    "signals": [
+      "No version-specific imports",
+      "Basic PythonOperator usage"
+    ],
+    "assumed": "2.x"
+  },
+  "warnings": [
+    "Version detection uncertain - verify conversion patterns"
+  ]
+}
+```
