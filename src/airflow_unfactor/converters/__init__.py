@@ -1,6 +1,9 @@
-"""Converters for Airflow DAGs to Prefect flows."""
+"""Converters for Airflow DAGs to Prefect flows.
 
-from airflow_unfactor.converters.base import convert_dag_to_flow
+These converters extract and transform patterns from Airflow DAGs.
+They produce rich analysis payloads and conversion helpers for LLM-assisted conversion.
+"""
+
 from airflow_unfactor.converters.custom_operators import (
     CORE_OPERATORS,
     CustomOperatorInfo,
@@ -75,8 +78,6 @@ from airflow_unfactor.converters.trigger_rules import (
 )
 
 __all__ = [
-    # Base converter
-    "convert_dag_to_flow",
     # TaskFlow converter
     "convert_taskflow_to_prefect",
     "extract_taskflow_info",

@@ -2,6 +2,9 @@
 
 Provides REST API endpoints for the wizard UI to call the MCP tools,
 and serves the embedded wizard UI when --ui mode is enabled.
+
+Note: The /api/convert endpoint was removed as part of the LLM-assisted
+architecture refactor. Use /api/analyze to get rich payloads for LLM conversion.
 """
 
 import asyncio
@@ -14,7 +17,6 @@ from aiohttp import web
 from aiohttp.web import Request, Response, StreamResponse
 
 from airflow_unfactor.tools.analyze import analyze_dag
-from airflow_unfactor.tools.convert import convert_dag
 from airflow_unfactor.tools.scaffold import scaffold_project
 from airflow_unfactor.tools.validate import validate_conversion
 
@@ -55,33 +57,6 @@ async def analyze_handler(request: Request) -> Response:
         return error_response("Analysis failed", str(e), status=500)
 
 
-async def convert_handler(request: Request) -> Response:
-    """Handle /api/convert requests."""
-    try:
-        data = await request.json()
-    except json.JSONDecodeError:
-        return error_response("Invalid JSON")
-
-    path = data.get("path")
-    content = data.get("content")
-
-    if not path and not content:
-        return error_response("Either 'path' or 'content' is required")
-
-    try:
-        result = await convert_dag(
-            path=path,
-            content=content,
-            include_comments=data.get("include_comments", True),
-            generate_tests=data.get("generate_tests", True),
-            include_external_context=data.get("include_external_context", False),
-        )
-        return json_response(json.loads(result))
-    except Exception as e:
-        logger.exception("Conversion failed")
-        return error_response("Conversion failed", str(e), status=500)
-
-
 async def validate_handler(request: Request) -> Response:
     """Handle /api/validate requests."""
     try:
@@ -113,15 +88,13 @@ async def scaffold_handler(request: Request) -> Response:
     except json.JSONDecodeError:
         return error_response("Invalid JSON")
 
-    dags_directory = data.get("dags_directory")
     output_directory = data.get("output_directory")
 
-    if not dags_directory or not output_directory:
-        return error_response("Both 'dags_directory' and 'output_directory' are required")
+    if not output_directory:
+        return error_response("'output_directory' is required")
 
     try:
         result = await scaffold_project(
-            dags_directory=dags_directory,
             output_directory=output_directory,
             project_name=data.get("project_name"),
             include_docker=data.get("include_docker", True),
@@ -191,7 +164,6 @@ def create_app(ui_path: Path | None = None) -> web.Application:
 
     # API routes
     app.router.add_post("/api/analyze", analyze_handler)
-    app.router.add_post("/api/convert", convert_handler)
     app.router.add_post("/api/validate", validate_handler)
     app.router.add_post("/api/scaffold", scaffold_handler)
     app.router.add_get("/health", health_handler)

@@ -9,13 +9,11 @@ Built with FastMCP - the fast, Pythonic way to build MCP servers.
 from fastmcp import FastMCP
 
 from airflow_unfactor.tools.analyze import analyze_dag
-from airflow_unfactor.tools.batch import batch_convert
 from airflow_unfactor.tools.context import (
     get_connection_mapping,
     get_operator_mapping,
     get_prefect_context,
 )
-from airflow_unfactor.tools.convert import convert_dag
 from airflow_unfactor.tools.external import astronomer_migration as _astronomer_migration
 from airflow_unfactor.tools.external import prefect_search as _prefect_search
 from airflow_unfactor.tools.scaffold import scaffold_project
@@ -29,7 +27,7 @@ Use these tools to analyze Airflow DAGs and get context for generating Prefect f
 
 Recommended workflow:
 1. analyze() - Get comprehensive DAG analysis payload
-2. get_prefect_context() - Fetch relevant Prefect documentation
+2. get_context() - Fetch relevant Prefect documentation
 3. Generate Prefect flow code using the analysis and context
 4. validate() - Verify the generated code matches the original structure
 
@@ -218,7 +216,6 @@ async def scaffold(
         - next_steps: What to do after scaffolding
     """
     return await scaffold_project(
-        dags_directory=None,  # No longer auto-converting
         output_directory=output_directory,
         project_name=project_name,
         include_docker=include_docker,
@@ -261,66 +258,6 @@ async def astronomer_migration(query: str) -> str:
     return await _astronomer_migration(query)
 
 
-# =============================================================================
-# DEPRECATED TOOLS - Kept for backwards compatibility
-# =============================================================================
-
-
-@mcp.tool
-async def convert(
-    path: str | None = None,
-    content: str | None = None,
-    include_comments: bool = True,
-    generate_tests: bool = True,
-    include_external_context: bool = True,
-) -> str:
-    """[DEPRECATED] Deterministic DAG conversion.
-
-    This tool uses template-based conversion which is brittle.
-    Prefer using analyze() + get_context() and having the LLM generate code.
-
-    Args:
-        path: Path to the DAG file
-        content: DAG code content
-        include_comments: Include educational comments
-        generate_tests: Generate pytest tests
-        include_external_context: Enrich with external context
-
-    Returns:
-        JSON with converted flow code (template-based, may need adjustment)
-    """
-    return await convert_dag(
-        path=path,
-        content=content,
-        include_comments=include_comments,
-        generate_tests=generate_tests,
-        include_external_context=include_external_context,
-    )
-
-
-@mcp.tool
-async def batch(
-    directory: str,
-    output_directory: str | None = None,
-) -> str:
-    """[DEPRECATED] Batch convert multiple DAGs.
-
-    This tool uses template-based conversion which is brittle.
-    Prefer analyzing each DAG and having the LLM generate code.
-
-    Args:
-        directory: Directory containing Airflow DAG files
-        output_directory: Output directory for converted flows
-
-    Returns:
-        JSON with conversion report
-    """
-    return await batch_convert(
-        directory=directory,
-        output_directory=output_directory,
-    )
-
-
 def main() -> None:
     """Run the MCP server or HTTP server with wizard UI.
 
@@ -331,7 +268,7 @@ def main() -> None:
     import asyncio
 
     parser = argparse.ArgumentParser(
-        description="Convert Apache Airflow DAGs to Prefect flows",
+        description="Analyze Apache Airflow DAGs for LLM-assisted Prefect conversion",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

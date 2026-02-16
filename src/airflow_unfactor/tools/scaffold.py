@@ -1,13 +1,10 @@
-"""Generate project skeleton for migrated Prefect flows."""
+"""Generate project skeleton for Prefect flows."""
 
 import json
 from pathlib import Path
 
-from airflow_unfactor.tools.convert import convert_dag
-
 
 async def scaffold_project(
-    dags_directory: str | None,
     output_directory: str,
     project_name: str | None = None,
     include_docker: bool = True,
@@ -18,142 +15,76 @@ async def scaffold_project(
     Creates a well-organized project structure following Prefect best practices,
     inspired by prefecthq/flows architecture.
 
-    If dags_directory is provided, will also convert those DAGs (deprecated).
-    For new architecture, pass dags_directory=None to just create structure.
+    This tool creates the directory structure only - the LLM generates the flow code.
 
     Args:
-        dags_directory: Directory containing Airflow DAG files to migrate (or None for pure scaffolding)
         output_directory: Where to create the new project
         project_name: Project name (defaults to directory name)
         include_docker: Include Dockerfile and docker-compose.yml
         include_github_actions: Include CI workflow
 
     Returns:
-        JSON with scaffold report
+        JSON with scaffold report including created directories and next steps
     """
     output_dir = Path(output_directory)
-    input_dir = Path(dags_directory) if dags_directory else None
-    project_name = project_name or (input_dir.name if input_dir else output_dir.name).replace("-", "_").replace(" ", "_")
+    project_name = project_name or output_dir.name.replace("-", "_").replace(" ", "_")
 
-    # Create project structure
+    # Create project structure following prefecthq/flows conventions
     dirs = {
-        "flows": output_dir / "flows",
-        "tasks": output_dir / "tasks",
         "deployments": output_dir / "deployments",
-        "infrastructure": output_dir / "infrastructure",
+        "deployments_default": output_dir / "deployments" / "default",
         "tests": output_dir / "tests",
-        "tests_flows": output_dir / "tests" / "flows",
-        "tests_tasks": output_dir / "tests" / "tasks",
-        "migration": output_dir / "migration",
-        "migration_sources": output_dir / "migration" / "airflow_sources",
-        "migration_notes": output_dir / "migration" / "conversion_notes",
     }
 
+    created_directories = []
     for dir_path in dirs.values():
         dir_path.mkdir(parents=True, exist_ok=True)
-
-    # Convert DAGs (if directory provided - this is deprecated behavior)
-    converted = 0
-    failed = 0
-    errors = []
-    flow_names = []
-
-    if input_dir is None:
-        # Pure scaffolding mode - no DAG conversion
-        pass
-    elif not input_dir.exists():
-        errors.append({"file": str(input_dir), "error": "Directory does not exist"})
-    else:
-        for dag_file in input_dir.glob("*.py"):
-            if dag_file.name.startswith("__"):
-                continue
-
-            try:
-                result_json = await convert_dag(
-                    path=str(dag_file),
-                    include_comments=True,
-                    generate_tests=True,
-                )
-                result = json.loads(result_json)
-
-                if "error" in result:
-                    failed += 1
-                    errors.append({"file": dag_file.name, "error": result["error"]})
-                    continue
-
-                # Determine flow name from mapping or filename
-                flow_name = _extract_flow_name(result, dag_file)
-                flow_names.append(flow_name)
-
-                # Write flow code
-                flow_file = dirs["flows"] / f"{flow_name}.py"
-                flow_file.write_text(result.get("flow_code", ""))
-
-                # Write test code
-                if result.get("test_code"):
-                    test_file = dirs["tests_flows"] / f"test_{flow_name}.py"
-                    test_file.write_text(result["test_code"])
-
-                # Write runbook
-                if result.get("conversion_runbook_md"):
-                    runbook_file = dirs["migration_notes"] / f"{flow_name}_runbook.md"
-                    runbook_file.write_text(result["conversion_runbook_md"])
-
-                # Copy original for reference
-                source_copy = dirs["migration_sources"] / dag_file.name
-                source_copy.write_text(dag_file.read_text())
-
-                converted += 1
-
-            except Exception as e:
-                failed += 1
-                errors.append({"file": dag_file.name, "error": str(e)})
+        created_directories.append(str(dir_path.relative_to(output_dir)))
 
     # Generate project files
+    created_files = []
+
     _write_pyproject_toml(output_dir, project_name)
-    _write_readme(output_dir, project_name, flow_names)
+    created_files.append("pyproject.toml")
+
+    _write_readme(output_dir, project_name)
+    created_files.append("README.md")
+
     _write_conftest(dirs["tests"])
-    _write_init_files(dirs)
-    _write_prefect_yaml(output_dir, flow_names)
+    created_files.append("tests/conftest.py")
+
+    _write_prefect_yaml(output_dir, project_name)
+    created_files.append("prefect.yaml")
 
     if include_docker:
         _write_dockerfile(output_dir)
-        _write_docker_compose(output_dir, project_name)
+        _write_docker_compose(output_dir)
+        created_files.extend(["Dockerfile", "docker-compose.yml"])
 
     if include_github_actions:
         _write_github_workflow(output_dir)
+        created_files.append(".github/workflows/test.yml")
 
     report = {
         "project_name": project_name,
         "output_directory": str(output_dir),
-        "converted": converted,
-        "failed": failed,
-        "errors": errors if errors else None,
+        "created_directories": created_directories,
+        "created_files": created_files,
         "structure": {
-            "flows": f"{converted} flow files",
-            "tests": f"{converted} test files",
-            "runbooks": f"{converted} migration runbooks",
             "docker": include_docker,
             "ci": include_github_actions,
         },
+        "next_steps": [
+            "1. Use analyze() to analyze your Airflow DAGs",
+            "2. Use get_context() to fetch relevant Prefect patterns",
+            "3. Generate Prefect flow code and place in deployments/<workspace>/<flow>/flow.py",
+            "4. Update prefect.yaml with your deployment configuration",
+            "5. Run tests with: pytest",
+            "6. Deploy with: prefect deploy --all",
+        ],
     }
 
-    # Write report
-    report_path = output_dir / "scaffold_report.json"
-    report_path.write_text(json.dumps(report, indent=2))
-    report["report_path"] = str(report_path)
-
     return json.dumps(report, indent=2)
-
-
-def _extract_flow_name(result: dict, dag_file: Path) -> str:
-    """Extract flow name from conversion result or filename."""
-    mapping = result.get("original_to_new_mapping", {})
-    if mapping:
-        # Use first task name pattern to guess flow name
-        pass
-    # Default to filename
-    return dag_file.stem.replace("-", "_")
 
 
 def _write_pyproject_toml(output_dir: Path, project_name: str) -> None:
@@ -184,20 +115,11 @@ testpaths = ["tests"]
     (output_dir / "pyproject.toml").write_text(content)
 
 
-def _write_readme(output_dir: Path, project_name: str, flow_names: list[str]) -> None:
+def _write_readme(output_dir: Path, project_name: str) -> None:
     """Write README.md."""
-    flows_list = (
-        "\n".join([f"- `{name}`" for name in flow_names])
-        if flow_names
-        else "- (none converted yet)"
-    )
     content = f"""# {project_name}
 
 Prefect flows migrated from Apache Airflow.
-
-## Flows
-
-{flows_list}
 
 ## Setup
 
@@ -216,23 +138,28 @@ prefect deploy --all
 
 ```
 {project_name}/
-├── flows/           # Prefect flow entrypoints
-├── tasks/           # Reusable task functions
-├── deployments/     # Deployment configurations
-├── infrastructure/  # Work pool and worker configs
-├── tests/           # pytest tests
-└── migration/       # Original DAGs and runbooks
-    ├── airflow_sources/    # Original DAG files (read-only reference)
-    └── conversion_notes/   # Migration runbooks and TODOs
+├── deployments/         # Flow implementations
+│   └── <workspace>/     # Workspace grouping
+│       └── <flow>/      # Individual flow
+│           ├── flow.py
+│           ├── Dockerfile (optional)
+│           └── requirements.txt (optional)
+├── tests/               # pytest tests
+├── prefect.yaml         # Deployment configuration
+└── pyproject.toml       # Python project config
 ```
 
-## Migration Notes
+## Workflow
 
-See `migration/conversion_notes/` for DAG-specific migration runbooks.
+1. Analyze your Airflow DAG with `airflow-unfactor`
+2. Use the analysis to generate Prefect flow code
+3. Place flows in `deployments/<workspace>/<flow>/flow.py`
+4. Update `prefect.yaml` with deployment configuration
+5. Deploy with `prefect deploy --all`
 
 ---
 
-Generated by [airflow-unfactor](https://github.com/prefect/airflow-unfactor)
+Generated by [airflow-unfactor](https://github.com/gabcoyne/airflow-unfactor)
 """
     (output_dir / "README.md").write_text(content)
 
@@ -254,30 +181,44 @@ def prefect_harness():
     (tests_dir / "conftest.py").write_text(content)
 
 
-def _write_init_files(dirs: dict[str, Path]) -> None:
-    """Write __init__.py files."""
-    for key in ["flows", "tasks", "tests", "tests_flows", "tests_tasks"]:
-        init_file = dirs[key] / "__init__.py"
-        init_file.write_text("")
-
-
-def _write_prefect_yaml(output_dir: Path, flow_names: list[str]) -> None:
-    """Write prefect.yaml deployment configuration."""
-    deployments = []
-    for name in flow_names:
-        deployments.append(f"""  - name: {name}
-    entrypoint: flows/{name}.py:{name}
-    work_pool:
-      name: default""")
-
-    deployments_yaml = "\n".join(deployments) if deployments else "  []"
+def _write_prefect_yaml(output_dir: Path, project_name: str) -> None:
+    """Write prefect.yaml deployment configuration template."""
     content = f"""# Prefect deployment configuration
 # See: https://docs.prefect.io/concepts/deployments/
 
-name: {output_dir.name}
+name: {project_name}
+prefect-version: 3.0.0
 
+# Pull step - configure your repository
+# pull:
+#   - prefect.deployments.steps.git_clone:
+#       repository: https://github.com/org/{project_name}
+#       branch: main
+
+# Reusable definitions
+definitions:
+  work_pools:
+    default: &default_pool
+      name: default
+      job_variables:
+        image: "{{{{ image }}}}"
+
+  schedules:
+    hourly: &hourly
+      cron: "0 * * * *"
+    daily: &daily
+      cron: "0 0 * * *"
+
+# Deployments - add your flows here
 deployments:
-{deployments_yaml}
+  # Example deployment:
+  # - name: My Flow
+  #   description: Converted from Airflow DAG 'my_dag'
+  #   entrypoint: deployments/default/my-flow/flow.py:my_flow
+  #   schedules:
+  #     - *hourly
+  #   work_pool: *default_pool
+  []
 """
     (output_dir / "prefect.yaml").write_text(content)
 
@@ -293,8 +234,7 @@ RUN pip install uv
 
 # Copy project files
 COPY pyproject.toml .
-COPY flows/ flows/
-COPY tasks/ tasks/
+COPY deployments/ deployments/
 
 # Install dependencies
 RUN uv pip install --system -e .
@@ -305,7 +245,7 @@ CMD ["prefect", "worker", "start", "--pool", "default"]
     (output_dir / "Dockerfile").write_text(content)
 
 
-def _write_docker_compose(output_dir: Path, project_name: str) -> None:
+def _write_docker_compose(output_dir: Path) -> None:
     """Write docker-compose.yml."""
     content = """services:
   worker:

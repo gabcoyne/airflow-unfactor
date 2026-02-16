@@ -75,42 +75,6 @@ with DAG(
         assert response.status == 400
 
 
-class TestConvertEndpoint(AioHTTPTestCase):
-    """Test convert API endpoint."""
-
-    async def get_application(self):
-        return create_app(ui_path=None)
-
-    async def test_convert_with_content(self):
-        """Convert endpoint works with content."""
-        dag_code = """
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-
-def my_func():
-    return 42
-
-with DAG("test_dag") as dag:
-    task = PythonOperator(task_id="test", python_callable=my_func)
-"""
-        response = await self.client.post(
-            "/api/convert",
-            json={
-                "content": dag_code,
-                "include_comments": True,
-                "generate_tests": True,
-            },
-        )
-        assert response.status == 200
-        data = await response.json()
-        assert "flow_code" in data
-
-    async def test_convert_missing_input(self):
-        """Convert endpoint requires path or content."""
-        response = await self.client.post("/api/convert", json={})
-        assert response.status == 400
-
-
 class TestValidateEndpoint(AioHTTPTestCase):
     """Test validate API endpoint."""
 
@@ -155,6 +119,23 @@ def test_dag():
         assert response.status == 200
         data = await response.json()
         assert "is_valid" in data or "confidence_score" in data
+
+
+class TestScaffoldEndpoint(AioHTTPTestCase):
+    """Test scaffold API endpoint."""
+
+    async def get_application(self):
+        return create_app(ui_path=None)
+
+    async def test_scaffold_missing_output_directory(self):
+        """Scaffold endpoint requires output_directory."""
+        response = await self.client.post(
+            "/api/scaffold",
+            json={},
+        )
+        assert response.status == 400
+        data = await response.json()
+        assert "error" in data
 
 
 class TestCORS(AioHTTPTestCase):
