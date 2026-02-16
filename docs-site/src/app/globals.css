@@ -1,3 +1,6 @@
+/* Google Fonts - Distinctive typography (must be first) */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,8 +10,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Syne', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -47,106 +51,117 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* airflow-unfactor brand colors - transformation/alchemy theme */
-:root {
-  --radius: 0.625rem;
+/*
+ * DIGITAL ALCHEMY THEME
+ * Transformation from Airflow (warm orange) to Prefect (cool blue)
+ * with alchemical gold accents representing the "transmutation"
+ */
 
-  /* Light mode - clean and professional */
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.15 0.02 250);
+:root {
+  --radius: 0.75rem;
+
+  /* Transformation colors */
+  --airflow-orange: oklch(0.72 0.18 45);
+  --prefect-blue: oklch(0.55 0.20 255);
+  --alchemy-gold: oklch(0.78 0.16 85);
+  --transmute-violet: oklch(0.58 0.22 300);
+
+  /* Light mode - crisp and luminous */
+  --background: oklch(0.985 0.005 260);
+  --foreground: oklch(0.18 0.02 260);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.02 250);
+  --card-foreground: oklch(0.18 0.02 260);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.02 250);
+  --popover-foreground: oklch(0.18 0.02 260);
 
-  /* Deep teal primary - transformation/bridge */
-  --primary: oklch(0.45 0.12 195);
+  /* Primary: Prefect blue - the destination */
+  --primary: oklch(0.52 0.20 255);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Slate secondary */
-  --secondary: oklch(0.96 0.01 250);
-  --secondary-foreground: oklch(0.25 0.02 250);
+  /* Secondary: Neutral slate */
+  --secondary: oklch(0.95 0.01 260);
+  --secondary-foreground: oklch(0.30 0.02 260);
 
-  --muted: oklch(0.96 0.01 250);
-  --muted-foreground: oklch(0.50 0.02 250);
+  --muted: oklch(0.95 0.01 260);
+  --muted-foreground: oklch(0.50 0.02 260);
 
-  /* Amber accent - warmth/transformation */
-  --accent: oklch(0.85 0.15 75);
-  --accent-foreground: oklch(0.20 0.05 75);
+  /* Accent: Alchemy gold - the catalyst */
+  --accent: oklch(0.78 0.16 85);
+  --accent-foreground: oklch(0.25 0.05 85);
 
   --destructive: oklch(0.55 0.22 25);
 
-  --border: oklch(0.90 0.01 250);
-  --input: oklch(0.90 0.01 250);
-  --ring: oklch(0.45 0.12 195);
+  --border: oklch(0.90 0.01 260);
+  --input: oklch(0.90 0.01 260);
+  --ring: oklch(0.52 0.20 255);
 
-  /* Chart colors - gradient palette */
-  --chart-1: oklch(0.45 0.12 195); /* teal */
-  --chart-2: oklch(0.70 0.15 75);  /* amber */
-  --chart-3: oklch(0.55 0.15 145); /* emerald */
-  --chart-4: oklch(0.60 0.18 30);  /* coral */
-  --chart-5: oklch(0.50 0.15 280); /* violet */
+  /* Chart palette - alchemical spectrum */
+  --chart-1: oklch(0.72 0.18 45);  /* airflow orange */
+  --chart-2: oklch(0.55 0.20 255); /* prefect blue */
+  --chart-3: oklch(0.78 0.16 85);  /* gold */
+  --chart-4: oklch(0.58 0.22 300); /* violet */
+  --chart-5: oklch(0.62 0.18 160); /* emerald */
 
-  /* Sidebar */
-  --sidebar: oklch(0.98 0.01 250);
-  --sidebar-foreground: oklch(0.15 0.02 250);
-  --sidebar-primary: oklch(0.45 0.12 195);
+  /* Sidebar - light warmth */
+  --sidebar: oklch(0.98 0.008 45);
+  --sidebar-foreground: oklch(0.18 0.02 260);
+  --sidebar-primary: oklch(0.52 0.20 255);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 195);
-  --sidebar-accent-foreground: oklch(0.25 0.02 250);
-  --sidebar-border: oklch(0.90 0.01 250);
-  --sidebar-ring: oklch(0.45 0.12 195);
+  --sidebar-accent: oklch(0.94 0.02 255);
+  --sidebar-accent-foreground: oklch(0.25 0.02 260);
+  --sidebar-border: oklch(0.90 0.02 45);
+  --sidebar-ring: oklch(0.52 0.20 255);
 }
 
 .dark {
-  /* Dark mode - deep, rich, professional */
-  --background: oklch(0.12 0.02 250);
-  --foreground: oklch(0.95 0.01 250);
+  /* Dark mode - deep space with alchemical glow */
+  --background: oklch(0.10 0.025 260);
+  --foreground: oklch(0.94 0.01 260);
 
-  --card: oklch(0.16 0.02 250);
-  --card-foreground: oklch(0.95 0.01 250);
+  --card: oklch(0.14 0.025 260);
+  --card-foreground: oklch(0.94 0.01 260);
 
-  --popover: oklch(0.16 0.02 250);
-  --popover-foreground: oklch(0.95 0.01 250);
+  --popover: oklch(0.14 0.025 260);
+  --popover-foreground: oklch(0.94 0.01 260);
 
-  /* Brighter teal for dark mode */
-  --primary: oklch(0.65 0.15 195);
-  --primary-foreground: oklch(0.12 0.02 250);
+  /* Brighter blue for dark mode */
+  --primary: oklch(0.68 0.18 255);
+  --primary-foreground: oklch(0.10 0.02 260);
 
-  --secondary: oklch(0.22 0.02 250);
-  --secondary-foreground: oklch(0.95 0.01 250);
+  --secondary: oklch(0.20 0.025 260);
+  --secondary-foreground: oklch(0.94 0.01 260);
 
-  --muted: oklch(0.22 0.02 250);
-  --muted-foreground: oklch(0.65 0.02 250);
+  --muted: oklch(0.20 0.025 260);
+  --muted-foreground: oklch(0.62 0.02 260);
 
-  /* Warm amber accent */
-  --accent: oklch(0.75 0.18 75);
-  --accent-foreground: oklch(0.12 0.02 250);
+  /* Luminous gold accent */
+  --accent: oklch(0.82 0.18 85);
+  --accent-foreground: oklch(0.15 0.05 85);
 
-  --destructive: oklch(0.60 0.20 25);
+  --destructive: oklch(0.62 0.22 25);
 
-  --border: oklch(0.25 0.02 250);
-  --input: oklch(0.25 0.02 250);
-  --ring: oklch(0.65 0.15 195);
+  --border: oklch(0.24 0.025 260);
+  --input: oklch(0.24 0.025 260);
+  --ring: oklch(0.68 0.18 255);
 
-  /* Dark mode chart colors - more vibrant */
-  --chart-1: oklch(0.65 0.15 195); /* teal */
-  --chart-2: oklch(0.75 0.18 75);  /* amber */
-  --chart-3: oklch(0.65 0.18 145); /* emerald */
-  --chart-4: oklch(0.70 0.20 30);  /* coral */
-  --chart-5: oklch(0.60 0.18 280); /* violet */
+  /* Dark mode chart colors - more luminous */
+  --chart-1: oklch(0.78 0.20 45);  /* bright orange */
+  --chart-2: oklch(0.68 0.18 255); /* bright blue */
+  --chart-3: oklch(0.82 0.18 85);  /* bright gold */
+  --chart-4: oklch(0.68 0.22 300); /* bright violet */
+  --chart-5: oklch(0.70 0.20 160); /* bright emerald */
 
-  /* Dark sidebar */
-  --sidebar: oklch(0.14 0.02 250);
-  --sidebar-foreground: oklch(0.95 0.01 250);
-  --sidebar-primary: oklch(0.65 0.15 195);
-  --sidebar-primary-foreground: oklch(0.12 0.02 250);
-  --sidebar-accent: oklch(0.20 0.03 195);
-  --sidebar-accent-foreground: oklch(0.95 0.01 250);
-  --sidebar-border: oklch(0.25 0.02 250);
-  --sidebar-ring: oklch(0.65 0.15 195);
+  /* Dark sidebar with subtle warmth */
+  --sidebar: oklch(0.12 0.02 270);
+  --sidebar-foreground: oklch(0.94 0.01 260);
+  --sidebar-primary: oklch(0.68 0.18 255);
+  --sidebar-primary-foreground: oklch(0.10 0.02 260);
+  --sidebar-accent: oklch(0.18 0.03 255);
+  --sidebar-accent-foreground: oklch(0.94 0.01 260);
+  --sidebar-border: oklch(0.22 0.025 260);
+  --sidebar-ring: oklch(0.68 0.18 255);
 }
 
 @layer base {
@@ -155,59 +170,110 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  code, pre {
+    font-family: var(--font-mono);
   }
 }
 
-/* Brand gradients */
+/* ============================================
+   TRANSFORMATION GRADIENTS
+   The visual language of transmutation
+   ============================================ */
+
 @layer utilities {
-  .gradient-brand {
+  /* The core transformation: Airflow → Prefect */
+  .gradient-transform {
     background: linear-gradient(
       135deg,
-      oklch(0.45 0.12 195) 0%,
-      oklch(0.55 0.15 175) 50%,
-      oklch(0.70 0.15 75) 100%
+      oklch(0.72 0.18 45) 0%,
+      oklch(0.78 0.16 85) 35%,
+      oklch(0.58 0.22 300) 65%,
+      oklch(0.55 0.20 255) 100%
     );
   }
 
-  .gradient-brand-dark {
+  .dark .gradient-transform {
     background: linear-gradient(
       135deg,
-      oklch(0.65 0.15 195) 0%,
-      oklch(0.70 0.18 165) 50%,
-      oklch(0.75 0.18 75) 100%
+      oklch(0.78 0.20 45) 0%,
+      oklch(0.82 0.18 85) 35%,
+      oklch(0.68 0.22 300) 65%,
+      oklch(0.68 0.18 255) 100%
     );
   }
 
-  .gradient-hero {
+  /* Animated transformation gradient */
+  .gradient-transform-animated {
     background: linear-gradient(
-      180deg,
-      oklch(0.12 0.02 250) 0%,
-      oklch(0.15 0.03 220) 50%,
-      oklch(0.12 0.02 250) 100%
+      135deg,
+      oklch(0.72 0.18 45) 0%,
+      oklch(0.78 0.16 85) 25%,
+      oklch(0.58 0.22 300) 50%,
+      oklch(0.55 0.20 255) 75%,
+      oklch(0.72 0.18 45) 100%
     );
+    background-size: 400% 400%;
+    animation: gradient-shift 8s ease infinite;
   }
 
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Hero glow - alchemical aura */
   .gradient-glow {
-    background: radial-gradient(
-      ellipse at 50% 0%,
-      oklch(0.45 0.12 195 / 0.15) 0%,
-      transparent 70%
-    );
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% 0%,
+        oklch(0.55 0.20 255 / 0.15) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 30% 10%,
+        oklch(0.72 0.18 45 / 0.10) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 70% 10%,
+        oklch(0.58 0.22 300 / 0.08) 0%,
+        transparent 50%
+      );
   }
 
   .dark .gradient-glow {
-    background: radial-gradient(
-      ellipse at 50% 0%,
-      oklch(0.65 0.15 195 / 0.20) 0%,
-      transparent 70%
-    );
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% 0%,
+        oklch(0.68 0.18 255 / 0.25) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 30% 10%,
+        oklch(0.78 0.20 45 / 0.15) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 70% 10%,
+        oklch(0.68 0.22 300 / 0.12) 0%,
+        transparent 50%
+      );
   }
 
+  /* Text gradient for headlines */
   .text-gradient {
     background: linear-gradient(
       135deg,
-      oklch(0.45 0.12 195) 0%,
-      oklch(0.70 0.15 75) 100%
+      oklch(0.72 0.18 45) 0%,
+      oklch(0.78 0.16 85) 40%,
+      oklch(0.55 0.20 255) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -217,11 +283,352 @@
   .dark .text-gradient {
     background: linear-gradient(
       135deg,
-      oklch(0.65 0.15 195) 0%,
-      oklch(0.75 0.18 75) 100%
+      oklch(0.82 0.20 45) 0%,
+      oklch(0.85 0.18 85) 40%,
+      oklch(0.72 0.18 255) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Airflow orange gradient */
+  .gradient-airflow {
+    background: linear-gradient(
+      135deg,
+      oklch(0.72 0.18 45) 0%,
+      oklch(0.65 0.20 35) 100%
+    );
+  }
+
+  /* Prefect blue gradient */
+  .gradient-prefect {
+    background: linear-gradient(
+      135deg,
+      oklch(0.60 0.18 265) 0%,
+      oklch(0.50 0.22 250) 100%
+    );
+  }
+
+  /* Card glow effect on hover */
+  .card-glow {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .card-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      oklch(0.72 0.18 45 / 0) 0%,
+      oklch(0.78 0.16 85 / 0) 50%,
+      oklch(0.55 0.20 255 / 0) 100%
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .card-glow:hover::before {
+    background: linear-gradient(
+      135deg,
+      oklch(0.72 0.18 45 / 0.5) 0%,
+      oklch(0.78 0.16 85 / 0.5) 50%,
+      oklch(0.55 0.20 255 / 0.5) 100%
+    );
+    opacity: 1;
+  }
+
+  .card-glow:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 10px 40px -10px oklch(0.55 0.20 255 / 0.15),
+      0 4px 20px -5px oklch(0.72 0.18 45 / 0.10);
+  }
+
+  .dark .card-glow:hover {
+    box-shadow:
+      0 10px 40px -10px oklch(0.68 0.18 255 / 0.25),
+      0 4px 20px -5px oklch(0.78 0.20 45 / 0.15);
+  }
+
+  /* Noise texture overlay */
+  .noise {
+    position: relative;
+  }
+
+  .noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .dark .noise::after {
+    opacity: 0.05;
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   Transformation in motion
+   ============================================ */
+
+@layer utilities {
+  /* Floating animation for decorative elements */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Pulse glow for accents */
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px oklch(0.78 0.16 85 / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px oklch(0.78 0.16 85 / 0.6);
+    }
+  }
+
+  /* Transformation morph */
+  .animate-morph {
+    animation: morph 10s ease-in-out infinite;
+  }
+
+  @keyframes morph {
+    0%, 100% {
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    }
+    25% {
+      border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    }
+    50% {
+      border-radius: 50% 60% 30% 60% / 30% 70% 60% 40%;
+    }
+    75% {
+      border-radius: 40% 30% 60% 50% / 60% 40% 50% 70%;
+    }
+  }
+
+  /* Stagger children animations */
+  .animate-stagger > * {
+    opacity: 0;
+    animation: fade-in-up 0.5s ease forwards;
+  }
+
+  .animate-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+  .animate-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+  .animate-stagger > *:nth-child(3) { animation-delay: 0.3s; }
+  .animate-stagger > *:nth-child(4) { animation-delay: 0.4s; }
+  .animate-stagger > *:nth-child(5) { animation-delay: 0.5s; }
+  .animate-stagger > *:nth-child(6) { animation-delay: 0.6s; }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Shimmer effect for loading states */
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.90 0.01 260) 0%,
+      oklch(0.95 0.01 260) 50%,
+      oklch(0.90 0.01 260) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .dark .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.20 0.025 260) 0%,
+      oklch(0.25 0.025 260) 50%,
+      oklch(0.20 0.025 260) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Arrow bounce for CTAs */
+  .animate-arrow-bounce {
+    animation: arrow-bounce 1s ease-in-out infinite;
+  }
+
+  @keyframes arrow-bounce {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+  }
+
+  /* Rotate on hover */
+  .hover-rotate {
+    transition: transform 0.3s ease;
+  }
+
+  .hover-rotate:hover {
+    transform: rotate(12deg) scale(1.05);
+  }
+}
+
+/* ============================================
+   COMPONENT ENHANCEMENTS
+   Polish and refinement
+   ============================================ */
+
+@layer components {
+  /* Enhanced code blocks */
+  .code-block {
+    position: relative;
+    background: linear-gradient(
+      145deg,
+      oklch(0.14 0.025 260) 0%,
+      oklch(0.12 0.02 270) 100%
+    );
+    border: 1px solid oklch(0.24 0.025 260);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .code-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.72 0.18 45 / 0.5) 20%,
+      oklch(0.78 0.16 85 / 0.5) 50%,
+      oklch(0.55 0.20 255 / 0.5) 80%,
+      transparent 100%
+    );
+  }
+
+  /* Terminal dots */
+  .terminal-dots {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px;
+    border-bottom: 1px solid oklch(0.24 0.025 260);
+    background: oklch(0.10 0.02 260);
+  }
+
+  .terminal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .terminal-dot-red {
+    background: oklch(0.62 0.22 25);
+  }
+
+  .terminal-dot-yellow {
+    background: oklch(0.78 0.16 85);
+  }
+
+  .terminal-dot-green {
+    background: oklch(0.65 0.18 145);
+  }
+
+  /* Badge variants */
+  .badge-airflow {
+    background: oklch(0.72 0.18 45 / 0.15);
+    color: oklch(0.72 0.18 45);
+    border: 1px solid oklch(0.72 0.18 45 / 0.3);
+  }
+
+  .dark .badge-airflow {
+    background: oklch(0.78 0.20 45 / 0.15);
+    color: oklch(0.82 0.18 45);
+    border-color: oklch(0.78 0.20 45 / 0.3);
+  }
+
+  .badge-prefect {
+    background: oklch(0.55 0.20 255 / 0.15);
+    color: oklch(0.55 0.20 255);
+    border: 1px solid oklch(0.55 0.20 255 / 0.3);
+  }
+
+  .dark .badge-prefect {
+    background: oklch(0.68 0.18 255 / 0.15);
+    color: oklch(0.72 0.18 255);
+    border-color: oklch(0.68 0.18 255 / 0.3);
+  }
+
+  /* Section divider */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.90 0.01 260) 20%,
+      oklch(0.90 0.01 260) 80%,
+      transparent 100%
+    );
+  }
+
+  .dark .section-divider {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.24 0.025 260) 20%,
+      oklch(0.24 0.025 260) 80%,
+      transparent 100%
+    );
+  }
+}
+
+/* ============================================
+   PROSE STYLING (MDX Content)
+   ============================================ */
+
+@layer components {
+  .prose-custom {
+    --tw-prose-body: oklch(0.35 0.02 260);
+    --tw-prose-headings: oklch(0.15 0.02 260);
+    --tw-prose-links: oklch(0.52 0.20 255);
+    --tw-prose-code: oklch(0.45 0.10 300);
+    --tw-prose-pre-bg: oklch(0.14 0.025 260);
+  }
+
+  .dark .prose-custom {
+    --tw-prose-body: oklch(0.75 0.02 260);
+    --tw-prose-headings: oklch(0.94 0.01 260);
+    --tw-prose-links: oklch(0.68 0.18 255);
+    --tw-prose-code: oklch(0.72 0.15 300);
+    --tw-prose-pre-bg: oklch(0.12 0.025 260);
   }
 }
