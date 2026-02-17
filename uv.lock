@@ -171,7 +171,7 @@ ui = [
 requires-dist = [
     { name = "aiohttp", marker = "extra == 'ui'", specifier = ">=3.9.0" },
     { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.40.0" },
-    { name = "fastmcp", specifier = ">=3.0.0b2" },
+    { name = "fastmcp", specifier = ">=2.14.0" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
     { name = "openai", marker = "extra == 'ai'", specifier = ">=1.0.0" },
