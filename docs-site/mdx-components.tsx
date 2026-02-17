@@ -79,32 +79,32 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       </blockquote>
     ),
 
-    // Table - clean bordered style
+    // Table - clean bordered style with better readability
     table: ({ children }) => (
-      <div className="my-6 w-full overflow-x-auto">
-        <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+      <div className="my-6 w-full overflow-x-auto rounded-lg border border-border">
+        <table className="w-full border-collapse">
           {children}
         </table>
       </div>
     ),
     thead: ({ children }) => (
-      <thead className="bg-muted/60 border-b border-border">{children}</thead>
+      <thead className="bg-muted border-b-2 border-border">{children}</thead>
     ),
     tbody: ({ children }) => (
-      <tbody className="divide-y divide-border">{children}</tbody>
+      <tbody className="divide-y divide-border bg-background">{children}</tbody>
     ),
     tr: ({ children }) => (
-      <tr className="transition-colors hover:bg-muted/20">
+      <tr className="transition-colors hover:bg-muted/40">
         {children}
       </tr>
     ),
     th: ({ children }) => (
-      <th className="px-4 py-3 text-left font-semibold text-foreground border-r border-border/50 last:border-r-0">
+      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground uppercase tracking-wide border-r border-border last:border-r-0">
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td className="px-4 py-3 text-foreground/90 align-top border-r border-border/50 last:border-r-0">
+      <td className="px-4 py-3 text-foreground align-top border-r border-border last:border-r-0">
         {children}
       </td>
     ),
