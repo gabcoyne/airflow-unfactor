@@ -1,6 +1,6 @@
 [project]
 name = "airflow-unfactor"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server to convert Apache Airflow DAGs to Prefect flows"
 readme = "README.md"
 requires-python = ">=3.11"
