@@ -75,7 +75,6 @@ async def analyze_dag(
             # Basic info
             "dag_id": analysis.get("dag_id"),
             "source_file": path,
-
             # Airflow version detection
             "airflow_version": {
                 "detected": version.version_string,
@@ -86,7 +85,6 @@ async def analyze_dag(
                 },
                 "confidence": version.confidence,
             },
-
             # DAG structure
             "structure": {
                 "operators": _enrich_operators(analysis.get("operators", [])),
@@ -103,12 +101,12 @@ async def analyze_dag(
                 ],
                 "imports": analysis.get("imports", []),
             },
-
             # Detected patterns (what needs special handling)
             "patterns": {
                 "xcom_usage": analysis.get("xcom_usage", []),
                 "sensors": [
-                    op for op in analysis.get("operators", [])
+                    op
+                    for op in analysis.get("operators", [])
                     if "Sensor" in str(op.get("type", ""))
                 ],
                 "trigger_rules": [
@@ -128,7 +126,8 @@ async def analyze_dag(
                     for dm in dynamic_mappings
                 ],
                 "branching": [
-                    op for op in analysis.get("operators", [])
+                    op
+                    for op in analysis.get("operators", [])
                     if op.get("type") in ("BranchPythonOperator", "ShortCircuitOperator")
                 ],
                 "connections": [c.name for c in connections],
@@ -149,30 +148,38 @@ async def analyze_dag(
                     "consumers": [c.dag_name for c in dataset_analysis.consumers],
                 },
             },
-
             # DAG configuration (maps to prefect.yaml)
             "dag_config": {
                 "schedule": dag_settings.schedule if dag_settings else None,
                 "catchup": dag_settings.catchup if dag_settings else None,
                 "max_active_runs": dag_settings.max_active_runs if dag_settings else None,
-                "max_consecutive_failed_dag_runs": dag_settings.max_consecutive_failed_dag_runs if dag_settings else None,
+                "max_consecutive_failed_dag_runs": dag_settings.max_consecutive_failed_dag_runs
+                if dag_settings
+                else None,
                 "tags": dag_settings.tags if dag_settings else [],
                 "default_args": dag_settings.default_args if dag_settings else {},
-                "callbacks": [cb.callback_type for cb in dag_settings.callbacks] if dag_settings else [],
+                "callbacks": [cb.callback_type for cb in dag_settings.callbacks]
+                if dag_settings
+                else [],
             },
-
             # Complexity assessment
             "complexity": {
                 "score": complexity_score,
-                "factors": _get_complexity_factors(analysis, version, trigger_rules, dynamic_mappings),
+                "factors": _get_complexity_factors(
+                    analysis, version, trigger_rules, dynamic_mappings
+                ),
             },
-
             # Migration guidance
             "migration_notes": _generate_migration_notes(
-                analysis, version, connections, variables, trigger_rules,
-                dynamic_mappings, custom_ops, has_jinja
+                analysis,
+                version,
+                connections,
+                variables,
+                trigger_rules,
+                dynamic_mappings,
+                custom_ops,
+                has_jinja,
             ),
-
             # Original code (for LLM reference)
             "original_code": content,
         }
@@ -253,16 +260,14 @@ def _get_complexity_factors(
         factors.append("Uses XCom for data passing (convert to return values)")
 
     # Check for sensors
-    sensors = [
-        op for op in analysis.get("operators", [])
-        if "Sensor" in str(op.get("type", ""))
-    ]
+    sensors = [op for op in analysis.get("operators", []) if "Sensor" in str(op.get("type", ""))]
     if sensors:
         factors.append(f"Has {len(sensors)} sensor(s) (convert to polling/triggers)")
 
     # Check for branching
     branching = [
-        op for op in analysis.get("operators", [])
+        op
+        for op in analysis.get("operators", [])
         if op.get("type") in ("BranchPythonOperator", "ShortCircuitOperator")
     ]
     if branching:
@@ -305,10 +310,7 @@ def _generate_migration_notes(
         )
 
     # Sensor notes
-    sensors = [
-        op for op in analysis.get("operators", [])
-        if "Sensor" in str(op.get("type", ""))
-    ]
+    sensors = [op for op in analysis.get("operators", []) if "Sensor" in str(op.get("type", ""))]
     for sensor in sensors:
         sensor_type = sensor.get("type", "")
         if "S3" in sensor_type:
@@ -365,8 +367,7 @@ def _generate_migration_notes(
     # Dynamic mapping notes
     if dynamic_mappings:
         notes.append(
-            "Dynamic mapping: Use .map() method on tasks. "
-            "Example: task.map(items=my_list)"
+            "Dynamic mapping: Use .map() method on tasks. Example: task.map(items=my_list)"
         )
 
     # Custom operator notes
