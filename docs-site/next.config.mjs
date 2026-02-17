@@ -1,13 +1,18 @@
-import type { NextConfig } from "next";
 import createMDX from "@next/mdx";
+import remarkGfm from "remark-gfm";
 
 const withMDX = createMDX({
   extension: /\.mdx?$/,
+  options: {
+    remarkPlugins: [remarkGfm],
+    rehypePlugins: [],
+  },
 });
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: "export",
   trailingSlash: true,
   basePath,

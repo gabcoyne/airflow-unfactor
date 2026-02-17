@@ -61,7 +61,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       }
       // Inline code styling
       return (
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground">
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground whitespace-nowrap">
           {children}
         </code>
       );
@@ -79,30 +79,32 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       </blockquote>
     ),
 
-    // Table - improved styling
+    // Table - clean bordered style
     table: ({ children }) => (
       <div className="my-6 w-full overflow-x-auto">
-        <table className="w-full border-collapse text-sm">{children}</table>
+        <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+          {children}
+        </table>
       </div>
     ),
     thead: ({ children }) => (
-      <thead className="border-b border-border bg-muted/50">{children}</thead>
+      <thead className="bg-muted/60 border-b border-border">{children}</thead>
     ),
     tbody: ({ children }) => (
       <tbody className="divide-y divide-border">{children}</tbody>
     ),
     tr: ({ children }) => (
-      <tr className="border-b border-border transition-colors hover:bg-muted/30">
+      <tr className="transition-colors hover:bg-muted/20">
         {children}
       </tr>
     ),
     th: ({ children }) => (
-      <th className="border border-border bg-muted/50 px-4 py-3 text-left font-semibold text-foreground">
+      <th className="px-4 py-3 text-left font-semibold text-foreground border-r border-border/50 last:border-r-0">
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td className="border border-border px-4 py-3 text-foreground/90 align-top">
+      <td className="px-4 py-3 text-foreground/90 align-top border-r border-border/50 last:border-r-0">
         {children}
       </td>
     ),
