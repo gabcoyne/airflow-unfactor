@@ -4,8 +4,8 @@ Our MCP server provides analysis, context, and validation tools for LLM-assisted
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
+<WorkflowDiagram title="MCP Workflow">
+{`┌─────────────────────────────────────────────────────────────────┐
 │                      MCP Client (LLM)                           │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. analyze(dag_code)         → Rich structured payload         │
@@ -13,8 +13,8 @@ Our MCP server provides analysis, context, and validation tools for LLM-assisted
 │  3. operator_mapping(type)    → Specific operator guidance      │
 │  4. LLM generates complete Prefect flow                         │
 │  5. validate(original, gen)   → Verify correctness              │
-└─────────────────────────────────────────────────────────────────┘
-```
+└─────────────────────────────────────────────────────────────────┘`}
+</WorkflowDiagram>
 
 ## Primary Tools
 

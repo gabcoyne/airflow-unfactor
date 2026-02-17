@@ -51,9 +51,9 @@ Errors include context and suggestions:
 
 Tools can be chained in a predictable workflow:
 
-```
-analyze → get_context → LLM generates → validate
-```
+<WorkflowDiagram title="Tool Chain">
+{`analyze → get_context → LLM generates → validate`}
+</WorkflowDiagram>
 
 Each tool's output is designed to feed into the next step.
 

@@ -1,7 +1,11 @@
 import type { MDXComponents } from "mdx/types";
+import { WorkflowDiagram } from "@/components/docs/workflow-diagram";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
+    // Custom components
+    WorkflowDiagram,
+
     // Headings
     h1: ({ children }) => (
       <h1 className="mb-6 text-3xl font-bold tracking-tight text-foreground">
