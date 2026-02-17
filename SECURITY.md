@@ -4,10 +4,8 @@
 
 If you discover a security vulnerability in airflow-unfactor, please report it responsibly:
 
-1. **Do not** open a public GitHub issue for security vulnerabilities
-2. Email security@prefect.io with details about the vulnerability
-3. Include steps to reproduce if possible
-4. We will respond within 48 hours to acknowledge receipt
+1. Open a public GitHub issue for security vulnerabilities
+2. Include steps to reproduce if possible
 
 ## Security Considerations
 

@@ -42,7 +42,13 @@ docs-site/out/
 .env
 .env.*
 mcp.external.json
+.mcp.json
 mcp_agent_mail/
+
+# Agent workflow artifacts (personal/local)
 .claude/
 .codex/
 .beads/
+.ralph/
+ralphy-spec/
+openspec/
