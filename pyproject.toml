@@ -47,9 +47,9 @@ ui = [
 airflow-unfactor = "airflow_unfactor.server:main"
 
 [project.urls]
-Homepage = "https://github.com/prefecthq/airflow-unfactor"
-Documentation = "https://prefecthq.github.io/airflow-unfactor"
-Repository = "https://github.com/prefecthq/airflow-unfactor"
+Homepage = "https://github.com/gabcoyne/airflow-unfactor"
+Documentation = "https://gabcoyne.github.io/airflow-unfactor"
+Repository = "https://github.com/gabcoyne/airflow-unfactor"
 
 [build-system]
 requires = ["hatchling"]

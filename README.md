@@ -2,9 +2,9 @@
 
 > *"Airflow is for airports. Welcome to modern orchestration."*
 
-[![Tests](https://github.com/prefecthq/airflow-unfactor/actions/workflows/test.yml/badge.svg)](https://github.com/prefecthq/airflow-unfactor/actions/workflows/test.yml)
+[![Tests](https://github.com/gabcoyne/airflow-unfactor/actions/workflows/test.yml/badge.svg)](https://github.com/gabcoyne/airflow-unfactor/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/airflow-unfactor)](https://pypi.org/project/airflow-unfactor/)
-[![License](https://img.shields.io/github/license/prefecthq/airflow-unfactor)](LICENSE)
+[![License](https://img.shields.io/github/license/gabcoyne/airflow-unfactor)](LICENSE)
 
 An MCP server that refactors Apache Airflow DAG code into Prefect flow code with AI assistance. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
@@ -27,7 +27,7 @@ uv pip install airflow-unfactor
 pip install airflow-unfactor
 
 # From source (for development)
-git clone https://github.com/prefecthq/airflow-unfactor.git
+git clone https://github.com/gabcoyne/airflow-unfactor.git
 cd airflow-unfactor
 uv pip install -e ".[dev]"
 ```
@@ -198,22 +198,22 @@ def my_etl():
     return result
 ```
 
-**Plus generated tests!** See [Testing](https://prefecthq.github.io/airflow-unfactor/testing/) for details.
+**Plus generated tests!** See [Testing](https://gabcoyne.github.io/airflow-unfactor/testing/) for details.
 
 ## Documentation
 
-Full documentation: [prefecthq.github.io/airflow-unfactor](https://prefecthq.github.io/airflow-unfactor)
+Full documentation: [gabcoyne.github.io/airflow-unfactor](https://gabcoyne.github.io/airflow-unfactor)
 
-- [Getting Started](https://prefecthq.github.io/airflow-unfactor/getting-started/)
-- [Examples](https://prefecthq.github.io/airflow-unfactor/examples/)
-- [Operator Mapping](https://prefecthq.github.io/airflow-unfactor/operator-mapping/)
-- [Testing](https://prefecthq.github.io/airflow-unfactor/testing/)
+- [Getting Started](https://gabcoyne.github.io/airflow-unfactor/getting-started/)
+- [Examples](https://gabcoyne.github.io/airflow-unfactor/examples/)
+- [Operator Mapping](https://gabcoyne.github.io/airflow-unfactor/operator-mapping/)
+- [Testing](https://gabcoyne.github.io/airflow-unfactor/testing/)
 
 ## Development
 
 ```bash
 # Clone and install
-git clone https://github.com/prefecthq/airflow-unfactor.git
+git clone https://github.com/gabcoyne/airflow-unfactor.git
 cd airflow-unfactor
 uv pip install -e ".[dev]"
 
