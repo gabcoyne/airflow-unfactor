@@ -40,12 +40,14 @@ async def search_prefect_mcp(query: str) -> dict[str, Any]:
             results = []
             for item in result.content:
                 if hasattr(item, "text"):
-                    results.append(item.text)
+                    results.append(item.text)  # type: ignore[union-attr]
             return {"results": results, "query": query, "source": url}
     except Exception as e:
         error_msg = str(e)
         if "connect" in error_msg.lower() or "refused" in error_msg.lower():
-            return {"error": f"Cannot connect to Prefect MCP at {url}. Run 'colin run' for cached context."}
+            return {
+                "error": f"Cannot connect to Prefect MCP at {url}. Run 'colin run' for cached context."
+            }
         if "timeout" in error_msg.lower():
             return {"error": f"Prefect MCP request timed out after {DEFAULT_TIMEOUT}s"}
         return {"error": f"Prefect MCP error: {error_msg}"}

@@ -56,7 +56,9 @@ def parse_section_body(body: str) -> dict[str, str]:
             processed[key] = parse_subsections(value)
         elif value.startswith("- "):
             # Parse bullet lists into arrays
-            processed[key] = [line.lstrip("- ").strip() for line in value.split("\n") if line.startswith("- ")]
+            processed[key] = [
+                line.lstrip("- ").strip() for line in value.split("\n") if line.startswith("- ")
+            ]
         else:
             processed[key] = value
     return processed

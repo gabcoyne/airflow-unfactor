@@ -26,7 +26,9 @@ class TestSearchPrefectDocs:
         with patch(
             "airflow_unfactor.tools.search_docs.search_prefect_mcp",
             new_callable=AsyncMock,
-            return_value={"error": "Cannot connect to Prefect MCP at https://docs.prefect.io/mcp. Run 'colin run' for cached context."},
+            return_value={
+                "error": "Cannot connect to Prefect MCP at https://docs.prefect.io/mcp. Run 'colin run' for cached context."
+            },
         ):
             result = json.loads(asyncio.run(search_prefect_docs("test")))
 

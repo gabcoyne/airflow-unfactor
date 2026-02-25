@@ -82,9 +82,7 @@ class TestSearchPrefectMCP:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
-        mock_client.call_tool = AsyncMock(
-            return_value=_mock_call_tool_result(["result"])
-        )
+        mock_client.call_tool = AsyncMock(return_value=_mock_call_tool_result(["result"]))
 
         with patch("airflow_unfactor.external_mcp.Client", return_value=mock_client) as mock_cls:
             asyncio.run(search_prefect_mcp("test"))
