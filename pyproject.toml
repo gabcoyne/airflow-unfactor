@@ -21,7 +21,6 @@ classifiers = [
 
 dependencies = [
     "fastmcp>=2.14.0",
-    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]

@@ -1,16 +1,17 @@
 """External MCP client for Prefect documentation search.
 
-Simple httpx-based client. Errors are returned explicitly, never swallowed.
+Uses FastMCP Client to communicate with the Prefect MCP server
+via the Streamable HTTP transport. Errors are returned explicitly.
 """
 
 import os
 from typing import Any
 
-import httpx
+from fastmcp import Client
 
 # Defaults
 DEFAULT_PREFECT_URL = "https://docs.prefect.io/mcp"
-DEFAULT_TIMEOUT = 10.0
+DEFAULT_TIMEOUT = 15.0
 
 
 async def search_prefect_mcp(query: str) -> dict[str, Any]:
@@ -31,18 +32,20 @@ async def search_prefect_mcp(query: str) -> dict[str, Any]:
         return {"error": "Prefect MCP search is disabled (MCP_PREFECT_ENABLED=false)"}
 
     url = os.getenv("MCP_PREFECT_URL", DEFAULT_PREFECT_URL).rstrip("/")
-    tool_url = f"{url}/tools/SearchPrefect"
 
     try:
-        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-            resp = await client.post(tool_url, json={"input": {"query": query}})
-            resp.raise_for_status()
-            return resp.json()
-    except httpx.ConnectError:
-        return {"error": f"Cannot connect to Prefect MCP at {url}. Run 'colin run' for cached context."}
-    except httpx.TimeoutException:
-        return {"error": f"Prefect MCP request timed out after {DEFAULT_TIMEOUT}s"}
-    except httpx.HTTPStatusError as e:
-        return {"error": f"Prefect MCP returned HTTP {e.response.status_code}"}
+        async with Client(url) as client:
+            result = await client.call_tool("SearchPrefect", {"query": query})
+            # Extract text content from CallToolResult
+            results = []
+            for item in result.content:
+                if hasattr(item, "text"):
+                    results.append(item.text)
+            return {"results": results, "query": query, "source": url}
     except Exception as e:
-        return {"error": f"Prefect MCP error: {e}"}
+        error_msg = str(e)
+        if "connect" in error_msg.lower() or "refused" in error_msg.lower():
+            return {"error": f"Cannot connect to Prefect MCP at {url}. Run 'colin run' for cached context."}
+        if "timeout" in error_msg.lower():
+            return {"error": f"Prefect MCP request timed out after {DEFAULT_TIMEOUT}s"}
+        return {"error": f"Prefect MCP error: {error_msg}"}
