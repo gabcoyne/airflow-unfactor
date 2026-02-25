@@ -2,44 +2,42 @@
 
 ## Project Overview
 
-An MCP server that provides **rich analysis payloads** for LLM-assisted conversion of Apache Airflow DAGs to Prefect flows.
+An MCP server for LLM-assisted conversion of Apache Airflow DAGs to Prefect flows. The LLM reads raw DAG source code directly and generates complete Prefect flows using pre-compiled translation knowledge.
 
-**Key Insight**: Deterministic code templating is brittle for DAG conversion because Airflow and Prefect are architecturally dissimilar. Instead, this tool provides comprehensive analysis payloads that enable LLMs to generate complete, functional, tested Prefect flows.
+**Key Insight**: Deterministic code templating is brittle for DAG conversion. Instead, we provide raw source code + translation knowledge compiled from live sources, and the LLM generates the code.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      MCP Client (LLM)                           │
+│                        Build Time (Colin)                        │
+│  colin/models/*.md  →  colin run  →  colin/output/*.json        │
+│  (GitHub source, Prefect MCP docs, LLM summarization)           │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ compiled JSON
+┌─────────────────────────────▼───────────────────────────────────┐
+│                     MCP Server (Runtime)                         │
 │                                                                  │
-│  1. analyze() → Get rich structured DAG payload                 │
-│  2. get_context() → Fetch Prefect docs/patterns                 │
-│  3. LLM generates complete Prefect flow code                    │
-│  4. validate() → Verify structural correctness                  │
+│  1. read_dag         → Raw DAG source code for LLM to read      │
+│  2. lookup_concept   → Translation rules from Colin output       │
+│  3. search_prefect_docs → Live Prefect docs for gaps            │
+│  4. LLM generates complete Prefect flow code                    │
+│  5. validate         → Syntax check + both sources for review   │
+│  6. scaffold         → Project directory structure               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**We provide analysis, context, and validation. The LLM generates the code.**
+**We provide raw code, translation knowledge, and validation. The LLM generates the code.**
 
 ## MCP Tools
 
-### Primary Tools (New Architecture)
-
 | Tool | Purpose |
 |------|---------|
-| `analyze` | Comprehensive DAG analysis with structure, patterns, config, migration notes |
-| `get_context` | Fetch Prefect docs based on detected features |
-| `operator_mapping` | Get Prefect equivalent for specific Airflow operator |
-| `connection_mapping` | Map Airflow connection to Prefect block type |
-| `validate` | Verify generated code matches original structure |
-| `scaffold` | Generate project directory structure (not code) |
-
-### Deprecated Tools (Template-Based)
-
-| Tool | Status |
-|------|--------|
-| `convert` | Deprecated - uses brittle templates |
-| `batch` | Deprecated - uses brittle templates |
+| `read_dag` | Read a DAG file, return raw source + metadata (path, size, line count) |
+| `lookup_concept` | Query Airflow→Prefect translation knowledge (operators, patterns, connections) |
+| `search_prefect_docs` | Search live Prefect documentation via Prefect MCP server |
+| `validate` | Return both sources + syntax check for LLM comparison |
+| `scaffold` | Generate Prefect project directory structure (not code) |
 
 ## Target Output Structure
 
@@ -58,13 +56,10 @@ prefect.yaml          # Deployment configuration
 
 ```bash
 # Environment
-uv sync --all-extras
+uv sync
 
 # Run tests
 uv run pytest
-
-# Type check
-uv run pyright
 
 # Lint
 uv run ruff check --fix
@@ -72,8 +67,8 @@ uv run ruff check --fix
 # Run MCP server
 uv run airflow-unfactor
 
-# Run with wizard UI
-uv run airflow-unfactor --ui
+# Compile translation knowledge (requires colin)
+cd colin && colin run
 ```
 
 ## Task Tracking
@@ -92,19 +87,22 @@ bd sync               # Sync with git
 
 | Path | Description |
 |------|-------------|
-| `src/airflow_unfactor/server.py` | MCP server entry point |
-| `src/airflow_unfactor/tools/analyze.py` | DAG analysis tool |
-| `src/airflow_unfactor/tools/context.py` | Prefect context/docs tools |
-| `src/airflow_unfactor/tools/validate.py` | Validation tool |
-| `src/airflow_unfactor/analysis/` | AST parsing and analysis |
-| `ARCHITECTURE.md` | Detailed architecture documentation |
+| `src/airflow_unfactor/server.py` | MCP server entry point, tool registration |
+| `src/airflow_unfactor/tools/read_dag.py` | Raw DAG source reader |
+| `src/airflow_unfactor/tools/lookup.py` | Knowledge lookup tool |
+| `src/airflow_unfactor/tools/search_docs.py` | Prefect docs search tool |
+| `src/airflow_unfactor/tools/validate.py` | Source comparison + syntax validation |
+| `src/airflow_unfactor/tools/scaffold.py` | Project scaffolding |
+| `src/airflow_unfactor/knowledge.py` | Knowledge loader (Colin output + fallback) |
+| `src/airflow_unfactor/external_mcp.py` | Prefect MCP HTTP client |
+| `src/airflow_unfactor/validation.py` | Python syntax validation utility |
+| `colin/` | Colin project for compiling translation knowledge |
 
 ## External MCP Integration
 
-The server can call external MCP servers for enriched context:
+The server queries the Prefect MCP server for live documentation:
 
 - **Prefect MCP**: `https://docs.prefect.io/mcp` (SearchPrefect tool)
-- **Astronomer MCP**: Airflow 2→3 migration guidance
 
 Configure via environment variables:
 ```bash
@@ -112,16 +110,18 @@ MCP_PREFECT_ENABLED=true
 MCP_PREFECT_URL=https://docs.prefect.io/mcp
 ```
 
-## Testing Philosophy
+When Prefect MCP is unavailable, `lookup_concept` still works using Colin-compiled or fallback knowledge.
 
-- Every feature should have tests
+## Testing
+
+- Every feature has tests
 - Tests use fixtures from `tests/fixtures/astronomer-2-9/`
-- Property-based testing with hypothesis where appropriate
-- 678 tests currently passing
+- 60 tests currently passing
 
 ## Important Conventions
 
-1. **Don't generate code** - The MCP tools provide analysis; LLMs generate code
-2. **Rich payloads** - Include everything an LLM needs for accurate generation
-3. **Prefect patterns** - Output should follow prefecthq/flows structure
-4. **Validation** - Always validate generated code against original structure
+1. **Don't generate code** — The MCP tools provide raw source + knowledge; LLMs generate code
+2. **No AST intermediary** — The LLM reads raw DAG source directly
+3. **Colin for knowledge** — Translation rules compiled from live Airflow source + Prefect docs
+4. **Prefect patterns** — Output should follow prefecthq/flows structure
+5. **Validation** — Always validate generated code against original structure

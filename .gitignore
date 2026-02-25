@@ -52,3 +52,6 @@ mcp_agent_mail/
 .ralph/
 ralphy-spec/
 openspec/
+
+# Colin compiled output (regenerated via `colin run`)
+colin/output/

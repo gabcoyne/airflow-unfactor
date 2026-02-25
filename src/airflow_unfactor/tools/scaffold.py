@@ -151,8 +151,8 @@ prefect deploy --all
 
 ## Workflow
 
-1. Analyze your Airflow DAG with `airflow-unfactor`
-2. Use the analysis to generate Prefect flow code
+1. Read your Airflow DAG with `read_dag`
+2. Use `lookup_concept` for translation guidance, then generate Prefect flow code
 3. Place flows in `deployments/<workspace>/<flow>/flow.py`
 4. Update `prefect.yaml` with deployment configuration
 5. Deploy with `prefect deploy --all`
