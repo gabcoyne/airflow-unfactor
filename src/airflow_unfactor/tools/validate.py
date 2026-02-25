@@ -27,13 +27,13 @@ async def validate_conversion(
         JSON with original_source, converted_source, syntax_valid,
         syntax_errors, and comparison_guidance.
     """
-    # Load content if paths provided
+    # Load content if paths provided (short strings without newlines might be paths)
     original_source = original_dag
-    if Path(original_dag).exists():
+    if "\n" not in original_dag and len(original_dag) < 1024 and Path(original_dag).exists():
         original_source = Path(original_dag).read_text()
 
     converted_source = converted_flow
-    if Path(converted_flow).exists():
+    if "\n" not in converted_flow and len(converted_flow) < 1024 and Path(converted_flow).exists():
         converted_source = Path(converted_flow).read_text()
 
     # Syntax check the generated code
