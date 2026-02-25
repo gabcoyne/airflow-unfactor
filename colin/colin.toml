@@ -5,6 +5,7 @@ output-path = "output"
 
 [project.output]
 target = "local"
+format = "json"
 
 # GitHub provider for fetching Airflow operator source code
 [[providers.github]]

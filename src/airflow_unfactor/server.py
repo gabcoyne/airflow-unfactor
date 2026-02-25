@@ -156,6 +156,11 @@ async def scaffold(
 
 def main() -> None:
     """Run the MCP server over stdio."""
+    import sys
+
+    if len(sys.argv) > 1:
+        print(f"error: unrecognized arguments: {' '.join(sys.argv[1:])}", file=sys.stderr)
+        sys.exit(2)
     mcp.run()
 
 
