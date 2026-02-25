@@ -4,11 +4,11 @@ Practical examples of using the MCP tools for Airflow→Prefect migration.
 
 ## Basic Workflow
 
-### 1. Analyze a DAG
+### 1. Read the DAG
 
 ```json
 {
-  "tool": "analyze",
+  "tool": "read_dag",
   "args": {
     "path": "dags/etl_pipeline.py"
   }
@@ -18,121 +18,126 @@ Practical examples of using the MCP tools for Airflow→Prefect migration.
 **Response:**
 ```json
 {
-  "dag_id": "etl_pipeline",
-  "airflow_version": "2.x",
-  "structure": {
-    "operators": [
-      {"task_id": "extract", "type": "PythonOperator", "line": 15},
-      {"task_id": "transform", "type": "PythonOperator", "line": 22},
-      {"task_id": "load", "type": "S3CreateObjectOperator", "line": 29}
-    ],
-    "dependencies": [
-      ["extract", "transform"],
-      ["transform", "load"]
-    ]
-  },
-  "patterns": {
-    "xcom": [
-      {"task_id": "transform", "pattern": "ti.xcom_pull(task_ids='extract')"}
-    ],
-    "connections": [
-      {"connection_id": "aws_default", "used_by": ["load"]}
-    ]
-  },
-  "migration_notes": [
-    "Convert XCom to return values",
-    "Replace aws_default with S3 credentials block"
-  ],
-  "conversion_runbook_md": "# Migration Runbook: etl_pipeline\n\n..."
+  "source": "from airflow import DAG\nfrom airflow.operators.python import PythonOperator\n...",
+  "file_path": "/workspace/dags/etl_pipeline.py",
+  "file_size_bytes": 1842,
+  "line_count": 65
 }
 ```
 
-### 2. Get Prefect Context
+### 2. Look Up Concepts
+
+For each Airflow concept found in the DAG, query translation knowledge:
 
 ```json
 {
-  "tool": "get_context",
-  "args": {
-    "topics": ["flows", "tasks", "blocks"],
-    "detected_features": ["xcom", "connections"]
-  }
+  "tool": "lookup_concept",
+  "args": { "concept": "PythonOperator" }
 }
 ```
 
 **Response:**
 ```json
 {
-  "documentation": {
-    "flows": "Flows are the core unit of work in Prefect...",
-    "tasks": "Tasks are functions decorated with @task...",
-    "blocks": "Blocks store configuration and secrets..."
-  },
-  "operator_patterns": {
-    "PythonOperator": {
-      "prefect_pattern": "@task decorator",
-      "example": "@task\ndef my_task():\n    ..."
-    },
-    "S3CreateObjectOperator": {
-      "prefect_pattern": "s3_upload from prefect-aws",
-      "package": "prefect-aws",
-      "example": "from prefect_aws import s3_upload\n..."
-    }
-  },
-  "connection_mappings": {
-    "aws_default": {
-      "block_type": "AwsCredentials",
-      "package": "prefect-aws"
-    }
-  }
+  "concept_type": "operator",
+  "airflow": "PythonOperator",
+  "prefect_equivalent": "@task decorator",
+  "translation_rules": [
+    "Replace PythonOperator with @task-decorated function",
+    "Move python_callable body into the task function",
+    "Replace op_kwargs with function parameters",
+    "Replace provide_context/ti.xcom_push with return values"
+  ],
+  "source": "colin"
 }
 ```
 
-### 3. LLM Generates Code
+```json
+{
+  "tool": "lookup_concept",
+  "args": { "concept": "postgres" }
+}
+```
 
-Using the analysis and context, the LLM generates idiomatic Prefect code:
+**Response:**
+```json
+{
+  "concept_type": "connection",
+  "airflow": "postgres_default",
+  "prefect_equivalent": "SqlAlchemyConnector block (prefect-sqlalchemy)",
+  "translation_rules": [
+    "Install prefect-sqlalchemy",
+    "Create SqlAlchemyConnector block with connection URL",
+    "Use connector.get_connection() in task code"
+  ],
+  "source": "colin"
+}
+```
+
+### 3. Search Prefect Docs (Optional)
+
+For concepts not covered by lookup_concept:
+
+```json
+{
+  "tool": "search_prefect_docs",
+  "args": { "query": "task retries and caching" }
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    "Title: Task Caching\nLink: https://docs.prefect.io/v3/develop/task-caching\nContent: ...",
+    "Title: Tasks\nLink: https://docs.prefect.io/v3/develop/write-tasks\nContent: ..."
+  ],
+  "query": "task retries and caching",
+  "source": "https://docs.prefect.io/mcp"
+}
+```
+
+### 4. LLM Generates Code
+
+Using the source code, translation knowledge, and documentation, the LLM generates:
 
 ```python
 from prefect import flow, task
-from prefect_aws import AwsCredentials
-from prefect_aws.s3 import s3_upload
+from prefect_sqlalchemy import SqlAlchemyConnector
 
-@task
-def extract() -> dict:
+@task(retries=3, retry_delay_seconds=300)
+def extract() -> list[dict]:
     """Extract data from source."""
-    return {"data": [...]}
+    return [{"id": 1, "value": 100}]
 
 @task
-def transform(raw_data: dict) -> dict:
+def transform(raw_data: list[dict]) -> list[dict]:
     """Transform extracted data."""
-    # Receives data as parameter (replaces XCom)
-    return {"transformed": process(raw_data)}
+    return [{"id": r["id"], "value": r["value"] * 2} for r in raw_data]
 
 @task
-def load(data: dict) -> None:
-    """Load data to S3."""
-    aws_creds = AwsCredentials.load("aws-prod")
-    s3_upload(
-        data=data,
-        bucket="my-bucket",
-        key="output/data.json",
-        aws_credentials=aws_creds
-    )
+def load(data: list[dict]) -> None:
+    """Load data to Postgres."""
+    connector = SqlAlchemyConnector.load("postgres-prod")
+    with connector.get_connection() as conn:
+        for row in data:
+            conn.execute("INSERT INTO results VALUES (:id, :value)", row)
 
-@flow(name="etl_pipeline")
+@flow(name="etl_pipeline", log_prints=True)
 def etl_pipeline():
     raw = extract()
     transformed = transform(raw)
     load(transformed)
 ```
 
-### 4. Validate the Conversion
+### 5. Validate the Conversion
 
 ```json
 {
   "tool": "validate",
   "args": {
     "original_dag": "dags/etl_pipeline.py",
-    "converted_flow": "flows/etl_pipeline.py"
+    "converted_flow": "from prefect import flow, task\n..."
   }
 }
 ```
@@ -140,13 +145,11 @@ def etl_pipeline():
 **Response:**
 ```json
 {
-  "is_valid": true,
-  "task_count_match": true,
-  "dependency_preserved": true,
-  "confidence_score": 92,
-  "issues": [],
-  "dag_tasks": ["extract", "transform", "load"],
-  "flow_tasks": ["extract", "transform", "load"]
+  "original_source": "from airflow import DAG\n...",
+  "converted_source": "from prefect import flow, task\n...",
+  "syntax_valid": true,
+  "syntax_errors": null,
+  "comparison_guidance": "Compare the original Airflow DAG with the generated Prefect flow. Verify:\n1. All tasks from the DAG are represented in the flow\n2. Task dependencies are preserved\n..."
 }
 ```
 
@@ -154,7 +157,7 @@ def etl_pipeline():
 
 ### TaskFlow API DAG
 
-**Input:**
+**Input DAG:**
 ```python
 from airflow.decorators import dag, task
 from datetime import datetime
@@ -180,125 +183,73 @@ def taskflow_etl():
 taskflow_etl()
 ```
 
-**Analysis highlights:**
+**Lookup:**
 ```json
-{
-  "patterns": {
-    "taskflow": {
-      "detected": true,
-      "decorators": ["@dag", "@task"],
-      "note": "Maps directly to Prefect @flow/@task"
-    }
-  },
-  "migration_notes": [
-    "TaskFlow DAGs map cleanly to Prefect",
-    "@dag → @flow, @task → @task",
-    "Return values already replace XCom"
-  ]
-}
+{ "tool": "lookup_concept", "args": { "concept": "dag-to-flow" } }
 ```
-
-### DAG with Sensors
-
-**Input:**
-```python
-from airflow import DAG
-from airflow.sensors.s3_key_sensor import S3KeySensor
-from airflow.operators.python import PythonOperator
-
-with DAG("sensor_example") as dag:
-    wait_for_file = S3KeySensor(
-        task_id="wait_for_file",
-        bucket_name="my-bucket",
-        bucket_key="input/*.csv",
-        aws_conn_id="aws_default"
-    )
-
-    process = PythonOperator(
-        task_id="process",
-        python_callable=process_file
-    )
-
-    wait_for_file >> process
-```
-
-**Analysis highlights:**
-```json
-{
-  "patterns": {
-    "sensors": [
-      {
-        "task_id": "wait_for_file",
-        "type": "S3KeySensor",
-        "suggestions": [
-          "Convert to polling task with retries",
-          "Or use S3 event-driven trigger"
-        ]
-      }
-    ]
-  }
-}
-```
+Returns: `@dag` maps directly to `@flow`, `@task` maps to `@task`. TaskFlow DAGs are the closest Airflow pattern to Prefect.
 
 **Generated Prefect code:**
 ```python
 from prefect import flow, task
-from prefect_aws import AwsCredentials
-import boto3
-import time
-
-@task(retries=60, retry_delay_seconds=60)
-def wait_for_s3_file(bucket: str, prefix: str) -> str:
-    """Poll S3 for file existence."""
-    aws_creds = AwsCredentials.load("aws-prod")
-    s3 = boto3.client("s3", **aws_creds.get_boto3_session().get_credentials())
-
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    if response.get("Contents"):
-        return response["Contents"][0]["Key"]
-
-    raise Exception("File not found, will retry")
 
 @task
-def process_file(file_key: str):
+def extract():
+    return {"data": [1, 2, 3]}
+
+@task
+def transform(data):
+    return [x * 2 for x in data["data"]]
+
+@task
+def load(results):
+    print(f"Loading {len(results)} items")
+
+@flow(name="taskflow_etl", log_prints=True)
+def taskflow_etl():
+    data = extract()
+    transformed = transform(data)
+    load(transformed)
+```
+
+### DAG with Sensors
+
+**Lookup:**
+```json
+{ "tool": "lookup_concept", "args": { "concept": "FileSensor" } }
+```
+Returns: Convert to a polling task with retries and retry_delay_seconds.
+
+**Generated Prefect code:**
+```python
+from prefect import flow, task
+from pathlib import Path
+
+@task(retries=60, retry_delay_seconds=60)
+def wait_for_file(filepath: str) -> bool:
+    """Poll for file existence (replaces FileSensor)."""
+    if not Path(filepath).exists():
+        raise FileNotFoundError(f"Waiting for {filepath}")
+    return True
+
+@task
+def process_file():
     """Process the detected file."""
     ...
 
 @flow(name="sensor_example")
 def sensor_example():
-    file_key = wait_for_s3_file("my-bucket", "input/")
-    process_file(file_key)
+    wait_for_file("/data/input.csv")
+    process_file()
 ```
 
 ### DAG with Dynamic Tasks
 
-**Input:**
-```python
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-
-with DAG("dynamic_tasks") as dag:
-    for region in ["us-east-1", "eu-west-1", "ap-south-1"]:
-        PythonOperator(
-            task_id=f"process_{region}",
-            python_callable=process_region,
-            op_kwargs={"region": region}
-        )
-```
-
-**Analysis highlights:**
+**Lookup:**
 ```json
-{
-  "patterns": {
-    "dynamic_mapping": {
-      "detected": true,
-      "type": "loop_generation",
-      "items": ["us-east-1", "eu-west-1", "ap-south-1"],
-      "note": "Convert to .map() for parallel execution"
-    }
-  }
-}
+{ "tool": "lookup_concept", "args": { "concept": "dynamic-mapping" } }
 ```
+Returns: Use `.map()` for parallel execution over iterables.
 
 **Generated Prefect code:**
 ```python
@@ -312,77 +263,49 @@ def process_region(region: str):
 @flow(name="dynamic_tasks")
 def dynamic_tasks():
     regions = ["us-east-1", "eu-west-1", "ap-south-1"]
-    # Use .map() for parallel execution
     process_region.map(regions)
 ```
 
-## Operator-Specific Lookups
+## Concept Lookups
 
-### Get Specific Operator Mapping
-
-```json
-{
-  "tool": "operator_mapping",
-  "args": {
-    "operator_type": "BigQueryInsertJobOperator"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "airflow_operator": "BigQueryInsertJobOperator",
-  "prefect_function": "bigquery_query",
-  "package": "prefect-gcp",
-  "example": "from prefect_gcp.bigquery import bigquery_query\n\n@task\ndef run_bq_job():\n    return bigquery_query(\n        query=\"SELECT * FROM dataset.table\",\n        gcp_credentials=GcpCredentials.load(\"gcp-prod\")\n    )",
-  "migration_notes": [
-    "Install prefect-gcp: pip install prefect-gcp",
-    "Create GcpCredentials block with service account",
-    "Query results returned directly (no XCom needed)"
-  ]
-}
-```
-
-### Get Connection Mapping
+### Operator Lookup
 
 ```json
-{
-  "tool": "connection_mapping",
-  "args": {
-    "connection_id": "postgres_default"
-  }
-}
+{ "tool": "lookup_concept", "args": { "concept": "BigQueryInsertJobOperator" } }
 ```
 
-**Response:**
+Returns the Prefect equivalent (`bigquery_query` from `prefect-gcp`), example code, and migration notes.
+
+### Connection Lookup
+
 ```json
-{
-  "airflow_connection": "postgres_default",
-  "prefect_block": "SqlAlchemyConnector",
-  "package": "prefect-sqlalchemy",
-  "example": "from prefect_sqlalchemy import SqlAlchemyConnector\n\nconnector = SqlAlchemyConnector.load(\"postgres-prod\")\nwith connector.get_connection() as conn:\n    result = conn.execute(query)",
-  "setup_instructions": [
-    "Install prefect-sqlalchemy: pip install prefect-sqlalchemy",
-    "Create block via UI or code with connection details",
-    "Load block in flow using SqlAlchemyConnector.load()"
-  ]
-}
+{ "tool": "lookup_concept", "args": { "concept": "postgres" } }
 ```
+
+Returns the Prefect block type (`SqlAlchemyConnector`), package, and setup guidance.
+
+### Pattern Lookup
+
+```json
+{ "tool": "lookup_concept", "args": { "concept": "trigger-rule" } }
+```
+
+Returns how to handle Airflow trigger rules in Prefect (state inspection, `wait_for`, `return_state`).
 
 ## Prompt Templates
 
 ### Claude Code / Cursor
 
-> Analyze the DAG at `dags/my_etl.py` using the analyze tool, get Prefect context for the detected features, then generate a complete Prefect flow following prefecthq/flows conventions. Finally, validate the conversion.
+> Read the DAG at `dags/my_etl.py` using read_dag, look up the Airflow concepts with lookup_concept, then generate a complete Prefect flow following prefecthq/flows conventions. Validate the result.
 
 ### Agentic Workflow
 
 ```
-1. Call analyze(path="dags/my_etl.py")
-2. Extract detected_features from patterns
-3. Call get_context(topics=["flows", "tasks", "blocks"], detected_features=features)
-4. Generate Prefect flow using analysis + context
-5. Call validate(original_dag="dags/my_etl.py", converted_flow="flows/my_etl.py")
-6. If validation fails, review issues and regenerate
+1. Call read_dag(path="dags/my_etl.py")
+2. Identify Airflow concepts in the source code
+3. Call lookup_concept() for each concept (PythonOperator, XCom, etc.)
+4. Call search_prefect_docs() for any gaps
+5. Generate Prefect flow using source + translation knowledge
+6. Call validate(original_dag="dags/my_etl.py", converted_flow=generated_code)
+7. If syntax errors, fix and re-validate
 ```

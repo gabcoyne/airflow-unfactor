@@ -2,84 +2,98 @@
 
 ## The Workflow
 
-airflow-unfactor provides analysis and context; your LLM generates the Prefect code.
+airflow-unfactor reads your DAG, provides translation knowledge, and the LLM generates the Prefect code.
 
 ```
-1. analyze()      → Get comprehensive DAG payload
-2. get_context()  → Fetch relevant Prefect docs
-3. LLM generates  → Complete Prefect flow code
-4. validate()     → Verify structural correctness
+1. read_dag(path)         → Raw DAG source code
+2. lookup_concept(name)   → Airflow→Prefect mappings
+3. search_prefect_docs(q) → Live Prefect docs (optional)
+4. LLM generates          → Complete Prefect flow
+5. validate(orig, flow)   → Syntax check + comparison
 ```
 
-## Step 1: Analyze a DAG
+## Step 1: Read the DAG
 
 ```json
 {
-  "tool": "analyze",
+  "tool": "read_dag",
   "args": { "path": "dags/my_etl.py" }
 }
 ```
 
-Returns comprehensive analysis:
-- Structure (operators, dependencies, task groups)
-- Patterns (xcom, sensors, connections, variables)
-- Configuration (schedule, catchup, default_args)
-- Migration notes and complexity score
-- Original code for reference
+Returns the raw source code, file path, size, and line count. The LLM reads the code directly.
 
-## Step 2: Get Prefect Context
+## Step 2: Look Up Translation Knowledge
+
+For each Airflow concept found in the DAG:
 
 ```json
 {
-  "tool": "get_context",
-  "args": {
-    "topics": ["flows", "tasks", "blocks"],
-    "detected_features": ["sensors", "xcom", "connections"]
-  }
+  "tool": "lookup_concept",
+  "args": { "concept": "PythonOperator" }
 }
 ```
 
 Returns:
-- Relevant Prefect documentation
-- Operator→Prefect pattern mappings
-- Connection→Block mappings
-- Deployment template (prefect.yaml structure)
+- Prefect equivalent (`@task` decorator)
+- Translation rules (how to convert)
+- Source: "colin" (pre-compiled) or "fallback" (built-in)
 
-## Step 3: LLM Generates Code
+Repeat for each concept: connections, patterns, sensors, etc.
 
-Using the analysis payload and Prefect context, your LLM generates complete Prefect flow code following `prefecthq/flows` conventions:
+## Step 3: Search Prefect Docs (Optional)
+
+For anything not covered by `lookup_concept`:
+
+```json
+{
+  "tool": "search_prefect_docs",
+  "args": { "query": "task caching and retries" }
+}
+```
+
+Returns live search results from `docs.prefect.io`.
+
+## Step 4: LLM Generates Code
+
+Using the DAG source and translation knowledge, your LLM generates complete Prefect flow code:
 
 ```python
 from prefect import flow, task
 
-@task
+@task(retries=3, retry_delay_seconds=300)
 def extract_data(source: str) -> dict:
-    # Implementation here
+    """Extract data from source."""
     return data
 
-@flow
+@task
+def transform_data(raw: dict) -> dict:
+    """Transform extracted data."""
+    return processed
+
+@flow(name="my-etl", log_prints=True)
 def my_etl_flow():
     data = extract_data("s3://bucket/path")
     transformed = transform_data(data)
     load_data(transformed)
 ```
 
-## Step 4: Validate
+## Step 5: Validate
 
 ```json
 {
   "tool": "validate",
   "args": {
-    "original_dag": "# Airflow DAG code",
-    "converted_flow": "# Generated Prefect flow"
+    "original_dag": "dags/my_etl.py",
+    "converted_flow": "from prefect import flow, task\n..."
   }
 }
 ```
 
-Verifies:
-- All tasks accounted for
-- Dependencies preserved
-- Configuration complete
+Returns:
+- Both source files for side-by-side comparison
+- Syntax validation of the generated code
+- Comparison checklist (tasks, dependencies, config)
 
 ## Target Project Layout
 

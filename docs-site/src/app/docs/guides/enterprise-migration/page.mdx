@@ -16,24 +16,26 @@ find dags/ -name "*.py" -exec grep -l "DAG\|@dag" {} \; | wc -l
 grep -rh "Operator\|Sensor" dags/ | sort | uniq -c | sort -rn
 ```
 
-Use the `analyze` tool to get detailed breakdowns:
+Use `read_dag` to examine each DAG:
 
-```python
-# Analyze all DAGs
-for dag_file in Path("dags/").glob("*.py"):
-    result = await analyze(path=str(dag_file))
-    print(f"{dag_file.name}: {len(result['operators'])} operators")
+```json
+{
+  "tool": "read_dag",
+  "args": { "path": "dags/etl_pipeline.py" }
+}
 ```
+
+Then use `lookup_concept` for each operator and pattern found in the source.
 
 ### 2. Complexity Scoring
 
 Categorize DAGs by migration complexity:
 
-| Complexity | Characteristics | Estimated Effort |
-|------------|-----------------|------------------|
-| **Simple** | < 10 tasks, standard operators, no XCom | Automated |
-| **Medium** | 10-30 tasks, some provider operators, basic XCom | Review needed |
-| **Complex** | 30+ tasks, custom operators, dynamic patterns | Manual work |
+| Complexity | Characteristics | Approach |
+|------------|-----------------|----------|
+| **Simple** | < 10 tasks, standard operators, no XCom | LLM converts with minimal guidance |
+| **Medium** | 10-30 tasks, provider operators, basic XCom | LLM converts with concept lookups |
+| **Complex** | 30+ tasks, custom operators, dynamic patterns | LLM converts with manual review |
 
 ### 3. Dependency Mapping
 
@@ -56,16 +58,13 @@ These become flow-to-flow orchestration patterns in Prefect.
    - 1 with provider operators
    - 1 with complex dependencies
 
-2. Convert and validate:
-   ```python
-   # Convert
-   result = await convert(path="dags/pilot_dag.py")
-
-   # Validate
-   validation = await validate(
-       original_dag="dags/pilot_dag.py",
-       converted_flow="flows/pilot_dag.py"
-   )
+2. For each DAG, follow the conversion workflow:
+   ```
+   read_dag(path)         → Get raw source
+   lookup_concept(name)   → Get translation rules for each pattern
+   search_prefect_docs(q) → Look up Prefect docs as needed
+   LLM generates          → Complete Prefect flow
+   validate(orig, flow)   → Syntax check + comparison
    ```
 
 3. Deploy to Prefect (staging):
@@ -79,21 +78,24 @@ These become flow-to-flow orchestration patterns in Prefect.
 
 **Goal**: Convert remaining DAGs using proven patterns.
 
-Use the `batch` tool for bulk conversion:
+Work through DAGs systematically:
 
-```python
-result = await batch(
-    paths=["dags/"],
-    output_dir="flows/",
-    include_tests=True,
-)
-```
+1. **Read each DAG** with `read_dag`
+2. **Look up concepts** with `lookup_concept` for each operator/pattern
+3. **Generate the flow** — the LLM produces complete Prefect code
+4. **Validate** with `validate` to check syntax and structure
+5. **Review** the comparison guidance checklist
 
-Enable metrics to track progress:
+Use `scaffold` to set up the project structure:
 
-```bash
-export AIRFLOW_UNFACTOR_METRICS=1
-python scripts/migrate_batch.py
+```json
+{
+  "tool": "scaffold",
+  "args": {
+    "dag_names": ["etl_pipeline", "ml_training", "data_sync"],
+    "workspace": "data-team"
+  }
+}
 ```
 
 ### Phase 3: Validation at Scale (1-2 weeks)
@@ -110,61 +112,23 @@ for dag_file in Path("dags/").glob("*.py"):
             original_dag=str(dag_file),
             converted_flow=str(flow_file)
         )
-        if not result["is_valid"]:
-            print(f"FAIL: {dag_file.name}")
-            for issue in result["issues"]:
-                print(f"  - {issue}")
+        if not result["syntax_valid"]:
+            print(f"SYNTAX ERROR: {dag_file.name}")
+            for err in result["syntax_errors"]:
+                print(f"  Line {err['line']}: {err['message']}")
+        else:
+            print(f"OK: {dag_file.name}")
 ```
 
 ### Phase 4: Cutover (1 week)
 
 **Goal**: Switch production to Prefect.
 
-1. **Final sync**: Run one last batch conversion
+1. **Final validation pass**: Re-validate all converted flows
 2. **Pause Airflow DAGs**: Prevent new runs
 3. **Activate Prefect deployments**: Start scheduled runs
 4. **Monitor**: Watch for failures, compare outputs
 5. **Archive Airflow**: Keep DAGs read-only for reference
-
-## Batch Conversion Workflow
-
-### Using the Batch Tool
-
-```python
-result = await batch(
-    paths=["dags/etl/", "dags/ml/"],
-    output_dir="flows/",
-    include_tests=True,
-    include_runbook=True,
-)
-
-print(f"Converted: {result['successful']}/{result['total']}")
-for warning in result['warnings']:
-    print(f"Warning: {warning}")
-```
-
-### Using the Scaffold Tool
-
-For complete project setup:
-
-```python
-result = await scaffold(
-    dag_directory="dags/",
-    output_directory="prefect-project/",
-    project_name="my-migration",
-)
-```
-
-This creates:
-```
-prefect-project/
-├── flows/
-├── tasks/
-├── tests/
-├── deployments/
-├── prefect.yaml
-└── requirements.txt
-```
 
 ## Validation at Scale
 
@@ -191,25 +155,22 @@ def validate_all(dag_dir: Path, flow_dir: Path) -> dict:
             continue
 
         try:
-            result = validate_sync(
+            result = validate(
                 original_dag=str(dag_file),
                 converted_flow=str(flow_file)
             )
 
-            if result["is_valid"]:
-                results["passed"].append({
-                    "dag": dag_file.name,
-                    "confidence": result["confidence_score"]
-                })
+            if result["syntax_valid"]:
+                results["passed"].append(dag_file.name)
             else:
                 results["failed"].append({
                     "dag": dag_file.name,
-                    "issues": result["issues"]
+                    "errors": result["syntax_errors"]
                 })
         except Exception as e:
             results["failed"].append({
                 "dag": dag_file.name,
-                "issues": [str(e)]
+                "errors": [str(e)]
             })
 
     return results
@@ -318,59 +279,12 @@ def compare_outputs(dag_id: str, execution_date: str):
             print(f"  Prefect: {prefect_value}")
 ```
 
-## Monitoring Migration Progress
-
-### Metrics Dashboard
-
-Track migration health with the metrics module:
-
-```python
-from airflow_unfactor.metrics import get_aggregate_stats
-
-stats = get_aggregate_stats()
-
-dashboard = {
-    "conversion_progress": {
-        "total": stats.total_conversions,
-        "successful": stats.successful_conversions,
-        "failed": stats.failed_conversions,
-        "success_rate": f"{stats.success_rate:.1%}",
-    },
-    "operator_coverage": {
-        "total": stats.total_operators,
-        "converted": stats.operators_converted,
-        "unknown": stats.operators_unknown,
-        "coverage": f"{stats.operator_coverage:.1%}",
-    },
-    "common_issues": dict(
-        sorted(stats.warning_frequency.items(), key=lambda x: -x[1])[:5]
-    ),
-}
-```
-
-### Progress Tracking
-
-```python
-# Track by team/domain
-domains = {
-    "etl": "dags/etl/",
-    "ml": "dags/ml/",
-    "analytics": "dags/analytics/",
-}
-
-for domain, path in domains.items():
-    dag_count = len(list(Path(path).glob("*.py")))
-    flow_count = len(list(Path(f"flows/{domain}/").glob("*.py")))
-    print(f"{domain}: {flow_count}/{dag_count} migrated")
-```
-
 ## Best Practices
 
 1. **Start small** — Pilot with representative DAGs first
 2. **Automate validation** — Run validation in CI/CD
-3. **Track metrics** — Monitor progress and identify issues
-4. **Maintain parallel** — Keep Airflow running during migration
-5. **Document decisions** — Record patterns and exceptions
-6. **Communicate progress** — Share dashboards with stakeholders
-7. **Plan rollback** — Always have a way back to Airflow
-8. **Test with real data** — Validation checks structure, not correctness
+3. **Maintain parallel** — Keep Airflow running during migration
+4. **Document decisions** — Record patterns and exceptions
+5. **Communicate progress** — Share dashboards with stakeholders
+6. **Plan rollback** — Always have a way back to Airflow
+7. **Test with real data** — Validation checks syntax, not runtime correctness

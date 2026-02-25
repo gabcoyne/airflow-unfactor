@@ -1,29 +1,23 @@
 # Datasets → Prefect Events
 
-Convert Airflow Dataset/Asset dependencies into Prefect-friendly outputs.
+Convert Airflow Dataset/Asset dependencies into Prefect event-based automation.
 
-## What We Detect
+Use `lookup_concept("dataset-to-automation")` for translation guidance.
+
+## What to Look For
 
 - `Dataset("...")` and `Asset("...")` definitions
 - `@task(outlets=[...])` producers
 - `@dag(schedule=[...])` consumers
 
-## What We Generate
+## Prefect Equivalents
 
-- `producer_code`: `emit_event(...)` helper functions for produced datasets/assets
-- `deployment_yaml`: trigger stanzas for consumer DAGs
-- `events`: normalized event names (for example, `dataset.s3.my_bucket.data`)
-- `assets`: detected Airflow assets with metadata (`name`, `uri`, `event_name`, `line_number`)
-- `materialization_code`: asset materialization scaffold when assets are detected
-
-## Mapping Summary
-
-| Airflow pattern | Generated output |
+| Airflow pattern | Prefect equivalent |
 |---|---|
-| `Dataset("s3://bucket/data.csv")` | Event base: `dataset.s3.bucket.data` |
-| `Asset("s3://bucket/data.csv")` | Event base + materialization scaffold |
-| `@task(outlets=[dataset_or_asset])` | `emit_event(..., resource={"prefect.resource.id": ...})` helper |
-| `@dag(schedule=[dataset_or_asset])` | Deployment trigger in `deployment_yaml` |
+| `Dataset("s3://bucket/data.csv")` | `emit_event("dataset.s3.bucket.data.updated")` |
+| `Asset("s3://bucket/data.csv")` | Event emission + asset materialization |
+| `@task(outlets=[dataset_or_asset])` | `emit_event(...)` at end of task |
+| `@dag(schedule=[dataset_or_asset])` | Event-based automation trigger in `prefect.yaml` |
 
 ## Behavior Delta: Datasets vs Assets
 

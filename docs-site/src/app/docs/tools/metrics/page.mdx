@@ -1,13 +1,13 @@
 # Conversion Metrics
 
-Track and analyze conversion operations for optimization and reporting.
+Track and analyze migration operations for optimization and reporting.
 
 ## Overview
 
-The metrics module collects data about conversion operations, helping you:
+The metrics module collects data about migration operations, helping you:
 
 - Track success rates across migration projects
-- Identify common operator coverage gaps
+- Identify common patterns and coverage gaps
 - Analyze warning patterns to improve workflows
 - Generate reports for stakeholders
 
@@ -100,9 +100,8 @@ print(f"Average time: {stats.avg_execution_time_ms:.0f}ms")
 ### JSON Export
 
 ```python
-from airflow_unfactor.metrics import export_json, export_all_json
+from airflow_unfactor.metrics import export_json
 
-# Get JSON string
 json_data = export_json()
 print(json_data)
 ```
@@ -134,14 +133,13 @@ Output format:
 ```python
 from airflow_unfactor.metrics import export_to_file
 
-# Export to file
 export_to_file("metrics_report.json")
 export_to_file("/path/to/reports/migration_metrics.json")
 ```
 
-## Integration Examples
+## Integration with Migration Workflow
 
-### Batch Migration Tracking
+The metrics module tracks LLM-assisted conversions. After each DAG migration:
 
 ```python
 import os
@@ -159,26 +157,14 @@ os.environ["AIRFLOW_UNFACTOR_METRICS"] = "1"
 # Clear any previous data
 clear_metrics()
 
-# Process multiple DAGs
-dag_files = Path("dags/").glob("*.py")
-for dag_file in dag_files:
-    try:
-        # Your conversion logic here
-        result = convert_dag(dag_file)
-
-        record_conversion(
-            dag_id=result["dag_id"],
-            success=True,
-            operators_total=len(result["operators"]),
-            operators_converted=result["converted_count"],
-            warnings=result.get("warnings", []),
-        )
-    except Exception as e:
-        record_conversion(
-            dag_id=dag_file.stem,
-            success=False,
-            error_message=str(e),
-        )
+# After each LLM-assisted conversion, record the result
+record_conversion(
+    dag_id="my_etl",
+    success=True,
+    operators_total=10,
+    operators_converted=10,
+    features_detected=["taskflow", "datasets"],
+)
 
 # Generate report
 stats = get_aggregate_stats()
@@ -208,26 +194,6 @@ export_to_file("migration_report.json")
     path: metrics_report.json
 ```
 
-### Warning Analysis
-
-```python
-from airflow_unfactor.metrics import get_aggregate_stats
-
-stats = get_aggregate_stats()
-
-print("Most common warnings:")
-for warning, count in sorted(
-    stats.warning_frequency.items(),
-    key=lambda x: x[1],
-    reverse=True
-)[:5]:
-    print(f"  {count}x {warning}")
-
-print("\nFeatures detected:")
-for feature, count in stats.features_frequency.items():
-    print(f"  {feature}: {count} DAGs")
-```
-
 ## Utility Functions
 
 ### Clear Metrics
@@ -235,7 +201,6 @@ for feature, count in stats.features_frequency.items():
 ```python
 from airflow_unfactor.metrics import clear_metrics
 
-# Clear all stored metrics
 clear_metrics()
 ```
 
@@ -244,7 +209,6 @@ clear_metrics()
 ```python
 from airflow_unfactor.metrics import get_all_metrics
 
-# Get list of all ConversionMetrics objects
 all_metrics = get_all_metrics()
 for m in all_metrics:
     print(f"{m.dag_id}: {'Y' if m.success else 'N'}")

@@ -4,29 +4,33 @@ Common issues and solutions when migrating Airflow DAGs to Prefect flows.
 
 ## Validation Issues
 
-### Task Count Mismatch
+### Syntax Errors in Generated Code
 
-**Symptom**: Validation reports different task counts between DAG and flow.
+**Symptom**: `validate` reports `syntax_valid: false`.
 
 ```json
-{"issues": ["Task count mismatch: DAG has 5 tasks, flow has 4 tasks"]}
+{
+  "syntax_valid": false,
+  "syntax_errors": [
+    { "line": 3, "column": 24, "message": "unexpected EOF while parsing" }
+  ]
+}
 ```
 
-**Causes**:
-- Missing task implementation in converted flow
-- DummyOperator/EmptyOperator not properly excluded
-- Dynamic task generation not fully converted
+**Solutions**:
+1. Check the `syntax_errors` array for line/column/message details
+2. Fix the generated code and re-validate
+3. Common causes: missing closing parentheses, unclosed strings, indentation errors
+
+### Task Count Differences
+
+**Symptom**: The generated flow has fewer tasks than the original DAG.
 
 **Solutions**:
-1. Compare task lists in validation output:
-   ```python
-   result = await validate(original_dag="dag.py", converted_flow="flow.py")
-   print(f"DAG tasks: {result['dag_tasks']}")
-   print(f"Flow tasks: {result['flow_tasks']}")
-   # Find missing tasks
-   missing = set(result['dag_tasks']) - set(result['flow_tasks'])
-   print(f"Missing: {missing}")
-   ```
+1. Use the `comparison_guidance` from `validate` output to check each item:
+   - Are all tasks from the DAG represented in the flow?
+   - Were DummyOperator/EmptyOperator nodes intentionally removed?
+   - Were dynamic tasks fully converted?
 
 2. For dynamic tasks, ensure all generated tasks are represented:
    ```python
@@ -39,21 +43,12 @@ Common issues and solutions when migrating Airflow DAGs to Prefect flows.
        task_i.submit(...)  # Or use .map()
    ```
 
-### Dependency Mismatch
+### Dependency Ordering
 
-**Symptom**: Validation reports edges not preserved.
-
-```json
-{"issues": ["Dependency mismatch: edge (extract, transform) not found in flow"]}
-```
-
-**Causes**:
-- Tasks called in wrong order
-- Missing data passing between tasks
-- Parallel execution where sequential was expected
+**Symptom**: Tasks may run in wrong order in the Prefect flow.
 
 **Solutions**:
-1. Ensure explicit data flow:
+1. Ensure explicit data flow between tasks:
    ```python
    # Wrong - no explicit dependency
    @flow
@@ -78,28 +73,9 @@ Common issues and solutions when migrating Airflow DAGs to Prefect flows.
        b = task_b.submit(wait_for=[a])  # Explicit ordering
    ```
 
-### Low Confidence Score
-
-**Symptom**: Validation passes but confidence is below 60.
-
-**Causes**:
-- Complex DAG structure
-- Many unknown operators
-- Dynamic patterns detected
-
-**Solutions**:
-1. Review unknown operators in conversion output
-2. Manually verify critical paths
-3. Add integration tests for converted flow
-4. Consider breaking complex DAGs into smaller flows
-
 ### XCom Pattern Not Converted
 
-**Symptom**: Validation detects unconverted XCom usage.
-
-```json
-{"issues": ["XCom pattern 'ti.xcom_pull(task_ids=\"extract\")' not converted"]}
-```
+**Symptom**: Generated code still references `ti.xcom_pull` or `context['ti']`.
 
 **Solutions**:
 1. Replace XCom pull with function parameters:
@@ -136,34 +112,37 @@ Common issues and solutions when migrating Airflow DAGs to Prefect flows.
        combine(a, b)
    ```
 
-## Conversion Errors
+Use `lookup_concept("xcom")` for detailed XCom→return-value translation rules.
 
-### Parse Error
+## Tool Issues
 
-**Symptom**: Conversion fails with syntax or parse error.
+### read_dag Errors
 
-**Solutions**:
-1. Ensure the DAG file is valid Python
-2. Check for missing imports
-3. Verify Airflow version compatibility
-
-### Unknown Operator
-
-**Symptom**: Warning about unsupported operator type.
+**Symptom**: `read_dag` fails to read a file.
 
 **Solutions**:
-1. Check [Operator Coverage](/docs/conversion/operators) for supported operators
-2. For provider operators, ensure the provider is supported
-3. For custom operators, manual conversion is required
+1. Ensure the file path is correct and accessible
+2. Both file paths and inline code are supported — pass code directly via the `content` parameter
+3. Verify the file contains valid Python
 
-### Dynamic DAG Patterns
+### lookup_concept Returns No Match
 
-**Symptom**: Conversion produces incomplete or incorrect output for dynamic DAGs.
+**Symptom**: `lookup_concept` doesn't find a translation for your concept.
 
 **Solutions**:
-1. Simplify dynamic patterns where possible
-2. Use explicit task definitions instead of loops
-3. Consider generating multiple static flows
+1. Try variations: `PythonOperator`, `python-operator`, `python_operator` all work
+2. Check [Operator Coverage](/docs/conversion/operators) for supported operators
+3. Use `search_prefect_docs` for concepts not in the pre-compiled knowledge base
+4. For custom operators, manual conversion is required
+
+### search_prefect_docs Not Available
+
+**Symptom**: `search_prefect_docs` returns an error or no results.
+
+**Solutions**:
+1. Check that `MCP_PREFECT_ENABLED` is not set to `false`
+2. Verify network connectivity to `docs.prefect.io`
+3. The tool requires the Prefect MCP server at `https://docs.prefect.io/mcp`
 
 ## Runtime Issues
 
@@ -185,8 +164,8 @@ Common issues and solutions when migrating Airflow DAGs to Prefect flows.
 **Symptom**: Flow fails looking for Airflow connection.
 
 **Solutions**:
-1. Create corresponding Prefect Block
-2. Update code to use Block.load() pattern
+1. Create corresponding Prefect Block — use `lookup_concept("connections")` for mapping guidance
+2. Update code to use `Block.load()` pattern
 3. See [Prefect Cloud Guide](/docs/guides/prefect-cloud) for Block examples
 
 ### Schedule Not Triggering
@@ -209,11 +188,11 @@ Common issues and solutions when migrating Airflow DAGs to Prefect flows.
 
 If you encounter issues not covered here:
 
-1. Check the [validation output](/docs/tools/validate) for specific warnings
-2. Enable [metrics](/docs/tools/metrics) to track conversion patterns
+1. Check the [validation output](/docs/tools/validate) for syntax errors and comparison guidance
+2. Use `lookup_concept` and `search_prefect_docs` for translation guidance
 3. Review the [Prefect Cloud guide](/docs/guides/prefect-cloud) for deployment patterns
 4. Open an issue on GitHub with:
    - Original DAG (sanitized)
-   - Conversion output
+   - Generated flow code
    - Validation result
    - Expected vs actual behavior

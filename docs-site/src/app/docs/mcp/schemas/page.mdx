@@ -1,23 +1,14 @@
 # Schemas & Validation
 
-Every MCP tool includes a JSON Schema contract for deterministic tool usage.
-
-## Why JSON Schemas?
-
-Schemas provide:
-
-- **Validation**: Catch malformed input before processing
-- **Documentation**: The schema is the authoritative contract
-- **Tooling**: IDE support, type generation, auto-completion
-- **Determinism**: Agents know exactly what to send and expect
+Every MCP tool has a clear input/output contract. All tools return JSON strings.
 
 ## Tool Schemas
 
-### analyze
+### read_dag
 
-Comprehensive DAG analysis returning everything an LLM needs for conversion.
+Read an Airflow DAG file and return raw source with metadata.
 
-**Input Schema:**
+**Input:**
 ```json
 {
   "type": "object",
@@ -28,371 +19,194 @@ Comprehensive DAG analysis returning everything an LLM needs for conversion.
     },
     "content": {
       "type": "string",
-      "description": "Raw DAG code (alternative to path)"
-    },
-    "include_external_context": {
-      "type": "boolean",
-      "default": true,
-      "description": "Include external MCP context in response"
+      "description": "Inline DAG source code (alternative to path)"
     }
-  },
-  "oneOf": [
-    { "required": ["path"] },
-    { "required": ["content"] }
-  ]
-}
-```
-
-**Output Schema:**
-```json
-{
-  "type": "object",
-  "properties": {
-    "dag_id": { "type": "string" },
-    "airflow_version": { "type": "string", "enum": ["1.x", "2.x", "3.x"] },
-    "structure": {
-      "type": "object",
-      "properties": {
-        "operators": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "task_id": { "type": "string" },
-              "type": { "type": "string" },
-              "line": { "type": "integer" }
-            }
-          }
-        },
-        "dependencies": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": { "type": "string" },
-            "minItems": 2,
-            "maxItems": 2
-          }
-        },
-        "task_groups": { "type": "array" },
-        "imports": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "patterns": {
-      "type": "object",
-      "properties": {
-        "xcom": { "type": "array" },
-        "sensors": { "type": "array" },
-        "trigger_rules": { "type": "array" },
-        "connections": { "type": "array" },
-        "variables": { "type": "array" },
-        "taskflow": { "type": "object" },
-        "dynamic_mapping": { "type": "object" }
-      }
-    },
-    "dag_config": {
-      "type": "object",
-      "properties": {
-        "schedule": { "type": "string" },
-        "catchup": { "type": "boolean" },
-        "default_args": { "type": "object" },
-        "tags": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "complexity": {
-      "type": "object",
-      "properties": {
-        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "factors": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "migration_notes": { "type": "array", "items": { "type": "string" } },
-    "conversion_runbook_md": { "type": "string" },
-    "original_code": { "type": "string" }
-  },
-  "required": ["dag_id", "structure", "patterns"]
-}
-```
-
-### get_context
-
-Fetch Prefect documentation and patterns for detected features.
-
-**Input Schema:**
-```json
-{
-  "type": "object",
-  "properties": {
-    "topics": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": ["flows", "tasks", "blocks", "deployments", "work-pools", "automations"]
-      },
-      "description": "Prefect topics to fetch documentation for"
-    },
-    "detected_features": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Features detected in DAG analysis"
-    }
-  },
-  "required": ["topics"]
-}
-```
-
-**Output Schema:**
-```json
-{
-  "type": "object",
-  "properties": {
-    "documentation": {
-      "type": "object",
-      "additionalProperties": { "type": "string" }
-    },
-    "operator_patterns": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "prefect_pattern": { "type": "string" },
-          "package": { "type": "string" },
-          "example": { "type": "string" }
-        }
-      }
-    },
-    "connection_mappings": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "block_type": { "type": "string" },
-          "package": { "type": "string" }
-        }
-      }
-    },
-    "deployment_template": { "type": "string" }
   }
 }
 ```
 
-### operator_mapping
-
-Get Prefect equivalent for a specific Airflow operator.
-
-**Input Schema:**
+**Output:**
 ```json
 {
   "type": "object",
   "properties": {
-    "operator_type": {
+    "source": { "type": "string", "description": "Raw DAG source code" },
+    "file_path": { "type": ["string", "null"], "description": "Resolved absolute path" },
+    "file_size_bytes": { "type": "integer" },
+    "line_count": { "type": "integer" }
+  },
+  "required": ["source", "line_count"]
+}
+```
+
+**Error:**
+```json
+{
+  "error": "File not found: dags/missing.py",
+  "source": null
+}
+```
+
+### lookup_concept
+
+Query pre-compiled Airflow→Prefect translation knowledge.
+
+**Input:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "concept": {
       "type": "string",
-      "description": "Airflow operator class name"
+      "description": "Airflow concept to look up (e.g. 'PythonOperator', 'XCom', 'postgres')"
     }
   },
-  "required": ["operator_type"]
+  "required": ["concept"]
 }
 ```
 
-**Output Schema:**
+**Output:**
 ```json
 {
   "type": "object",
   "properties": {
-    "airflow_operator": { "type": "string" },
-    "prefect_function": { "type": "string" },
-    "package": { "type": "string" },
-    "example": { "type": "string" },
-    "migration_notes": {
-      "type": "array",
-      "items": { "type": "string" }
-    }
-  }
-}
-```
-
-### connection_mapping
-
-Map Airflow connection to Prefect block type.
-
-**Input Schema:**
-```json
-{
-  "type": "object",
-  "properties": {
-    "connection_id": {
+    "concept_type": {
       "type": "string",
-      "description": "Airflow connection ID"
-    }
-  },
-  "required": ["connection_id"]
+      "enum": ["operator", "pattern", "connection", "concept"]
+    },
+    "airflow": { "type": "string" },
+    "prefect_equivalent": { "type": "string" },
+    "translation_rules": { "type": "array", "items": { "type": "string" } },
+    "source": { "type": "string", "enum": ["colin", "fallback"] }
+  }
 }
 ```
 
-**Output Schema:**
+### search_prefect_docs
+
+Search current Prefect documentation via the Prefect MCP server.
+
+**Input:**
 ```json
 {
   "type": "object",
   "properties": {
-    "airflow_connection": { "type": "string" },
-    "prefect_block": { "type": "string" },
-    "package": { "type": "string" },
-    "example": { "type": "string" },
-    "setup_instructions": {
-      "type": "array",
-      "items": { "type": "string" }
+    "query": {
+      "type": "string",
+      "description": "Search query for Prefect docs"
     }
+  },
+  "required": ["query"]
+}
+```
+
+**Output (success):**
+```json
+{
+  "type": "object",
+  "properties": {
+    "results": { "type": "array", "items": { "type": "string" } },
+    "query": { "type": "string" },
+    "source": { "type": "string" }
   }
+}
+```
+
+**Output (error):**
+```json
+{
+  "error": "Cannot connect to Prefect MCP at https://docs.prefect.io/mcp. Run 'colin run' for cached context."
 }
 ```
 
 ### validate
 
-Verify generated Prefect code matches original DAG structure.
+Syntax-check generated code and return both sources for comparison.
 
-**Input Schema:**
+**Input:**
 ```json
 {
   "type": "object",
   "properties": {
     "original_dag": {
       "type": "string",
-      "description": "Path to original Airflow DAG or raw code"
+      "description": "Path or inline content of the original Airflow DAG"
     },
     "converted_flow": {
       "type": "string",
-      "description": "Path to converted Prefect flow or raw code"
+      "description": "Path or inline content of the generated Prefect flow"
     }
   },
   "required": ["original_dag", "converted_flow"]
 }
 ```
 
-**Output Schema:**
+**Output:**
 ```json
 {
   "type": "object",
   "properties": {
-    "is_valid": { "type": "boolean" },
-    "task_count_match": { "type": "boolean" },
-    "dependency_preserved": { "type": "boolean" },
-    "confidence_score": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 100
-    },
-    "issues": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "dag_tasks": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "flow_tasks": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "dag_edges": {
-      "type": "array",
+    "original_source": { "type": "string" },
+    "converted_source": { "type": "string" },
+    "syntax_valid": { "type": "boolean" },
+    "syntax_errors": {
+      "type": ["array", "null"],
       "items": {
-        "type": "array",
-        "items": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "line": { "type": "integer" },
+          "column": { "type": "integer" },
+          "message": { "type": "string" }
+        }
       }
     },
-    "flow_edges": {
-      "type": "array",
-      "items": {
-        "type": "array",
-        "items": { "type": "string" }
-      }
-    }
+    "comparison_guidance": { "type": "string" }
   },
-  "required": ["is_valid", "confidence_score"]
+  "required": ["original_source", "converted_source", "syntax_valid"]
 }
 ```
 
-## Validation Philosophy
+### scaffold
 
-### Fail Fast
+Generate a Prefect project directory structure.
 
-Invalid input is rejected immediately with clear error messages:
-
+**Input:**
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Missing required field: path or content",
-    "schema_path": "$.oneOf"
+  "type": "object",
+  "properties": {
+    "output_directory": { "type": "string", "description": "Where to create the project" },
+    "project_name": { "type": ["string", "null"], "description": "Project name (defaults to directory name)" },
+    "workspace": { "type": "string", "default": "default" },
+    "flow_names": { "type": ["array", "null"], "items": { "type": "string" } },
+    "include_docker": { "type": "boolean", "default": true },
+    "include_github_actions": { "type": "boolean", "default": true }
+  },
+  "required": ["output_directory"]
+}
+```
+
+**Output:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "created_directories": { "type": "array", "items": { "type": "string" } },
+    "created_files": { "type": "array", "items": { "type": "string" } },
+    "prefect_yaml_template": { "type": "string" },
+    "next_steps": { "type": "array", "items": { "type": "string" } }
   }
 }
 ```
 
-### Return Warnings
+## Error Conventions
 
-Partial success includes warnings for review:
-
-```json
-{
-  "status": "success",
-  "data": { ... },
-  "warnings": [
-    "Unknown operator type: MyCustomOperator",
-    "Dynamic task generation detected - review carefully"
-  ]
-}
-```
-
-### Include Context
-
-Errors include enough context to diagnose:
+All tools use the same error pattern — a JSON object with an `error` key:
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "PARSE_ERROR",
-    "message": "Syntax error in DAG file",
-    "line": 42,
-    "column": 15,
-    "snippet": "def my_function(\n    missing_paren",
-    "suggestion": "Check for missing closing parenthesis"
-  }
+  "error": "Description of what went wrong"
 }
 ```
 
-## Using Schemas
-
-### TypeScript Type Generation
-
-```bash
-# Generate types from schemas
-npx json-schema-to-typescript schemas/*.json -o types/
-```
-
-### Python Validation
-
-```python
-from jsonschema import validate
-import json
-
-# Load schema
-with open("schemas/analyze_input.json") as f:
-    schema = json.load(f)
-
-# Validate input
-input_data = {"path": "dags/my_etl.py"}
-validate(instance=input_data, schema=schema)
-```
-
-### Runtime Validation
-
-The MCP server validates all inputs against schemas before processing:
-
-```python
-@tool
-async def analyze(args: dict) -> dict:
-    # Schema validation happens automatically
-    # Invalid input raises ValidationError
-    ...
-```
+The `error` field contains a human-readable message. Some tools include additional context (e.g., `source: null` in read_dag errors).

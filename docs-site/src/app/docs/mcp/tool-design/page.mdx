@@ -10,11 +10,11 @@ Each tool does one thing well:
 
 | Tool | Responsibility |
 |------|----------------|
-| `analyze` | Extract comprehensive DAG structure and patterns |
-| `get_context` | Fetch relevant Prefect documentation and mappings |
-| `operator_mapping` | Get Prefect equivalent for a specific operator |
-| `connection_mapping` | Map Airflow connection to Prefect block type |
-| `validate` | Verify structural equivalence |
+| `read_dag` | Read raw DAG source code |
+| `lookup_concept` | Query Airflow→Prefect translation knowledge |
+| `search_prefect_docs` | Search live Prefect documentation |
+| `validate` | Syntax check + return both sources for comparison |
+| `scaffold` | Create Prefect project directory structure |
 
 ### Structured Outputs
 
@@ -22,10 +22,10 @@ All tools return JSON for predictable parsing:
 
 ```json
 {
-  "status": "success",
-  "data": { ... },
-  "warnings": [],
-  "errors": []
+  "source": "...",
+  "file_path": "/absolute/path/to/dag.py",
+  "file_size_bytes": 1234,
+  "line_count": 45
 }
 ```
 
@@ -37,13 +37,7 @@ Errors include context and suggestions:
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "PARSE_ERROR",
-    "message": "Failed to parse DAG file",
-    "line": 42,
-    "suggestion": "Check for syntax errors near line 42"
-  }
+  "error": "Cannot connect to Prefect MCP at https://docs.prefect.io/mcp. Run 'colin run' for cached context."
 }
 ```
 
@@ -52,123 +46,68 @@ Errors include context and suggestions:
 Tools can be chained in a predictable workflow:
 
 <WorkflowDiagram title="Tool Chain">
-{`analyze → get_context → LLM generates → validate`}
+{`read_dag → lookup_concept → search_prefect_docs → LLM generates → validate`}
 </WorkflowDiagram>
 
-Each tool's output is designed to feed into the next step.
-
-## Example: analyze Tool
-
-**Input Schema:**
-```json
-{
-  "type": "object",
-  "properties": {
-    "path": { "type": "string", "description": "Path to DAG file" },
-    "content": { "type": "string", "description": "Raw DAG code (alternative to path)" },
-    "include_external_context": { "type": "boolean", "default": true }
-  },
-  "oneOf": [
-    { "required": ["path"] },
-    { "required": ["content"] }
-  ]
-}
-```
-
-**Output Structure:**
-```json
-{
-  "dag_id": "my_etl",
-  "airflow_version": "2.x",
-  "structure": {
-    "operators": [...],
-    "dependencies": [...],
-    "task_groups": [...],
-    "imports": [...]
-  },
-  "patterns": {
-    "xcom": [...],
-    "sensors": [...],
-    "trigger_rules": [...],
-    "connections": [...],
-    "variables": [...]
-  },
-  "dag_config": {
-    "schedule": "@daily",
-    "catchup": false,
-    "default_args": {...},
-    "tags": ["production", "etl"]
-  },
-  "complexity": {
-    "score": 45,
-    "factors": ["dynamic_tasks", "custom_operator"]
-  },
-  "migration_notes": [...],
-  "conversion_runbook_md": "# Migration Runbook\n\n...",
-  "original_code": "..."
-}
-```
+Each tool's output feeds into the LLM's understanding for the next step.
 
 ## Design Rationale
 
-### Why Analysis Instead of Generation?
+### Why Raw Code Instead of AST Analysis?
 
-We intentionally **do not generate code**. LLMs are better at code generation when given rich context than any template system could be.
+We intentionally **do not parse DAGs into AST structures**. LLMs are better at reading code directly than processing structured AST representations.
 
-**Template-based approach (deprecated):**
-- Rigid patterns that break on edge cases
-- Non-idiomatic output requiring manual fixes
-- Maintenance burden of keeping templates current
+**AST-based approach (deprecated):**
+- Lossy — drops comments, formatting, context
+- Fragile — breaks on dynamic DAGs, custom operators
+- Incomplete — can't represent all Python patterns
 
-**Analysis-based approach (current):**
+**Raw code approach (current):**
+- Lossless — LLM sees exactly what the developer wrote
+- Robust — handles any valid Python
+- Contextual — comments and structure preserved
+
+### Why Separate Lookup and Search?
+
+`lookup_concept` and `search_prefect_docs` serve different purposes:
+
+1. **lookup_concept** — Pre-compiled, instant, works offline. 78 entries covering common operators, patterns, and connections. Compiled from live Airflow source and Prefect docs via Colin.
+2. **search_prefect_docs** — Live, comprehensive, requires network. Queries the real Prefect documentation for anything not pre-compiled.
+
+### Why Not Generate Code?
+
+The tools provide knowledge, not code. LLMs generate better code when given rich context than any template system could produce:
+
 - Rich context enables LLM creativity
 - Idiomatic output matching target conventions
-- Extensible through better analysis, not more templates
-
-### Why Separate Tools?
-
-Separating concerns allows:
-
-1. **Targeted calls**: Only fetch what's needed
-2. **Caching**: Context doesn't change; analysis does
-3. **Debugging**: Isolate issues to specific tools
-4. **Evolution**: Update tools independently
-
-### Why JSON Schemas?
-
-JSON Schema provides:
-
-- **Validation**: Catch malformed input early
-- **Documentation**: Schema is the contract
-- **Tooling**: IDE support, type generation
-- **Determinism**: Agents know exactly what to send
+- Extensible through better knowledge, not more templates
 
 ## Tool Categories
 
-### Analysis Tools
+### Input Tools
 
-Extract information without side effects:
+Read source code without side effects:
 
-- `analyze` — Full DAG analysis
-- `operator_mapping` — Single operator lookup
-- `connection_mapping` — Single connection lookup
+- `read_dag` — Read raw DAG source
 
-### Context Tools
+### Knowledge Tools
 
-Fetch external documentation:
+Query translation knowledge:
 
-- `get_context` — Prefect docs and patterns
+- `lookup_concept` — Pre-compiled Airflow→Prefect mappings
+- `search_prefect_docs` — Live Prefect documentation
 
-### Validation Tools
+### Output Tools
 
-Verify correctness:
+Verify and scaffold:
 
-- `validate` — Structural comparison
+- `validate` — Syntax check + comparison guidance
+- `scaffold` — Project structure generation
 
 ## Best Practices for Tool Usage
 
-1. **Start with analyze** — Get the full picture first
-2. **Fetch context selectively** — Only request topics you need
-3. **Let the LLM generate** — Don't constrain its output
-4. **Always validate** — Catch issues before deployment
-5. **Review warnings** — They indicate potential problems
+1. **Start with read_dag** — Let the LLM see the raw code first
+2. **Look up concepts as needed** — Query `lookup_concept` for each Airflow pattern found
+3. **Search docs for gaps** — Use `search_prefect_docs` when lookup doesn't cover something
+4. **Let the LLM generate** — Don't constrain its output
+5. **Always validate** — Catch syntax errors before deployment

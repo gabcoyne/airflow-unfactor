@@ -1,6 +1,6 @@
 # Airflow Version Detection
 
-The analyze tool automatically detects Airflow version from imports and patterns, enabling version-appropriate conversion guidance.
+When reading a DAG with `read_dag`, the LLM sees the raw source code and can identify the Airflow version from imports and patterns. This guide helps with version-appropriate conversion.
 
 ## Detection Strategy
 
@@ -25,7 +25,7 @@ t1.set_downstream(t2)
 t2.set_upstream(t1)
 ```
 
-**Detection signals:**
+**Signals:**
 - `airflow.operators.python_operator` (renamed in 2.x)
 - `airflow.operators.bash_operator` (renamed in 2.x)
 - `set_downstream()` / `set_upstream()` methods
@@ -48,7 +48,7 @@ def my_dag():
         ...
 ```
 
-**Detection signals:**
+**Signals:**
 - `airflow.decorators` — TaskFlow API (2.0+)
 - `airflow.datasets` — Dataset scheduling (2.4+)
 - `from airflow.operators.python import` (not `python_operator`)
@@ -69,163 +69,59 @@ def produce_data():
     ...
 ```
 
-**Detection signals:**
+**Signals:**
 - `airflow.assets` — Asset API (replaces Dataset in 3.x)
 - `airflow.sdk` — New SDK module
 - Asset class with outlets/inlets
 
-## Feature Flags
+## Feature Indicators
 
-The analysis output includes detected feature flags:
-
-```json
-{
-  "airflow_version": "2.x",
-  "features": {
-    "taskflow": true,
-    "datasets": true,
-    "assets": false,
-    "dynamic_task_mapping": true,
-    "setup_teardown": false
-  }
-}
-```
+When reading a DAG, look for these features and use `lookup_concept` for each:
 
 ### TaskFlow API
 
 **Detected when:** `@dag` or `@task` decorators present
 
-**Conversion impact:** Maps directly to Prefect `@flow` / `@task`
-
-```python
-# Airflow TaskFlow
-@task
-def extract():
-    return data
-
-# Prefect equivalent
-@task
-def extract():
-    return data
-```
+**Lookup:** `lookup_concept("dag-to-flow")` — maps directly to Prefect `@flow` / `@task`
 
 ### Datasets (2.4+)
 
 **Detected when:** `from airflow.datasets import Dataset`
 
-**Conversion impact:** Convert to Prefect events or triggers
-
-```python
-# Airflow Dataset
-Dataset("s3://bucket/data")
-
-# Prefect equivalent
-# Use events: emit_event("dataset.s3.bucket.data.updated")
-# Or triggers in prefect.yaml
-```
-
-### Assets (3.x)
-
-**Detected when:** `from airflow.assets import Asset`
-
-**Conversion impact:** Convert to Prefect asset materialization
-
-```python
-# Airflow Asset
-Asset("s3://bucket/data", name="sales_data")
-
-# Prefect equivalent
-@materialize("s3://bucket/data")
-def sales_data():
-    ...
-```
+**Lookup:** `lookup_concept("dataset-to-automation")` — convert to Prefect events or triggers
 
 ### Dynamic Task Mapping
 
 **Detected when:** `.expand()` method calls
 
-**Conversion impact:** Convert to Prefect `.map()`
-
-```python
-# Airflow expand
-process.expand(item=items)
-
-# Prefect map
-process.map(items)
-```
+**Lookup:** `lookup_concept("dynamic-mapping")` — convert to Prefect `.map()`
 
 ## Version-Specific Guidance
-
-The migration runbook includes version-specific notes:
 
 ### From 1.x
 
 - Update all import paths
-- Replace `set_downstream`/`set_upstream` with `>>`/`<<`
-- Consider using TaskFlow for new task definitions
+- Replace `set_downstream`/`set_upstream` with function call ordering
 - XCom pull/push → return values and parameters
+- Consider using TaskFlow patterns for cleaner code
 
 ### From 2.x
 
-- TaskFlow maps directly
+- TaskFlow maps directly to Prefect `@flow`/`@task`
 - Datasets → Events or triggers
 - Connections → Blocks
 - Pools → Concurrency limits
 
 ### From 3.x
 
-- Assets → Asset materialization
+- Assets → Event-based automation
 - SDK patterns → Native Prefect patterns
 - Execution context → Run context
 
-## Analysis Output
-
-```json
-{
-  "airflow_version": "2.x",
-  "version_detection": {
-    "method": "imports",
-    "confidence": "high",
-    "signals": [
-      "airflow.decorators import",
-      "airflow.datasets import",
-      "@dag decorator usage"
-    ]
-  },
-  "features": {
-    "taskflow": true,
-    "datasets": true,
-    "dynamic_task_mapping": false
-  },
-  "migration_notes": [
-    "TaskFlow DAG - maps directly to Prefect @flow/@task",
-    "Datasets detected - convert to Prefect events",
-    "No dynamic mapping - straightforward conversion"
-  ]
-}
-```
-
 ## Handling Ambiguity
 
-When version cannot be determined with high confidence:
+When version cannot be determined:
 
 1. **Multiple indicators**: Most recent version wins
-2. **No clear indicators**: Defaults to 2.x patterns
-3. **Mixed patterns**: Warns in migration notes
-
-```json
-{
-  "version_detection": {
-    "method": "heuristic",
-    "confidence": "medium",
-    "signals": [
-      "No version-specific imports",
-      "Basic PythonOperator usage"
-    ],
-    "assumed": "2.x"
-  },
-  "warnings": [
-    "Version detection uncertain - verify conversion patterns"
-  ]
-}
-```
+2. **No clear indicators**: Default to 2.x patterns
+3. **Mixed patterns**: Note in conversion comments

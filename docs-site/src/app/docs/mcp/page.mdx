@@ -1,6 +1,6 @@
 # MCP Tools
 
-Our MCP server provides analysis, context, and validation tools for LLM-assisted Airflow→Prefect conversion.
+Five tools for LLM-assisted Airflow→Prefect conversion. The LLM reads raw code, looks up translation knowledge, and generates Prefect flows.
 
 ## Architecture
 
@@ -8,97 +8,109 @@ Our MCP server provides analysis, context, and validation tools for LLM-assisted
 {`┌─────────────────────────────────────────────────────────────────┐
 │                      MCP Client (LLM)                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. analyze(dag_code)         → Rich structured payload         │
-│  2. get_context(features)     → Prefect docs & patterns         │
-│  3. operator_mapping(type)    → Specific operator guidance      │
+│  1. read_dag(path)              → Raw DAG source code           │
+│  2. lookup_concept(name)        → Airflow→Prefect mappings      │
+│  3. search_prefect_docs(query)  → Live Prefect documentation    │
 │  4. LLM generates complete Prefect flow                         │
-│  5. validate(original, gen)   → Verify correctness              │
+│  5. validate(original, flow)    → Syntax check + both sources   │
+│  6. scaffold(directory)         → Project structure              │
 └─────────────────────────────────────────────────────────────────┘`}
 </WorkflowDiagram>
 
-## Primary Tools
+## Tools
 
-### `analyze`
+### `read_dag`
 
-Comprehensive DAG analysis returning everything an LLM needs for conversion.
-
-**Input:**
-```json
-{
-  "path": "path/to/dag.py",
-  "content": "# optional: raw DAG code",
-  "include_external_context": true
-}
-```
-
-**Output includes:**
-- `dag_id`, `airflow_version` detection
-- `structure`: operators, dependencies, task_groups, imports
-- `patterns`: xcom, sensors, trigger_rules, branching, connections, variables
-- `dag_config`: schedule, catchup, default_args, tags
-- `complexity`: score and factors
-- `migration_notes`: actionable conversion guidance
-- `original_code`: for LLM reference
-
-### `get_context`
-
-Fetch Prefect documentation and patterns relevant to detected features.
+Read an Airflow DAG file and return the raw source code with metadata.
 
 **Input:**
 ```json
 {
-  "topics": ["flows", "tasks", "blocks", "deployments"],
-  "detected_features": ["sensors", "xcom", "connections"]
+  "path": "dags/etl_pipeline.py",
+  "content": "# optional: inline DAG code"
+}
+```
+
+**Output:**
+- `source`: The raw DAG source code
+- `file_path`: Resolved file path
+- `file_size_bytes`: File size
+- `line_count`: Number of lines
+
+The LLM reads the source directly — no AST intermediary.
+
+### `lookup_concept`
+
+Query pre-compiled Airflow→Prefect translation knowledge. Covers operators, patterns, connections, and core concepts. Backed by 78 Colin-compiled entries with built-in fallback mappings.
+
+**Input:**
+```json
+{
+  "concept": "PythonOperator"
 }
 ```
 
 **Output includes:**
-- `documentation`: Relevant Prefect docs
-- `operator_patterns`: Airflow→Prefect mappings
-- `connection_mappings`: Connection→Block type mappings
-- `deployment_template`: prefect.yaml structure examples
+- `concept_type`: operator, pattern, connection, or concept
+- Airflow details and Prefect equivalent
+- `translation_rules`: How to convert
+- `source`: "colin" (pre-compiled) or "fallback" (built-in)
 
-### `operator_mapping`
+### `search_prefect_docs`
 
-Get detailed Prefect equivalent for a specific Airflow operator.
+Search current Prefect documentation via the Prefect MCP server. For real-time queries beyond what Colin pre-compiled.
 
+**Input:**
 ```json
-{"operator_type": "S3KeySensor"}
+{
+  "query": "task retries and caching"
+}
 ```
 
-Returns prefect_pattern, example code, and migration notes.
-
-### `connection_mapping`
-
-Map Airflow connection ID to Prefect block type.
-
-```json
-{"connection_id": "postgres_default"}
-```
-
-Returns block_type, package, and configuration guidance.
+**Output:** Search results from `docs.prefect.io`, or an error with fallback guidance.
 
 ### `validate`
 
-Verify generated Prefect code matches original DAG structure.
+Syntax-check generated Prefect code and return both sources for structural comparison.
 
+**Input:**
 ```json
 {
-  "original_dag": "# Airflow DAG code",
-  "converted_flow": "# Generated Prefect flow"
+  "original_dag": "dags/etl_pipeline.py",
+  "converted_flow": "# generated Prefect code..."
 }
 ```
 
-Returns validation status, task coverage, and suggestions.
+**Output:**
+- `original_source`: The original DAG code
+- `converted_source`: The generated flow code
+- `syntax_valid`: Whether the generated code parses
+- `syntax_errors`: Line/column/message if invalid
+- `comparison_guidance`: Checklist for the LLM to verify fidelity
+
+### `scaffold`
+
+Generate a Prefect project directory structure following `prefecthq/flows` conventions. Does not generate flow code.
+
+**Input:**
+```json
+{
+  "output_directory": "/path/to/project",
+  "project_name": "my-project",
+  "include_docker": true,
+  "include_github_actions": true
+}
+```
+
+**Output:** Created directories, files, prefect.yaml template, and next steps.
 
 ## External MCP Integration
 
-We call external MCP servers for enriched context:
+The `search_prefect_docs` tool connects to the Prefect MCP server via FastMCP Client:
 
 | Server | URL | Purpose |
 |--------|-----|---------|
 | Prefect | `https://docs.prefect.io/mcp` | Documentation search |
-| Astronomer | `https://mcpmarket.com/ja/tools/skills/airflow-2-to-3-migration` | Migration guidance |
 
 Configure via environment:
 
@@ -107,17 +119,8 @@ export MCP_PREFECT_ENABLED=true
 export MCP_PREFECT_URL="https://docs.prefect.io/mcp"
 ```
 
-## Deprecated Tools
-
-The following tools use brittle template-based conversion and are deprecated:
-
-| Tool | Replacement |
-|------|-------------|
-| `convert` | Use `analyze` + `get_context` + LLM generation |
-| `batch` | Use `analyze` on each DAG individually |
-
 ## Next Steps
 
 - [Tool Design](/docs/mcp/tool-design) — Design principles
 - [Examples](/docs/mcp/examples) — Usage examples
-- [Schemas](/docs/mcp/schemas) — Full JSON schemas
+- [Schemas](/docs/mcp/schemas) — Input/output schemas

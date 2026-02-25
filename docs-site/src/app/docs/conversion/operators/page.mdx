@@ -122,12 +122,15 @@ To request support for an operator not listed:
 2. If an integration exists, open an issue with the operator details
 3. If no integration exists, the operator may require manual conversion
 
-## Generated Documentation
+## Using lookup_concept
 
-The full operator coverage matrix is generated from the operator registry. Run:
+For any operator in this matrix, `lookup_concept` provides the translation rules:
 
-```bash
-python -c "from airflow_unfactor.converters.registry import generate_operator_docs; print(generate_operator_docs())"
+```json
+{
+  "tool": "lookup_concept",
+  "args": { "concept": "S3CreateObjectOperator" }
+}
 ```
 
-This ensures documentation stays in sync with actual converter capabilities.
+Returns the Prefect equivalent, required integration package, and conversion guidance. The LLM uses this to generate the correct Prefect code.

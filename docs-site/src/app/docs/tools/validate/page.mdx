@@ -1,47 +1,49 @@
 # Validation Tool
 
-Verify that converted flows maintain behavioral equivalence with original DAGs.
+Syntax-check generated Prefect flows and return both sources for LLM comparison.
 
 ## Overview
 
-The `validate` tool compares your original Airflow DAG with the converted Prefect flow to ensure the migration preserves:
+The `validate` tool helps verify conversions by:
 
-- **Task count** — Same number of meaningful tasks (excluding DummyOperator/EmptyOperator)
-- **Dependencies** — Task execution order is preserved
-- **Data flow** — XCom patterns are converted to return/parameter passing
-- **Confidence scoring** — Automated assessment of conversion reliability
+- **Syntax checking** — Parsing the generated Python code for syntax errors
+- **Source comparison** — Returning both original DAG and generated flow side-by-side
+- **Comparison guidance** — A checklist for the LLM to verify structural fidelity
+
+The LLM performs the structural comparison — the tool provides the inputs.
 
 ## Usage
 
 ### Via MCP
 
-```python
-result = await validate(
-    original_dag="path/to/dag.py",
-    converted_flow="path/to/flow.py"
-)
+```json
+{
+  "tool": "validate",
+  "args": {
+    "original_dag": "dags/etl_pipeline.py",
+    "converted_flow": "from prefect import flow, task\n..."
+  }
+}
 ```
 
 ### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `original_dag` | string | Yes | Path to the original Airflow DAG file |
-| `converted_flow` | string | Yes | Path to the converted Prefect flow file |
+| `original_dag` | string | Yes | Path to DAG file, or inline DAG code |
+| `converted_flow` | string | Yes | Path to flow file, or inline flow code |
+
+Both parameters accept either a file path or inline source code.
 
 ## Output Format
 
 ```json
 {
-  "is_valid": true,
-  "task_count_match": true,
-  "dependency_preserved": true,
-  "confidence_score": 85,
-  "issues": [],
-  "dag_tasks": ["extract", "transform", "load"],
-  "flow_tasks": ["extract", "transform", "load"],
-  "dag_edges": [["extract", "transform"], ["transform", "load"]],
-  "flow_edges": [["extract", "transform"], ["transform", "load"]]
+  "original_source": "from airflow import DAG\n...",
+  "converted_source": "from prefect import flow, task\n...",
+  "syntax_valid": true,
+  "syntax_errors": null,
+  "comparison_guidance": "Compare the original Airflow DAG with the generated Prefect flow. Verify:\n1. All tasks from the DAG are represented in the flow\n2. Task dependencies are preserved\n..."
 }
 ```
 
@@ -49,126 +51,62 @@ result = await validate(
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `is_valid` | boolean | Overall pass/fail status |
-| `task_count_match` | boolean | Whether task counts match |
-| `dependency_preserved` | boolean | Whether dependencies match |
-| `confidence_score` | integer | 0-100 confidence rating |
-| `issues` | array | List of specific mismatches found |
-| `dag_tasks` | array | Tasks extracted from DAG |
-| `flow_tasks` | array | Tasks extracted from flow |
-| `dag_edges` | array | Dependencies in DAG |
-| `flow_edges` | array | Dependencies in flow |
+| `original_source` | string | Full source code of the original DAG |
+| `converted_source` | string | Full source code of the generated flow |
+| `syntax_valid` | boolean | Whether the generated code parses without errors |
+| `syntax_errors` | array or null | List of `{line, column, message}` if invalid |
+| `comparison_guidance` | string | Checklist for the LLM to verify the conversion |
 
-## Understanding Results
+## Comparison Guidance
 
-### Confidence Scores
+The `comparison_guidance` field includes a checklist:
 
-| Score Range | Interpretation |
-|-------------|----------------|
-| 80-100 | High confidence — conversion is reliable |
-| 60-79 | Medium confidence — review recommended |
-| 40-59 | Low confidence — manual review required |
-| 0-39 | Very low — significant manual work needed |
-
-Factors that affect confidence:
-
-- **Task complexity** — More tasks = lower confidence
-- **Unknown operators** — Custom operators reduce confidence
-- **Dynamic patterns** — Variable task_ids, computed values
-- **Partial matches** — Some but not all dependencies verified
-
-### Common Issues
-
-**Task count mismatch:**
-```json
-{"issues": ["Task count mismatch: DAG has 5 tasks, flow has 4 tasks"]}
-```
-
-DummyOperator and EmptyOperator are excluded from counts. Other mismatches indicate missing task implementations.
-
-**Dependency mismatch:**
-```json
-{"issues": ["Dependency mismatch: edge (extract, transform) not found in flow"]}
-```
-
-Check that tasks are called in the correct order and data is passed between them.
-
-**XCom pattern not converted:**
-```json
-{"issues": ["XCom pattern 'ti.xcom_pull(task_ids=\"extract\")' not converted to parameter"]}
-```
-
-Ensure the converted task receives data as a function parameter.
+1. All tasks from the DAG are represented in the flow
+2. Task dependencies are preserved (`>>` chains become function call order)
+3. XCom push/pull is replaced with task return values and parameters
+4. Connections are mapped to Prefect blocks
+5. Variables are mapped to Prefect variables or environment config
+6. Schedule, retries, and other DAG config is carried over
+7. Sensors are converted to polling tasks with retries or event triggers
+8. TaskGroups are converted to subflows
+9. Trigger rules are handled with state inspection
 
 ## Examples
 
-### Simple ETL DAG
+### Valid Conversion
 
-**Original DAG:**
-```python
-with DAG("etl") as dag:
-    extract = PythonOperator(task_id="extract", python_callable=extract_fn)
-    transform = PythonOperator(task_id="transform", python_callable=transform_fn)
-    load = PythonOperator(task_id="load", python_callable=load_fn)
-    extract >> transform >> load
-```
-
-**Converted Flow:**
-```python
-@flow(name="etl")
-def etl():
-    data = extract()
-    transformed = transform(data)
-    load(transformed)
-```
-
-**Validation Result:**
 ```json
 {
-  "is_valid": true,
-  "task_count_match": true,
-  "dependency_preserved": true,
-  "confidence_score": 95,
-  "issues": []
+  "original_source": "with DAG('etl') as dag:\n    extract = PythonOperator(...)\n...",
+  "converted_source": "@flow(name='etl')\ndef etl():\n    data = extract()\n...",
+  "syntax_valid": true,
+  "syntax_errors": null,
+  "comparison_guidance": "Compare the original..."
 }
 ```
 
-### DAG with DummyOperator
+### Syntax Error in Generated Code
 
-**Original DAG:**
-```python
-with DAG("with_dummy") as dag:
-    start = DummyOperator(task_id="start")
-    process = PythonOperator(task_id="process", python_callable=process_fn)
-    end = DummyOperator(task_id="end")
-    start >> process >> end
-```
-
-**Converted Flow:**
-```python
-@flow(name="with_dummy")
-def with_dummy():
-    result = process()
-    return result
-```
-
-**Validation Result:**
 ```json
 {
-  "is_valid": true,
-  "task_count_match": true,
-  "dependency_preserved": true,
-  "confidence_score": 90,
-  "issues": []
+  "original_source": "...",
+  "converted_source": "@flow\ndef etl(\n    data = extract()",
+  "syntax_valid": false,
+  "syntax_errors": [
+    {
+      "line": 3,
+      "column": 24,
+      "message": "unexpected EOF while parsing"
+    }
+  ],
+  "comparison_guidance": "..."
 }
 ```
-
-Note: DummyOperator tasks are correctly excluded from the comparison.
 
 ## Best Practices
 
-1. **Run validation after every conversion** — Catch issues early
-2. **Address all issues before deployment** — Don't ignore warnings
-3. **Use validation in CI/CD** — Automate verification
-4. **Review low-confidence conversions** — Manual inspection is valuable
-5. **Test with real data** — Validation checks structure, not runtime behavior
+1. **Always validate after generation** — Catch syntax errors before deployment
+2. **Pass inline content** — Works with both file paths and inline code
+3. **Review the comparison guidance** — Use the checklist to verify structural fidelity
+4. **Re-validate after fixes** — If the LLM corrects issues, validate again
+5. **Test with real data** — Validation checks syntax, not runtime behavior

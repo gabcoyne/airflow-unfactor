@@ -193,8 +193,8 @@ export default function Home() {
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
-                <div className="text-3xl font-bold text-gradient" style={{ fontFamily: 'var(--font-display)' }}>10+</div>
-                <div className="text-sm text-muted-foreground">Pattern Detectors</div>
+                <div className="text-3xl font-bold text-gradient" style={{ fontFamily: 'var(--font-display)' }}>78</div>
+                <div className="text-sm text-muted-foreground">Translation Entries</div>
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
@@ -217,36 +217,34 @@ export default function Home() {
               </div>
               <pre className="overflow-x-auto p-6 text-sm leading-relaxed">
                 <code>
-                  <span className="text-chart-4"># 1. Analyze your DAG - extract rich metadata</span>
+                  <span className="text-chart-4"># 1. Read the DAG source code</span>
                   {"\n"}
-                  analysis = <span className="text-chart-2">analyze</span>(
+                  dag = <span className="text-chart-2">read_dag</span>(
                   <span className="text-chart-3">&quot;dags/etl_pipeline.py&quot;</span>)
                   {"\n\n"}
-                  <span className="text-chart-4"># 2. Fetch Prefect context for detected patterns</span>
+                  <span className="text-chart-4"># 2. Look up Airflow→Prefect translation knowledge</span>
                   {"\n"}
-                  context = <span className="text-chart-2">get_context</span>(
+                  mapping = <span className="text-chart-2">lookup_concept</span>(
+                  <span className="text-chart-3">&quot;PythonOperator&quot;</span>)
                   {"\n"}
-                  {"    "}features=analysis[<span className="text-chart-3">&quot;patterns&quot;</span>],
-                  {"\n"}
-                  {"    "}topics=[<span className="text-chart-3">&quot;flows&quot;</span>, <span className="text-chart-3">&quot;deployments&quot;</span>]
-                  {"\n"}
-                  )
+                  docs = <span className="text-chart-2">search_prefect_docs</span>(
+                  <span className="text-chart-3">&quot;task retries&quot;</span>)
                   {"\n\n"}
                   <span className="text-chart-4"># 3. LLM generates idiomatic Prefect code</span>
                   {"\n"}
-                  <span className="text-chart-4"># 4. Validate structure matches original</span>
+                  <span className="text-chart-4"># 4. Validate the generated flow</span>
                   {"\n"}
                   result = <span className="text-chart-2">validate</span>(
                   {"\n"}
-                  {"    "}original=dag_code,
+                  {"    "}original_dag=dag_path,
                   {"\n"}
-                  {"    "}generated=prefect_flow
+                  {"    "}converted_flow=prefect_code
                   {"\n"}
                   )
                   {"\n"}
-                  <span className="text-chart-4"># ✓ Task coverage: 100%</span>
+                  <span className="text-chart-4"># ✓ Syntax valid</span>
                   {"\n"}
-                  <span className="text-chart-4"># ✓ Dependencies preserved</span>
+                  <span className="text-chart-4"># ✓ Both sources returned for comparison</span>
                 </code>
               </pre>
             </div>
@@ -336,11 +334,11 @@ export default function Home() {
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-chart-1/10">
                   <Code2 className="h-6 w-6 text-chart-1" />
                 </div>
-                <CardTitle style={{ fontFamily: 'var(--font-display)' }}>Rich Analysis</CardTitle>
+                <CardTitle style={{ fontFamily: 'var(--font-display)' }}>DAG Reading</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Comprehensive DAG payloads with structure, patterns, configuration,
-                complexity metrics, and actionable migration notes.
+                Read raw Airflow DAG source code directly. The LLM analyzes
+                the code — no brittle AST intermediary.
               </CardContent>
             </Card>
 
@@ -349,11 +347,11 @@ export default function Home() {
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-chart-2/10">
                   <Layers className="h-6 w-6 text-chart-2" />
                 </div>
-                <CardTitle style={{ fontFamily: 'var(--font-display)' }}>Prefect Context</CardTitle>
+                <CardTitle style={{ fontFamily: 'var(--font-display)' }}>Translation Knowledge</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Fetch relevant Prefect documentation, operator mappings,
-                and deployment templates based on detected features.
+                78 pre-compiled Airflow→Prefect mappings via Colin, plus live
+                Prefect doc search for anything not covered.
               </CardContent>
             </Card>
 
@@ -365,8 +363,8 @@ export default function Home() {
                 <CardTitle style={{ fontFamily: 'var(--font-display)' }}>Validation</CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Verify generated code matches original structure—task coverage,
-                dependency graphs, and configuration completeness.
+                Syntax-check generated flows and return both sources
+                side-by-side for the LLM to verify structural fidelity.
               </CardContent>
             </Card>
 

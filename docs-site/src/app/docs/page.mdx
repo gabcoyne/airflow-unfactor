@@ -4,7 +4,7 @@ import Link from "next/link";
 
 # Documentation
 
-Rich analysis payloads for LLM-assisted Airflow→Prefect conversion.
+LLM-native tools for converting Airflow DAGs to Prefect flows.
 
 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
   <Link href="/docs/getting-started/installation" className="block">
@@ -13,7 +13,7 @@ Rich analysis payloads for LLM-assisted Airflow→Prefect conversion.
         <CardTitle>Getting Started</CardTitle>
       </CardHeader>
       <CardContent>
-        Install the MCP server and run your first analysis.
+        Install the MCP server and convert your first DAG.
       </CardContent>
     </Card>
   </Link>
@@ -23,7 +23,7 @@ Rich analysis payloads for LLM-assisted Airflow→Prefect conversion.
         <CardTitle>MCP Tools</CardTitle>
       </CardHeader>
       <CardContent>
-        Analysis, context, and validation tools for LLM-assisted conversion.
+        Five tools: read, lookup, search, validate, scaffold.
       </CardContent>
     </Card>
   </Link>
@@ -43,27 +43,29 @@ Rich analysis payloads for LLM-assisted Airflow→Prefect conversion.
 
 **Deterministic code templating is brittle.** Airflow and Prefect are architecturally dissimilar—edge cases are inevitable.
 
-Instead, we provide **rich structured analysis payloads** that enable LLMs to generate complete, functional Prefect flows using their knowledge of Python and Prefect patterns.
+Instead, we provide **translation knowledge and live documentation** that enable LLMs to generate complete, functional Prefect flows using their knowledge of Python and Prefect patterns.
 
 ## Workflow
 
 ```
-1. analyze(dag)     → Comprehensive DAG structure & patterns
-2. get_context()    → Relevant Prefect documentation
-3. LLM generates    → Complete Prefect flow code
-4. validate()       → Verify structural correctness
+1. read_dag(path)         → Raw DAG source code
+2. lookup_concept(name)   → Airflow→Prefect translation knowledge
+3. search_prefect_docs(q) → Live Prefect documentation (optional)
+4. LLM generates          → Complete Prefect flow code
+5. validate(orig, flow)   → Syntax check + both sources for comparison
+6. scaffold(dir)          → Prefect project directory structure
 ```
 
-**We analyze. The LLM generates. We validate.**
+**We read. The LLM generates. We validate.**
 
 ## What the tools provide
 
 | Tool | Returns |
 |------|---------|
-| `analyze` | Structure, patterns, config, complexity, migration notes |
-| `get_context` | Prefect docs, operator mappings, deployment templates |
-| `operator_mapping` | Prefect equivalent for specific operator |
-| `connection_mapping` | Prefect block type for Airflow connection |
-| `validate` | Structural comparison and coverage report |
+| `read_dag` | Raw source code, file path, size, line count |
+| `lookup_concept` | Pre-compiled Airflow→Prefect mappings (operators, patterns, connections) |
+| `search_prefect_docs` | Live Prefect documentation search results |
+| `validate` | Syntax check, both sources, comparison guidance |
+| `scaffold` | Project directory structure following prefecthq/flows conventions |
 
 <Badge variant="secondary">FastMCP</Badge> <Badge variant="outline">LLM-Native</Badge>
