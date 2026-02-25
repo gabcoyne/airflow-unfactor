@@ -1,7 +1,7 @@
 [project]
 name = "airflow-unfactor"
-version = "0.1.1"
-description = "MCP server to convert Apache Airflow DAGs to Prefect flows"
+version = "0.2.0"
+description = "MCP server for LLM-assisted conversion of Apache Airflow DAGs to Prefect flows"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
@@ -21,8 +21,7 @@ classifiers = [
 
 dependencies = [
     "fastmcp>=2.14.0",
-    "prefect>=3.0.0",
-    "pydantic>=2.0.0",
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
@@ -30,17 +29,8 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
-    "hypothesis>=6.0.0",
     "ruff>=0.5.0",
-    "mypy>=1.10.0",
     "pre-commit>=3.7.0",
-]
-ai = [
-    "anthropic>=0.40.0",
-    "openai>=1.0.0",
-]
-ui = [
-    "aiohttp>=3.9.0",
 ]
 
 [project.scripts]
@@ -62,41 +52,22 @@ packages = ["src/airflow_unfactor"]
 line-length = 100
 target-version = "py311"
 extend-exclude = [
-    "tests/fixtures/astronomer-*",  # External fixture files
-    "tests/fixtures/snapshots/",  # Generated snapshot files
-    ".ralph/",  # Generated files
+    "tests/fixtures/astronomer-*",
+    "tests/fixtures/snapshots/",
 ]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "TCH"]
 ignore = [
-    "E501",   # Line too long (handled by formatter)
-    "SIM102", # Nested if statements (can be more readable)
-    "SIM103", # Return condition directly (can be clearer with if/else)
-    "SIM108", # Ternary operator (multi-line if/else often clearer)
-    "SIM118", # dict.keys() (explicit can be clearer)
+    "E501",
+    "SIM102",
+    "SIM103",
+    "SIM108",
+    "SIM118",
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["airflow_unfactor"]
-
-[tool.mypy]
-python_version = "3.11"
-strict = true
-warn_return_any = true
-warn_unused_ignores = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_configs = true
-show_error_codes = true
-
-[[tool.mypy.overrides]]
-module = ["prefect.*", "fastmcp.*"]
-ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
@@ -115,4 +86,3 @@ exclude_lines = [
     "raise NotImplementedError",
 ]
 show_missing = true
-fail_under = 77

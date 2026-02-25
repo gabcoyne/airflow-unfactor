@@ -1,189 +1,124 @@
 """airflow-unfactor MCP Server.
 
-Provides rich analysis payloads for LLM-assisted conversion of
-Apache Airflow DAGs to Prefect flows.
+Provides tools for LLM-assisted conversion of Apache Airflow DAGs
+to Prefect flows. The LLM reads raw DAG code and generates Prefect
+flows using translation knowledge compiled by Colin.
 
-Built with FastMCP - the fast, Pythonic way to build MCP servers.
+Built with FastMCP.
 """
 
 from fastmcp import FastMCP
 
-from airflow_unfactor.tools.analyze import analyze_dag
-from airflow_unfactor.tools.context import (
-    get_connection_mapping,
-    get_operator_mapping,
-    get_prefect_context,
-)
-from airflow_unfactor.tools.external import astronomer_migration as _astronomer_migration
-from airflow_unfactor.tools.external import prefect_search as _prefect_search
+from airflow_unfactor.tools.lookup import lookup_concept as _lookup_concept
+from airflow_unfactor.tools.read_dag import read_dag as _read_dag
 from airflow_unfactor.tools.scaffold import scaffold_project
+from airflow_unfactor.tools.search_docs import search_prefect_docs as _search_docs
 from airflow_unfactor.tools.validate import validate_conversion
 
 mcp = FastMCP(
     "airflow-unfactor",
-    instructions="""Airflow-to-Prefect migration assistant.
+    instructions="""\
+Airflow-to-Prefect migration assistant. You read raw DAG source code
+directly and generate complete Prefect flows.
 
-Use these tools to analyze Airflow DAGs and get context for generating Prefect flows.
+## Workflow
 
-Recommended workflow:
-1. analyze() - Get comprehensive DAG analysis payload
-2. get_context() - Fetch relevant Prefect documentation
-3. Generate Prefect flow code using the analysis and context
-4. validate() - Verify the generated code matches the original structure
+1. **read_dag** — Read the Airflow DAG file (returns raw source code for you to analyze)
+2. **lookup_concept** — Query translation knowledge for Airflow→Prefect mappings
+   (operators, patterns, connections, core concepts). Backed by Colin-compiled
+   knowledge from live sources, with built-in fallback mappings.
+3. **search_prefect_docs** — Search current Prefect documentation for anything
+   not covered by lookup_concept (optional, requires network)
+4. **Generate** — Write complete Prefect flow code based on the DAG source and
+   translation knowledge
+5. **validate** — Compare original DAG and generated flow (syntax check on the
+   generated code + both sources returned for your structural comparison)
+6. **scaffold** — Create Prefect project directory structure (optional)
 
-The LLM should generate complete, functional Prefect flows - not this tool.
-This tool provides rich analysis payloads to inform that generation.""",
+## Key principles
+
+- You read raw code directly — there is no AST intermediary
+- lookup_concept is pre-compiled from live Airflow source and Prefect docs
+- search_prefect_docs queries real-time Prefect documentation for gaps
+- validate returns both sources so you can verify the conversion yourself
+""",
 )
 
 
-# =============================================================================
-# ANALYSIS TOOLS - Primary tools for understanding Airflow DAGs
-# =============================================================================
-
-
 @mcp.tool
-async def analyze(
+async def read_dag(
     path: str | None = None,
     content: str | None = None,
-    include_external_context: bool = True,
 ) -> str:
-    """Analyze an Airflow DAG and return a rich structured payload for LLM conversion.
+    """Read an Airflow DAG file and return raw source with metadata.
 
-    This is the primary analysis tool. It extracts comprehensive information from
-    the DAG including structure, patterns, configuration, and migration notes.
+    Accepts a file path or inline content. Returns the source code,
+    file path, size, and line count. The LLM reads the code directly.
 
     Args:
-        path: Path to the DAG file
-        content: DAG code content (alternative to path)
-        include_external_context: Enrich with external MCP context (Prefect docs, etc.)
+        path: Path to a DAG file on disk.
+        content: Inline DAG source code.
 
     Returns:
-        JSON with comprehensive analysis:
-        - dag_id, airflow_version detection
-        - structure: operators, dependencies, task_groups, imports
-        - patterns: xcom, sensors, trigger_rules, branching, connections, variables
-        - dag_config: schedule, catchup, default_args, tags
-        - complexity: score and factors
-        - migration_notes: actionable conversion guidance
-        - original_code: for LLM reference
+        JSON with source, file_path, file_size_bytes, line_count — or error.
     """
-    return await analyze_dag(
-        path=path, content=content, include_external_context=include_external_context
-    )
-
-
-# =============================================================================
-# CONTEXT TOOLS - Fetch Prefect documentation and patterns
-# =============================================================================
+    return await _read_dag(path=path, content=content)
 
 
 @mcp.tool
-async def get_context(
-    topics: list[str] | None = None,
-    detected_features: list[str] | None = None,
+async def lookup_concept(concept: str) -> str:
+    """Look up Airflow→Prefect translation knowledge for a concept.
+
+    Searches Colin-compiled knowledge for operators, patterns,
+    connections, and core concepts. Falls back to built-in mappings
+    if Colin output is not available.
+
+    Args:
+        concept: The Airflow concept to look up (e.g. "PythonOperator",
+                "XCom", "TaskGroup", "postgres_default").
+
+    Returns:
+        JSON with concept_type, airflow info, prefect_equivalent,
+        translation_rules, and source ("colin" or "fallback").
+    """
+    return await _lookup_concept(concept)
+
+
+@mcp.tool
+async def search_prefect_docs(query: str) -> str:
+    """Search current Prefect documentation via the Prefect MCP server.
+
+    For real-time queries beyond what Colin pre-compiled. Returns
+    search results or an error with suggestion to run 'colin run'.
+
+    Args:
+        query: Search query for Prefect docs.
+
+    Returns:
+        JSON with search results or error.
+    """
+    return await _search_docs(query)
+
+
+@mcp.tool
+async def validate(
+    original_dag: str,
+    converted_flow: str,
 ) -> str:
-    """Fetch relevant Prefect documentation and patterns for conversion.
+    """Validate a converted Prefect flow against the original Airflow DAG.
 
-    Call this BEFORE generating Prefect code to get up-to-date patterns
-    and best practices.
-
-    Args:
-        topics: Topics to fetch docs for. Options:
-            - "flows" - Flow decorator best practices
-            - "tasks" - Task decorator, retries, configuration
-            - "blocks" - Credentials and configuration blocks
-            - "deployments" - prefect.yaml configuration
-            - "work_pools" - Kubernetes, Docker work pool setup
-            - "events" - Event-driven automations and triggers
-
-        detected_features: Features found in the DAG to get specific guidance:
-            - "sensors" - Polling patterns, event triggers
-            - "xcom" - Data passing with return values
-            - "taskflow" - TaskFlow API migration
-            - "datasets" - Event-driven dependencies
-            - "branching" - Conditional execution
-            - "dynamic_mapping" - .map() usage
-            - "task_groups" - Subflow patterns
-            - "connections" - Block configuration
-            - "variables" - Variable/secret management
-
-    Returns:
-        JSON with:
-        - documentation: Relevant Prefect docs
-        - operator_patterns: Airflow→Prefect operator mappings
-        - connection_mappings: Connection→Block type mappings
-        - deployment_template: prefect.yaml structure and examples
-    """
-    return await get_prefect_context(topics=topics, detected_features=detected_features)
-
-
-@mcp.tool
-async def operator_mapping(operator_type: str) -> str:
-    """Get detailed Prefect equivalent for a specific Airflow operator.
+    Returns both source files for comparison plus a syntax check on
+    the generated code. You perform the structural comparison.
 
     Args:
-        operator_type: The Airflow operator (e.g., "PythonOperator", "S3KeySensor")
+        original_dag: Path or inline content of the original DAG.
+        converted_flow: Path or inline content of the generated flow.
 
     Returns:
-        JSON with:
-        - prefect_pattern: The Prefect equivalent approach
-        - example: Code example
-        - notes: Migration considerations
+        JSON with original_source, converted_source, syntax_valid,
+        syntax_errors, and comparison_guidance.
     """
-    return await get_operator_mapping(operator_type)
-
-
-@mcp.tool
-async def connection_mapping(connection_id: str) -> str:
-    """Get Prefect block mapping for an Airflow connection.
-
-    Args:
-        connection_id: The Airflow connection ID (e.g., "aws_default", "postgres_conn")
-
-    Returns:
-        JSON with:
-        - block_type: Prefect block type to use
-        - package: prefect integration package
-        - notes: Configuration guidance
-    """
-    return await get_connection_mapping(connection_id)
-
-
-# =============================================================================
-# VALIDATION TOOLS - Verify generated code
-# =============================================================================
-
-
-@mcp.tool
-async def validate(original_dag: str, converted_flow: str) -> str:
-    """Validate that generated Prefect code matches the original DAG structure.
-
-    Use this after the LLM generates code to verify:
-    - All tasks are accounted for
-    - Dependencies are preserved
-    - Configuration is complete
-
-    Args:
-        original_dag: Path or content of the original Airflow DAG
-        converted_flow: Path or content of the generated Prefect flow
-
-    Returns:
-        JSON with:
-        - is_valid: Overall validation status
-        - task_coverage: Tasks present in both
-        - missing_tasks: Tasks not converted
-        - dependency_check: Dependency graph comparison
-        - suggestions: Improvement recommendations
-    """
-    return await validate_conversion(
-        original_dag=original_dag,
-        converted_flow=converted_flow,
-    )
-
-
-# =============================================================================
-# SCAFFOLDING TOOLS - Project structure (not code generation)
-# =============================================================================
+    return await validate_conversion(original_dag, converted_flow)
 
 
 @mcp.tool
@@ -209,11 +144,7 @@ async def scaffold(
         include_github_actions: Include CI workflow template
 
     Returns:
-        JSON with:
-        - created_directories: List of directories created
-        - created_files: List of template files created
-        - prefect_yaml_template: Template for prefect.yaml
-        - next_steps: What to do after scaffolding
+        JSON with created_directories, created_files, prefect_yaml_template, next_steps
     """
     return await scaffold_project(
         output_directory=output_directory,
@@ -223,89 +154,9 @@ async def scaffold(
     )
 
 
-# =============================================================================
-# EXTERNAL MCP PROXIES - Access to Prefect and Astronomer MCPs
-# =============================================================================
-
-
-@mcp.tool
-async def prefect_search(query: str) -> str:
-    """Search Prefect documentation via the Prefect MCP server.
-
-    Use this to fetch current Prefect documentation and patterns.
-
-    Args:
-        query: Search query for Prefect docs
-
-    Returns:
-        Search results from Prefect documentation
-    """
-    return await _prefect_search(query)
-
-
-@mcp.tool
-async def astronomer_migration(query: str) -> str:
-    """Get Airflow 2→3 migration guidance from Astronomer MCP.
-
-    Useful for understanding Airflow changes before converting to Prefect.
-
-    Args:
-        query: Migration question or topic
-
-    Returns:
-        Migration guidance from Astronomer
-    """
-    return await _astronomer_migration(query)
-
-
 def main() -> None:
-    """Run the MCP server or HTTP server with wizard UI.
-
-    By default, runs the MCP server over stdio for use with MCP clients.
-    With --ui flag, starts an HTTP server with the wizard UI.
-    """
-    import argparse
-    import asyncio
-
-    parser = argparse.ArgumentParser(
-        description="Analyze Apache Airflow DAGs for LLM-assisted Prefect conversion",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  airflow-unfactor              # Run MCP server (default)
-  airflow-unfactor --ui         # Start wizard UI at http://localhost:8765
-  airflow-unfactor --ui --port 9000  # Custom port
-        """,
-    )
-    parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Start HTTP server with wizard UI instead of MCP server",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8765,
-        help="Port for HTTP server (default: 8765)",
-    )
-    parser.add_argument(
-        "--host",
-        type=str,
-        default="localhost",
-        help="Host to bind HTTP server (default: localhost)",
-    )
-
-    args = parser.parse_args()
-
-    if args.ui:
-        from airflow_unfactor.http_server import run_server
-
-        try:
-            asyncio.run(run_server(port=args.port, host=args.host))
-        except KeyboardInterrupt:
-            print("\nShutting down...")
-    else:
-        mcp.run()
+    """Run the MCP server over stdio."""
+    mcp.run()
 
 
 if __name__ == "__main__":
