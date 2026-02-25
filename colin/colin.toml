@@ -1,0 +1,23 @@
+[project]
+name = "airflow-unfactor"
+model-path = "models"
+output-path = "output"
+
+[project.output]
+target = "local"
+
+# GitHub provider for fetching Airflow operator source code
+[[providers.github]]
+name = "airflow"
+repo = "apache/airflow"
+token = "${GITHUB_TOKEN}"
+
+# MCP provider for searching Prefect documentation
+[[providers.mcp]]
+name = "prefect"
+url = "https://docs.prefect.io/mcp"
+
+# LLM provider for summarizing operator source code
+[[providers.llm]]
+model = "anthropic:claude-sonnet-4-5"
+instructions = "You are a migration expert. Output structured, concise translation rules for converting Airflow code to Prefect. Always include concrete before/after code examples."
