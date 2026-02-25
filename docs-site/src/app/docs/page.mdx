@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PipelineDiagram } from "@/components/docs/pipeline-diagram";
 import Link from "next/link";
 
 # Documentation
@@ -47,14 +48,7 @@ Instead, we provide **translation knowledge and live documentation** that enable
 
 ## Workflow
 
-```
-1. read_dag(path)         → Raw DAG source code
-2. lookup_concept(name)   → Airflow→Prefect translation knowledge
-3. search_prefect_docs(q) → Live Prefect documentation (optional)
-4. LLM generates          → Complete Prefect flow code
-5. validate(orig, flow)   → Syntax check + both sources for comparison
-6. scaffold(dir)          → Prefect project directory structure
-```
+<PipelineDiagram />
 
 **We read. The LLM generates. We validate.**
 
