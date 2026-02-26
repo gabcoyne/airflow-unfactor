@@ -28,3 +28,23 @@ This document aggregates all operator translation mappings.
 ## Database Operators
 
 {{ ref('operators/database').content }}
+
+## Kubernetes Provider Operators
+
+{{ ref('operators/kubernetes').content }}
+
+## Databricks Provider Operators
+
+{{ ref('operators/databricks').content }}
+
+## Spark Provider Operators
+
+{{ ref('operators/spark').content }}
+
+## HTTP Provider Operators
+
+{{ ref('operators/http').content }}
+
+## SSH Provider Operators
+
+{{ ref('operators/sftp').content }}
