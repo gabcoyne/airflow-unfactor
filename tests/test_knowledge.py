@@ -165,3 +165,78 @@ class TestParseErrorLogging:
             result = load_knowledge(str(tmp_path))
         assert "MyOperator" in result
         assert "corrupt.json" in caplog.text
+
+
+class TestSuggestionsFuzzy:
+    """Tests for difflib-based fuzzy suggestions (SRVR-02)."""
+
+    def test_fuzzy_typo_match(self):
+        """Fuzzy match returns KubernetesPodOperator for a close typo."""
+        result = suggestions("KubernetesPodOp", {"KubernetesPodOperator": {"concept_type": "operator"}})
+        assert "KubernetesPodOperator" in result, f"Expected KubernetesPodOperator in {result}"
+
+    def test_fuzzy_case_insensitive(self):
+        """Case-insensitive fuzzy match works despite mixed case query."""
+        result = suggestions("kubernetesPodOp", {"KubernetesPodOperator": {"concept_type": "operator"}})
+        assert "KubernetesPodOperator" in result, f"Expected KubernetesPodOperator in {result}"
+
+    def test_fuzzy_no_false_positives(self):
+        """Completely unknown query returns empty list."""
+        result = suggestions("CompletelyUnknownXYZ123", {})
+        assert result == [], f"Expected empty list, got {result}"
+
+    def test_fuzzy_returns_original_case(self):
+        """Results preserve original casing, not lowercase."""
+        result = suggestions("pythonop", {})
+        # PythonOperator should appear (from fallback) with correct original casing
+        assert any("Python" in r for r in result), (
+            f"Expected Python-related result with original casing, got {result}"
+        )
+
+
+class TestFallbackExpanded:
+    """Tests for expanded FALLBACK_KNOWLEDGE entries (SRVR-03)."""
+
+    def test_fallback_count(self):
+        """FALLBACK_KNOWLEDGE has at least 15 entries."""
+        assert len(FALLBACK_KNOWLEDGE) >= 15, (
+            f"Expected >= 15 entries, got {len(FALLBACK_KNOWLEDGE)}"
+        )
+
+    def test_shortcircuit_fallback(self):
+        """ShortCircuitOperator is found via fallback."""
+        result = lookup("ShortCircuitOperator", {})
+        assert result["status"] == "found"
+        assert result["source"] == "fallback"
+
+    def test_branch_python_fallback(self):
+        """BranchPythonOperator is found via fallback."""
+        result = lookup("BranchPythonOperator", {})
+        assert result["status"] == "found"
+        assert result["source"] == "fallback"
+
+    def test_empty_operator_fallback(self):
+        """EmptyOperator is found via fallback with guidance to remove placeholder."""
+        result = lookup("EmptyOperator", {})
+        assert result["status"] == "found"
+        assert result["source"] == "fallback"
+
+    def test_trigger_dagrun_fallback(self):
+        """TriggerDagRunOperator is found via fallback."""
+        result = lookup("TriggerDagRunOperator", {})
+        assert result["status"] == "found"
+        assert result["source"] == "fallback"
+
+    def test_external_task_sensor_fallback(self):
+        """ExternalTaskSensor is found via fallback."""
+        result = lookup("ExternalTaskSensor", {})
+        assert result["status"] == "found"
+        assert result["source"] == "fallback"
+
+    @pytest.mark.parametrize("entry", list(FALLBACK_KNOWLEDGE.values()))
+    def test_each_fallback_has_required_fields(self, entry):
+        """Every FALLBACK_KNOWLEDGE entry has the required minimum fields."""
+        assert "concept_type" in entry, f"Missing concept_type in {entry}"
+        assert "airflow" in entry, f"Missing airflow in {entry}"
+        assert "prefect_equivalent" in entry, f"Missing prefect_equivalent in {entry}"
+        assert "translation_rules" in entry, f"Missing translation_rules in {entry}"
