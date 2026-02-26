@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-26T21:54:56.342Z"
+last_updated: "2026-02-26T21:55:57.553Z"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -60,6 +60,8 @@ Recent decisions affecting current work:
 - Research: Expand fallback knowledge — users without Colin output need guidance for common operators
 - Research: Phase 3 Azure/dbt Colin models need API verification via `search_prefect_docs` before authoring
 - [Phase 01-p1-knowledge-expansion]: databricks.md contains both DatabricksSubmitRunOperator and DatabricksRunNowOperator per research plan
+- [Phase 01]: kubernetes.md uses conceptual guidance not parameter mapping because KubernetesPodOperator is an architectural shift
+- [Phase 01]: http.md warns explicitly that no prefect-http package exists; httpx is the correct pattern
 
 ### Pending Todos
 

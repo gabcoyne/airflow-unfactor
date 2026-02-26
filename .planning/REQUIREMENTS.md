@@ -9,12 +9,12 @@ Requirements for completeness milestone. Each maps to roadmap phases.
 
 ### P1 Knowledge Expansion
 
-- [ ] **KNOW-01**: Colin model for KubernetesPodOperator → Kubernetes work pool pattern with architectural shift guidance
+- [x] **KNOW-01**: Colin model for KubernetesPodOperator → Kubernetes work pool pattern with architectural shift guidance
 - [x] **KNOW-02**: Colin model for DatabricksSubmitRunOperator → prefect-databricks DatabricksSubmitRun task
 - [x] **KNOW-03**: Colin model for DatabricksRunNowOperator → prefect-databricks DatabricksRunNow task
 - [x] **KNOW-04**: Colin model for SparkSubmitOperator → shell/Databricks/Dataproc execution paths
-- [ ] **KNOW-05**: Colin model for HttpOperator/SimpleHttpOperator → httpx task pattern
-- [ ] **KNOW-06**: Colin model for SSHOperator → paramiko/fabric task with Secret block
+- [x] **KNOW-05**: Colin model for HttpOperator/SimpleHttpOperator → httpx task pattern
+- [x] **KNOW-06**: Colin model for SSHOperator → paramiko/fabric task with Secret block
 
 ### P2 Knowledge Expansion
 
@@ -72,12 +72,12 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KNOW-01 | Phase 1 | Pending |
+| KNOW-01 | Phase 1 | Complete |
 | KNOW-02 | Phase 1 | Complete |
 | KNOW-03 | Phase 1 | Complete |
 | KNOW-04 | Phase 1 | Complete |
-| KNOW-05 | Phase 1 | Pending |
-| KNOW-06 | Phase 1 | Pending |
+| KNOW-05 | Phase 1 | Complete |
+| KNOW-06 | Phase 1 | Complete |
 | SRVR-01 | Phase 2 | Pending |
 | SRVR-02 | Phase 2 | Pending |
 | SRVR-03 | Phase 2 | Pending |

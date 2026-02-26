@@ -27,7 +27,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
   3. `lookup_concept("SimpleHttpOperator")` returns the `httpx` task pattern
   4. `lookup_concept("SparkSubmitOperator")` returns the `prefect-shell` or Databricks/Dataproc path with decision guidance
   5. `lookup_concept("SSHOperator")` returns the `paramiko`/`fabric` + Secret block pattern
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 - [ ] 01-01-PLAN.md — Author kubernetes.md, http.md, sftp.md (KNOW-01, KNOW-05, KNOW-06)
 - [ ] 01-02-PLAN.md — Author databricks.md, spark.md, update _index.md (KNOW-02, KNOW-03, KNOW-04)
 - [ ] 01-03-PLAN.md — Compile Colin models, add parametrized tests (all KNOW-*)
@@ -72,7 +72,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. P1 Knowledge Expansion | 1/3 | In Progress|  |
+| 1. P1 Knowledge Expansion | 2/3 | In Progress|  |
 | 2. Server Quality | 0/TBD | Not started | - |
 | 3. P2 Knowledge Expansion | 0/TBD | Not started | - |
 | 4. Validation Hardening | 0/TBD | Not started | - |
