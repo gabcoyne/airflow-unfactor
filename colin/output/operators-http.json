@@ -1,0 +1,50 @@
+{
+  "SimpleHttpOperator": {
+    "operator": "SimpleHttpOperator",
+    "module": "airflow.providers.http.operators.http",
+    "source_context": "Calls an HTTP endpoint. Uses the requests library internally, takes http_conn_id for base URL and auth, supports response_check callable and log_response flag. Supports GET, POST, PUT, DELETE methods.",
+    "prefect_pattern": "httpx (or requests) inside @task — no dedicated Prefect HTTP package exists",
+    "prefect_package": "none (use httpx directly)",
+    "prefect_import": "import httpx",
+    "example": {
+      "before": "```python\nimport json\nfrom airflow.providers.http.operators.http import SimpleHttpOperator\n\ncall_api = SimpleHttpOperator(\n    task_id=\"call_api\",\n    http_conn_id=\"my_api\",\n    endpoint=\"/v1/process\",\n    method=\"POST\",\n    data=json.dumps({\"key\": \"value\"}),\n    headers={\"Content-Type\": \"application/json\"},\n    response_check=lambda response: response.status_code == 200,\n    log_response=True,\n)\n```",
+      "after": "```python\nimport httpx\nfrom prefect import task\nfrom prefect.logging import get_run_logger\nfrom prefect.blocks.system import Secret\n\n@task(retries=3)\ndef call_api(endpoint: str, payload: dict) -> dict:\n    logger = get_run_logger()\n    base_url = Secret.load(\"my-api-base-url\").get()  # replaces http_conn_id\n    response = httpx.post(\n        f\"{base_url}{endpoint}\",\n        json=payload,\n        headers={\"Content-Type\": \"application/json\"},\n    )\n    logger.info(response.text)   # replaces log_response=True\n    response.raise_for_status()  # replaces response_check\n    return response.json()\n```"
+    },
+    "notes": [
+      "There is NO prefect-http package; use httpx or requests directly inside @task",
+      "http_conn_id → store base URL and credentials in a Secret block or environment variable",
+      "response_check callable → implement as a conditional assertion or raise_for_status() inside the @task body",
+      "log_response=True → use get_run_logger() to log response content",
+      "httpx is preferred over requests for new Prefect code (async support, better timeout control)",
+      "Use @task(retries=N) for retry behavior instead of custom retry loops",
+      "Before running: create a Secret block for the base URL (and token if auth required)"
+    ],
+    "related_concepts": [
+      "connection-to-secret-block",
+      "no-package-pattern"
+    ],
+    "concept_type": "operator"
+  },
+  "HttpOperator": {
+    "operator": "HttpOperator",
+    "module": "airflow.providers.http.operators.http",
+    "source_context": "The newer name in Airflow 2.x for SimpleHttpOperator. Identical behavior and parameters — calls an HTTP endpoint with http_conn_id, endpoint, method, data, headers, response_check, and log_response.",
+    "prefect_pattern": "httpx (or requests) inside @task — same pattern as SimpleHttpOperator",
+    "prefect_package": "none (use httpx directly)",
+    "prefect_import": "import httpx",
+    "example": {
+      "before": "```python\nfrom airflow.providers.http.operators.http import HttpOperator\n\ncall_api = HttpOperator(\n    task_id=\"call_api\",\n    http_conn_id=\"my_api\",\n    endpoint=\"/v1/data\",\n    method=\"GET\",\n    log_response=True,\n)\n```",
+      "after": "```python\nimport httpx\nfrom prefect import task\nfrom prefect.logging import get_run_logger\nfrom prefect.blocks.system import Secret\n\n@task(retries=3)\ndef call_api(endpoint: str) -> dict:\n    logger = get_run_logger()\n    base_url = Secret.load(\"my-api-base-url\").get()\n    response = httpx.get(f\"{base_url}{endpoint}\")\n    logger.info(response.text)\n    response.raise_for_status()\n    return response.json()\n```"
+    },
+    "notes": [
+      "HttpOperator is the same class as SimpleHttpOperator (renamed in Airflow 2.x); apply the same translation",
+      "There is NO prefect-http package; use httpx or requests directly inside @task",
+      "See SimpleHttpOperator notes for full credential migration and retry guidance"
+    ],
+    "related_concepts": [
+      "connection-to-secret-block",
+      "no-package-pattern"
+    ],
+    "concept_type": "operator"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "SSHOperator": {
+    "operator": "SSHOperator",
+    "module": "airflow.providers.ssh.operators.ssh",
+    "source_context": "Executes a command on a remote host via SSH. Uses paramiko internally, takes ssh_conn_id for host, username, and key or password. Captures stdout and stderr, and can raise on non-zero exit status.",
+    "prefect_pattern": "paramiko.SSHClient or fabric.Connection inside @task with Secret block for credentials",
+    "prefect_package": "none (use paramiko or fabric directly)",
+    "prefect_import": "import paramiko",
+    "example": {
+      "before": "```python\nfrom airflow.providers.ssh.operators.ssh import SSHOperator\n\nssh_task = SSHOperator(\n    task_id=\"run_remote\",\n    ssh_conn_id=\"my_ssh_server\",\n    command=\"cd /data && python process.py\",\n)\n```",
+      "after": "```python\nimport paramiko\nfrom prefect import task\nfrom prefect.logging import get_run_logger\nfrom prefect.blocks.system import Secret\n\n@task\ndef run_remote_command(host: str, username: str, command: str) -> str:\n    # Before running: create a Secret block named \"ssh-private-key\"\n    # containing the private key content (PEM string).\n    logger = get_run_logger()\n    private_key_str = Secret.load(\"ssh-private-key\").get()\n    import io\n    private_key = paramiko.RSAKey.from_private_key(io.StringIO(private_key_str))\n\n    client = paramiko.SSHClient()\n    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n    client.connect(hostname=host, username=username, pkey=private_key)\n\n    stdin, stdout, stderr = client.exec_command(command)\n    exit_status = stdout.channel.recv_exit_status()\n    output = stdout.read().decode()\n    err = stderr.read().decode()\n    client.close()\n\n    logger.info(output)\n    if exit_status != 0:\n        raise RuntimeError(f\"SSH command failed (exit {exit_status}): {err}\")\n    return output\n```"
+    },
+    "notes": [
+      "There is NO prefect-ssh package; use paramiko or fabric directly inside @task",
+      "ssh_conn_id → create a Secret block named \"ssh-private-key\" with private key PEM content, and pass host/username as flow parameters or separate Secret blocks",
+      "Before running: user must create Secret block(s) for SSH credentials in the Prefect UI or via CLI",
+      "paramiko is the baseline recommendation (stable API surface); fabric is a higher-level option for common SSH patterns",
+      "Use get_run_logger() to log command output",
+      "Always check exit status and raise on non-zero exit to propagate failures to Prefect",
+      "For password auth: store the password in a Secret block instead of the private key",
+      "fabric.Connection is an alternative: from fabric import Connection; c = Connection(host, user=username); c.run(command)"
+    ],
+    "related_concepts": [
+      "connection-to-secret-block",
+      "no-package-pattern"
+    ],
+    "concept_type": "operator"
+  }
+}
