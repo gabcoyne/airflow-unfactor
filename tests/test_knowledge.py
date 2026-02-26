@@ -1,6 +1,9 @@
 """Tests for knowledge loader."""
 
 import json
+from pathlib import Path
+
+import pytest
 
 from airflow_unfactor.knowledge import (
     load_knowledge,
@@ -108,3 +111,24 @@ class TestSuggestions:
         knowledge = {f"Concept{i}": {} for i in range(20)}
         result = suggestions("Concept", knowledge)
         assert len(result) <= 5
+
+
+class TestPhase1Operators:
+    """Tests for Phase 1 knowledge expansion operators (KNOW-01 through KNOW-06)."""
+
+    COLIN_OUTPUT_DIR = str(Path(__file__).parent.parent / "colin" / "output")
+
+    @pytest.mark.parametrize("operator_name", [
+        "KubernetesPodOperator",       # KNOW-01
+        "DatabricksSubmitRunOperator",  # KNOW-02
+        "DatabricksRunNowOperator",     # KNOW-03
+        "SparkSubmitOperator",          # KNOW-04
+        "SimpleHttpOperator",           # KNOW-05
+        "SSHOperator",                  # KNOW-06
+    ])
+    def test_operator_found_in_colin_output(self, operator_name):
+        """Each Phase 1 operator is found via lookup with source: colin."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup(operator_name, knowledge)
+        assert result["status"] == "found", f"{operator_name} not found in Colin output"
+        assert result["source"] == "colin", f"{operator_name} found but source is {result['source']}, expected colin"
