@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Every Airflow 2.x operator, pattern, and connection type a user encounters in production should have translation guidance
-**Current focus:** Phase 1 — P1 Knowledge Expansion
+**Current focus:** Phase 2 — Server Quality
 
 ## Current Position
 
-Phase: 1 of 4 (P1 Knowledge Expansion)
-Plan: 3 of 3 in current phase (COMPLETE)
-Status: Phase 1 complete — ready for Phase 2
-Last activity: 2026-02-26 — All Phase 1 plans executed; 6 operators compiled and tested
+Phase: 2 of 4 (P2 Server Quality)
+Plan: 1 of 4 in current phase (COMPLETE)
+Status: Phase 2 plan 01 complete — difflib suggestions + 15 FALLBACK_KNOWLEDGE entries
+Last activity: 2026-02-26 — Replaced character-overlap suggestions with difflib; expanded fallback to 15 entries; 97 tests passing
 
-Progress: [██████████] 100% (Phase 1)
+Progress: [██████░░░░] 60% (4 of ~5 total plans across phases 1-2)
 
 ## Performance Metrics
 
@@ -67,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 01-p1-knowledge-expansion]: Force-added colin/output JSON files past .gitignore so CI test suite can verify Phase 1 operators
 - [Phase 02-server-quality]: Startup warning placed in main() only to avoid firing during tests
 - [Phase 02-server-quality]: logging and Path imported lazily inside main() to keep module-level import side-effect free
+- [Phase 02-server-quality P01]: Use difflib.get_close_matches(cutoff=0.4) with case-insensitive wrapper for suggestions
+- [Phase 02-server-quality P01]: 9 new FALLBACK_KNOWLEDGE entries cover sensors, branching, cross-DAG operators
 
 ### Pending Todos
 
@@ -80,5 +82,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 01-03-PLAN.md — Phase 1 all plans done; 66 tests passing
+Stopped at: Completed 02-01-PLAN.md — difflib suggestions + 15 FALLBACK_KNOWLEDGE entries; 97 tests passing
 Resume file: None

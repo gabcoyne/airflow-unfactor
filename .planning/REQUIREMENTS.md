@@ -28,8 +28,8 @@ Requirements for completeness milestone. Each maps to roadmap phases.
 ### Server Quality
 
 - [x] **SRVR-01**: Startup warning when Colin output directory is missing or empty with instructions to run `colin run`
-- [ ] **SRVR-02**: Replace character-overlap suggestion algorithm with `difflib.SequenceMatcher` in knowledge.py
-- [ ] **SRVR-03**: Expand FALLBACK_KNOWLEDGE from 6 to ~15-20 highest-frequency operator entries
+- [x] **SRVR-02**: Replace character-overlap suggestion algorithm with `difflib.SequenceMatcher` in knowledge.py
+- [x] **SRVR-03**: Expand FALLBACK_KNOWLEDGE from 6 to ~15-20 highest-frequency operator entries
 - [x] **SRVR-04**: Log warnings when Colin JSON files fail to parse (include filename and error type)
 
 ### Validation
@@ -79,8 +79,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | KNOW-05 | Phase 1 | Complete |
 | KNOW-06 | Phase 1 | Complete |
 | SRVR-01 | Phase 2 | Complete |
-| SRVR-02 | Phase 2 | Pending |
-| SRVR-03 | Phase 2 | Pending |
+| SRVR-02 | Phase 2 | Complete |
+| SRVR-03 | Phase 2 | Complete |
 | SRVR-04 | Phase 2 | Complete |
 | KNOW-07 | Phase 3 | Pending |
 | KNOW-08 | Phase 3 | Pending |
