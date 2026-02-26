@@ -55,7 +55,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
   3. `lookup_concept("macros.ds_add")` or Jinja pattern lookups return explicit Python equivalents, not `not_found`
   4. `lookup_concept("depends_on_past")` returns an explicit "no direct equivalent" entry with workaround patterns
   5. The `scaffold` tool generates `prefect.yaml` schedule config when a DAG `schedule_interval` is detected, not a placeholder
-**Plans**: TBD
+**Plans**: 0/TBD — gap closure
 
 ### Phase 4: Validation Hardening
 **Goal**: The validate tool's comparison checklist explicitly covers all new operator types, and the test suite exercises real-world production-style DAGs containing those operators
@@ -65,7 +65,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
   1. Calling `validate` on a flow converted from a Kubernetes DAG returns a checklist item that checks for Kubernetes work pool configuration
   2. Calling `validate` on a Databricks-origin flow returns checklist items checking for `prefect-databricks` block setup and job parameter mapping
   3. The test suite includes at least one fixture DAG per new operator type (Kubernetes, Databricks, Azure, dbt, HTTP, SSH) and all tests pass
-**Plans**: TBD
+**Plans**: 0/TBD — gap closure
 
 ## Progress
 
