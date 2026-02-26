@@ -1,11 +1,13 @@
 """Tests for knowledge loader."""
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
 
 from airflow_unfactor.knowledge import (
+    FALLBACK_KNOWLEDGE,
     load_knowledge,
     lookup,
     suggestions,
@@ -132,3 +134,34 @@ class TestPhase1Operators:
         result = lookup(operator_name, knowledge)
         assert result["status"] == "found", f"{operator_name} not found in Colin output"
         assert result["source"] == "colin", f"{operator_name} found but source is {result['source']}, expected colin"
+
+
+class TestParseErrorLogging:
+    """Tests for SRVR-04: logging when JSON files fail to parse."""
+
+    def test_logs_warning_for_invalid_json(self, tmp_path, caplog):
+        """Invalid JSON file triggers a warning with filename."""
+        (tmp_path / "bad.json").write_text("not json {{{")
+        (tmp_path / "good.json").write_text(json.dumps({"X": {"type": "ok"}}))
+        with caplog.at_level(logging.WARNING):
+            result = load_knowledge(str(tmp_path))
+        assert "bad.json" in caplog.text
+        assert "JSONDecodeError" in caplog.text
+        assert "X" in result  # good file still loaded
+
+    def test_logs_warning_includes_error_type(self, tmp_path, caplog):
+        """Warning message includes the error type name."""
+        (tmp_path / "broken.json").write_text("[1, 2, 3")
+        with caplog.at_level(logging.WARNING):
+            load_knowledge(str(tmp_path))
+        assert "broken.json" in caplog.text
+        assert "JSONDecodeError" in caplog.text
+
+    def test_continues_loading_after_bad_file(self, tmp_path, caplog):
+        """Valid files still load when a corrupt file is present."""
+        (tmp_path / "corrupt.json").write_text("NOT JSON AT ALL")
+        (tmp_path / "valid.json").write_text(json.dumps({"MyOperator": {"concept_type": "operator"}}))
+        with caplog.at_level(logging.WARNING):
+            result = load_knowledge(str(tmp_path))
+        assert "MyOperator" in result
+        assert "corrupt.json" in caplog.text
