@@ -102,6 +102,119 @@ FALLBACK_KNOWLEDGE: dict[str, dict[str, Any]] = {
             "Migrate connection URI from Airflow connection to block configuration",
         ],
     },
+    "ShortCircuitOperator": {
+        "concept_type": "operator",
+        "airflow": {"name": "ShortCircuitOperator", "module": "airflow.operators.python"},
+        "prefect_equivalent": {
+            "pattern": "@task with conditional return + flow control",
+            "description": "Replace with @task returning bool; use if/else in @flow to skip downstream",
+        },
+        "translation_rules": [
+            "Replace ShortCircuitOperator with a @task that returns a boolean",
+            "In the @flow, use if/else to conditionally call downstream tasks based on the return value",
+            "Python control flow handles short-circuit behavior natively",
+        ],
+    },
+    "BranchPythonOperator": {
+        "concept_type": "operator",
+        "airflow": {"name": "BranchPythonOperator", "module": "airflow.operators.python"},
+        "prefect_equivalent": {
+            "pattern": "Python if/else in @flow",
+            "description": "Replace with if/else block in the @flow; python_callable return becomes branch condition",
+        },
+        "translation_rules": [
+            "Replace BranchPythonOperator with if/else logic in the @flow",
+            "The python_callable return value (branch task_id) becomes the if/else condition",
+            "Python control flow handles branching natively — no special operator needed",
+        ],
+    },
+    "EmptyOperator": {
+        "concept_type": "operator",
+        "airflow": {"name": "EmptyOperator", "module": "airflow.operators.empty"},
+        "prefect_equivalent": {
+            "pattern": "Remove or use pass",
+            "description": "EmptyOperator is a pure placeholder — remove it or restructure task calls directly",
+        },
+        "translation_rules": [
+            "Remove EmptyOperator nodes — they are pure placeholders with no logic",
+            "If used for wiring (upstream/downstream), restructure task calls directly in @flow",
+        ],
+    },
+    "DummyOperator": {
+        "concept_type": "operator",
+        "airflow": {"name": "DummyOperator", "module": "airflow.operators.dummy"},
+        "prefect_equivalent": {
+            "pattern": "Remove or use pass",
+            "description": "DummyOperator (Airflow <2.4 name for EmptyOperator) — remove it",
+        },
+        "translation_rules": [
+            "DummyOperator is the Airflow <2.4 name for EmptyOperator — treat identically",
+            "Remove nodes; restructure task calls directly if used for wiring",
+        ],
+    },
+    "EmailOperator": {
+        "concept_type": "operator",
+        "airflow": {"name": "EmailOperator", "module": "airflow.operators.email"},
+        "prefect_equivalent": {
+            "pattern": "prefect-email or smtplib @task",
+            "package": "prefect-email",
+            "description": "Use prefect-email EmailServerCredentials block, or wrap smtplib in @task",
+        },
+        "translation_rules": [
+            "Use prefect-email package: EmailServerCredentials block + send_email_message @task",
+            "Alternatively, wrap smtplib.sendmail in a @task for full control",
+        ],
+    },
+    "TriggerDagRunOperator": {
+        "concept_type": "operator",
+        "airflow": {"name": "TriggerDagRunOperator", "module": "airflow.operators.trigger_dagrun"},
+        "prefect_equivalent": {
+            "pattern": "run_deployment() from prefect.deployments",
+            "import": "from prefect.deployments import run_deployment",
+            "description": "Replace with run_deployment() call; DAG ID becomes deployment name",
+        },
+        "translation_rules": [
+            "Replace TriggerDagRunOperator with run_deployment() from prefect.deployments",
+            "trigger_dag_id becomes the deployment name",
+            "conf becomes the parameters dict passed to run_deployment()",
+        ],
+    },
+    "ExternalTaskSensor": {
+        "concept_type": "operator",
+        "airflow": {"name": "ExternalTaskSensor", "module": "airflow.sensors.external_task"},
+        "prefect_equivalent": {
+            "pattern": "Automation trigger or flow parameter",
+            "description": "Use Prefect Automations to trigger on upstream flow completion, or pass results explicitly",
+        },
+        "translation_rules": [
+            "Use Prefect Automations to trigger this flow when an upstream deployment completes",
+            "Alternatively, restructure to pass upstream results explicitly as flow parameters",
+        ],
+    },
+    "FileSensor": {
+        "concept_type": "operator",
+        "airflow": {"name": "FileSensor", "module": "airflow.sensors.filesystem"},
+        "prefect_equivalent": {
+            "pattern": "@task polling loop or watchdog",
+            "description": "Wrap Path.exists() check in @task with retry/delay, or use filesystem event trigger",
+        },
+        "translation_rules": [
+            "Wrap a Path.exists() check in a @task with Prefect retries (max_retries + retry_delay_seconds)",
+            "Alternatively, use a filesystem event trigger via Prefect Automations",
+        ],
+    },
+    "PythonSensor": {
+        "concept_type": "operator",
+        "airflow": {"name": "PythonSensor", "module": "airflow.sensors.python"},
+        "prefect_equivalent": {
+            "pattern": "@task with retry",
+            "description": "The poke callable becomes a @task; use Prefect retries for polling behavior",
+        },
+        "translation_rules": [
+            "Convert the poke callable to a @task",
+            "Use Prefect retries (max_retries + retry_delay_seconds) to replicate polling behavior",
+        ],
+    },
 }
 
 
@@ -206,7 +319,6 @@ def suggestions(query: str, knowledge: dict[str, Any]) -> list[str]:
     Returns:
         List of similar concept names.
     """
-    lower = query.lower()
     all_keys = list(knowledge.keys()) + list(FALLBACK_KNOWLEDGE.keys())
     # Deduplicate while preserving order
     seen: set[str] = set()
@@ -216,14 +328,10 @@ def suggestions(query: str, knowledge: dict[str, Any]) -> list[str]:
             seen.add(k)
             unique_keys.append(k)
 
-    # Score by shared characters / substring overlap
-    scored = []
-    for key in unique_keys:
-        key_lower = key.lower()
-        # Simple overlap: count shared characters
-        shared = sum(1 for c in lower if c in key_lower)
-        if shared > 0:
-            scored.append((shared, key))
+    # Build case-insensitive lookup: lower → original case
+    lower_to_orig: dict[str, str] = {k.lower(): k for k in unique_keys}
+    lower_keys = list(lower_to_orig.keys())
 
-    scored.sort(reverse=True)
-    return [name for _, name in scored[:5]]
+    # Use difflib for fuzzy matching (case-insensitive)
+    close = difflib.get_close_matches(query.lower(), lower_keys, n=5, cutoff=0.4)
+    return [lower_to_orig[k] for k in close]
