@@ -4,9 +4,13 @@ Loads Colin-compiled JSON output when available, falls back to
 minimal built-in mappings otherwise.
 """
 
+import difflib
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Minimal fallback mappings when Colin output is unavailable.
 FALLBACK_KNOWLEDGE: dict[str, dict[str, Any]] = {
@@ -132,7 +136,11 @@ def load_knowledge(colin_output_dir: str = "colin/output") -> dict[str, Any]:
                     for key, value in data.items():
                         if isinstance(value, dict):
                             knowledge[key] = value
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.warning(
+                "Failed to parse %s: %s: %s",
+                json_file.name, type(e).__name__, e
+            )
             continue
 
     return knowledge

@@ -156,11 +156,23 @@ async def scaffold(
 
 def main() -> None:
     """Run the MCP server over stdio."""
+    import logging
     import sys
+    from pathlib import Path
 
     if len(sys.argv) > 1:
         print(f"error: unrecognized arguments: {' '.join(sys.argv[1:])}", file=sys.stderr)
         sys.exit(2)
+
+    colin_dir = Path("colin/output")
+    if not colin_dir.exists() or not list(colin_dir.glob("*.json")):
+        logging.getLogger("airflow_unfactor").warning(
+            "Colin output directory missing or empty (%s). "
+            "Run `colin run` to compile translation knowledge. "
+            "Falling back to built-in operator mappings.",
+            colin_dir,
+        )
+
     mcp.run()
 
 
