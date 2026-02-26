@@ -41,7 +41,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
   2. `lookup_concept("KubernetesPodOp")` (misspelled) returns the Kubernetes entry via fuzzy match rather than bare `not_found`
   3. `lookup_concept` for a common operator not in Colin output (e.g., `ShortCircuitOperator`) returns a fallback entry rather than `not_found`
   4. When a Colin JSON file fails to parse, a warning is logged identifying the filename and error — no silent data loss
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 - [ ] 02-01-PLAN.md — Replace suggestions() with difflib fuzzy matching, expand FALLBACK_KNOWLEDGE to 15 entries (SRVR-02, SRVR-03)
 - [ ] 02-02-PLAN.md — Add startup warning for missing Colin output, log JSON parse errors (SRVR-01, SRVR-04)
 
@@ -75,6 +75,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. P1 Knowledge Expansion | 3/3 | Complete   | 2026-02-26 |
-| 2. Server Quality | 0/2 | Not started | - |
+| 2. Server Quality | 1/2 | In Progress|  |
 | 3. P2 Knowledge Expansion | 0/TBD | Not started | - |
 | 4. Validation Hardening | 0/TBD | Not started | - |
