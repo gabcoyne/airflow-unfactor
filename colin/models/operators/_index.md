@@ -48,3 +48,11 @@ This document aggregates all operator translation mappings.
 ## SSH Provider Operators
 
 {{ ref('operators/sftp').content }}
+
+## Azure Provider Operators
+
+{{ ref('operators/azure').content }}
+
+## dbt Provider Operators
+
+{{ ref('operators/dbt').content }}
