@@ -55,7 +55,10 @@ This milestone transforms the existing MCP server from a well-architected tool w
   3. `lookup_concept("macros.ds_add")` or Jinja pattern lookups return explicit Python equivalents, not `not_found`
   4. `lookup_concept("depends_on_past")` returns an explicit "no direct equivalent" entry with workaround patterns
   5. The `scaffold` tool generates `prefect.yaml` schedule config when a DAG `schedule_interval` is detected, not a placeholder
-**Plans**: 0/TBD — gap closure
+**Plans:** 3 plans
+- [ ] 03-01-PLAN.md — Author Azure (ADF, Wasb) and dbt Cloud Colin models (KNOW-07, KNOW-08)
+- [ ] 03-02-PLAN.md — Expand Jinja macros, add depends_on_past/deferrable concepts, schedule-aware scaffold (KNOW-09, KNOW-10, KNOW-11, KNOW-12)
+- [ ] 03-03-PLAN.md — Compile Colin output JSON, parametrized integration tests (all KNOW-*)
 
 ### Phase 4: Validation Hardening
 **Goal**: The validate tool's comparison checklist explicitly covers all new operator types, and the test suite exercises real-world production-style DAGs containing those operators
@@ -76,5 +79,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. P1 Knowledge Expansion | 3/3 | Complete   | 2026-02-26 |
 | 2. Server Quality | 2/2 | Complete   | 2026-02-26 |
-| 3. P2 Knowledge Expansion | 0/TBD | Not started | - |
+| 3. P2 Knowledge Expansion | 0/3 | In Progress | - |
 | 4. Validation Hardening | 0/TBD | Not started | - |
