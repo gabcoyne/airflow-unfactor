@@ -13,7 +13,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
 - [x] **Phase 1: P1 Knowledge Expansion** - Colin models for the five operators most likely to cause tool failure at enterprise installations (completed 2026-02-26)
 - [x] **Phase 2: Server Quality** - Startup warning, improved suggestion matching, and expanded fallback knowledge (completed 2026-02-26)
 - [x] **Phase 3: P2 Knowledge Expansion** - Azure, dbt, Jinja macros, scheduling, and advanced migration patterns (completed 2026-02-27)
-- [ ] **Phase 4: Validation Hardening** - Expanded validation checklist and real-world DAG regression tests
+- [x] **Phase 4: Validation Hardening** - Expanded validation checklist and real-world DAG regression tests (completed 2026-02-27)
 
 ## Phase Details
 
@@ -68,7 +68,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
   1. Calling `validate` on a flow converted from a Kubernetes DAG returns a checklist item that checks for Kubernetes work pool configuration
   2. Calling `validate` on a Databricks-origin flow returns checklist items checking for `prefect-databricks` block setup and job parameter mapping
   3. The test suite includes at least one fixture DAG per new operator type (Kubernetes, Databricks, Azure, dbt, HTTP, SSH) and all tests pass
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 - [ ] 04-01-PLAN.md — Conditional operator guidance + fixture DAGs + integration tests (VALD-01, VALD-02)
 
 ## Progress
@@ -81,4 +81,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. P1 Knowledge Expansion | 3/3 | Complete   | 2026-02-26 |
 | 2. Server Quality | 2/2 | Complete   | 2026-02-26 |
 | 3. P2 Knowledge Expansion | 3/3 | Complete   | 2026-02-27 |
-| 4. Validation Hardening | 0/1 | Planned | - |
+| 4. Validation Hardening | 1/1 | Complete   | 2026-02-27 |

@@ -34,8 +34,8 @@ Requirements for completeness milestone. Each maps to roadmap phases.
 
 ### Validation
 
-- [ ] **VALD-01**: Expand validate tool `comparison_guidance` checklist for Kubernetes, Databricks, Azure, dbt, HTTP, SSH operator types
-- [ ] **VALD-02**: Test against real-world production-style DAGs covering all new operator types
+- [x] **VALD-01**: Expand validate tool `comparison_guidance` checklist for Kubernetes, Databricks, Azure, dbt, HTTP, SSH operator types
+- [x] **VALD-02**: Test against real-world production-style DAGs covering all new operator types
 
 ## v2 Requirements
 
@@ -88,8 +88,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | KNOW-10 | Phase 3 | Complete |
 | KNOW-11 | Phase 3 | Complete |
 | KNOW-12 | Phase 3 | Complete |
-| VALD-01 | Phase 4 | Pending |
-| VALD-02 | Phase 4 | Pending |
+| VALD-01 | Phase 4 | Complete |
+| VALD-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total
