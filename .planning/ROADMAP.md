@@ -14,7 +14,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
 - [x] **Phase 2: Server Quality** - Startup warning, improved suggestion matching, and expanded fallback knowledge (completed 2026-02-26)
 - [x] **Phase 3: P2 Knowledge Expansion** - Azure, dbt, Jinja macros, scheduling, and advanced migration patterns (completed 2026-02-27)
 - [x] **Phase 4: Validation Hardening** - Expanded validation checklist and real-world DAG regression tests (completed 2026-02-27)
-- [ ] **Phase 5: Scaffold MCP Wiring** - Forward schedule_interval through MCP scaffold wrapper to close KNOW-12 gap
+- [x] **Phase 5: Scaffold MCP Wiring** - Forward schedule_interval through MCP scaffold wrapper to close KNOW-12 gap (completed 2026-02-27)
 
 ## Phase Details
 
@@ -81,7 +81,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
   1. Calling the MCP `scaffold` tool with `schedule_interval="0 6 * * *"` generates a prefect.yaml with `cron: "0 6 * * *"` in the deployments section
   2. Calling the MCP `scaffold` tool without `schedule_interval` generates the same output as before (no regression)
   3. All existing tests pass plus new MCP-level scaffold schedule test
-**Plans:** 0/TBD — gap closure
+**Plans:** 1/1 plans complete
 
 ## Progress
 
@@ -94,4 +94,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Server Quality | 2/2 | Complete   | 2026-02-26 |
 | 3. P2 Knowledge Expansion | 3/3 | Complete   | 2026-02-27 |
 | 4. Validation Hardening | 1/1 | Complete   | 2026-02-27 |
-| 5. Scaffold MCP Wiring | 0/TBD | Not started | - |
+| 5. Scaffold MCP Wiring | 1/1 | Complete   | 2026-02-27 |

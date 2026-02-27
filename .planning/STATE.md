@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-27T04:11:03.428Z"
+last_updated: "2026-02-27T14:13:40.257Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Progress: [██████████] 100% (10 of ~10 total plans across ph
 | Phase 03-p2-knowledge-expansion P02 | 4 | 2 tasks | 6 files |
 | Phase 03-p2-knowledge-expansion P03 | 7 | 2 tasks | 6 files |
 | Phase 04-validation-hardening P01 | 103 | 2 tasks | 8 files |
+| Phase 05-scaffold-mcp-wiring P01 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 03-p2-knowledge-expansion P03]: depends_on_past (underscore) added as separate key alongside depends-on-past (dash) — Airflow uses underscores in Python code
 - [Phase 04-01]: validate.py appends extras only when detected; base 9-item guidance unchanged so existing tests need no modification
 - [Phase 04-01]: Guidance items use descriptive labels (Kubernetes:, Databricks:, etc.) to avoid numbering conflicts when multiple operators appear
+- [Phase 05-scaffold-mcp-wiring]: MCP scaffold() wrapper now forwards schedule_interval to scaffold_project(), closing KNOW-12 gap
+- [Phase 05-scaffold-mcp-wiring]: schedule_interval placed as last optional param in scaffold() to avoid breaking existing MCP callers
 
 ### Pending Todos
 
