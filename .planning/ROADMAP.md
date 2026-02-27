@@ -14,6 +14,7 @@ This milestone transforms the existing MCP server from a well-architected tool w
 - [x] **Phase 2: Server Quality** - Startup warning, improved suggestion matching, and expanded fallback knowledge (completed 2026-02-26)
 - [x] **Phase 3: P2 Knowledge Expansion** - Azure, dbt, Jinja macros, scheduling, and advanced migration patterns (completed 2026-02-27)
 - [x] **Phase 4: Validation Hardening** - Expanded validation checklist and real-world DAG regression tests (completed 2026-02-27)
+- [ ] **Phase 5: Scaffold MCP Wiring** - Forward schedule_interval through MCP scaffold wrapper to close KNOW-12 gap
 
 ## Phase Details
 
@@ -71,10 +72,21 @@ This milestone transforms the existing MCP server from a well-architected tool w
 **Plans:** 1/1 plans complete
 - [ ] 04-01-PLAN.md — Conditional operator guidance + fixture DAGs + integration tests (VALD-01, VALD-02)
 
+### Phase 5: Scaffold MCP Wiring
+**Goal**: The MCP `scaffold` tool forwards `schedule_interval` to `scaffold_project()` so LLMs can generate schedule-aware prefect.yaml through the tool surface
+**Depends on**: Phase 3
+**Requirements**: KNOW-12
+**Gap Closure**: Closes KNOW-12 partial gap from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. Calling the MCP `scaffold` tool with `schedule_interval="0 6 * * *"` generates a prefect.yaml with `cron: "0 6 * * *"` in the deployments section
+  2. Calling the MCP `scaffold` tool without `schedule_interval` generates the same output as before (no regression)
+  3. All existing tests pass plus new MCP-level scaffold schedule test
+**Plans:** 0/TBD — gap closure
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -82,3 +94,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Server Quality | 2/2 | Complete   | 2026-02-26 |
 | 3. P2 Knowledge Expansion | 3/3 | Complete   | 2026-02-27 |
 | 4. Validation Hardening | 1/1 | Complete   | 2026-02-27 |
+| 5. Scaffold MCP Wiring | 0/TBD | Not started | - |

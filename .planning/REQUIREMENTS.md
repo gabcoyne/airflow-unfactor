@@ -23,7 +23,7 @@ Requirements for completeness milestone. Each maps to roadmap phases.
 - [x] **KNOW-09**: Extended Jinja macro patterns: `{{ macros.ds_add() }}`, `{{ dag_run.conf }}`, `{{ next_ds }}`, `{{ prev_ds }}`, `{{ run_id }}`
 - [x] **KNOW-10**: `depends_on_past` concept entry with explicit "no direct equivalent" workarounds
 - [x] **KNOW-11**: Deferrable operator / async sensor migration gotchas (poke vs reschedule vs deferrable semantics)
-- [x] **KNOW-12**: Schedule translation in scaffold tool: `schedule_interval`/cron → `prefect.yaml` schedule config
+- [ ] **KNOW-12**: Schedule translation in scaffold tool: `schedule_interval`/cron → `prefect.yaml` schedule config (MCP wiring gap — impl complete, MCP wrapper pending)
 
 ### Server Quality
 
@@ -87,7 +87,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | KNOW-09 | Phase 3 | Complete |
 | KNOW-10 | Phase 3 | Complete |
 | KNOW-11 | Phase 3 | Complete |
-| KNOW-12 | Phase 3 | Complete |
+| KNOW-12 | Phase 5 | Pending |
 | VALD-01 | Phase 4 | Complete |
 | VALD-02 | Phase 4 | Complete |
 
