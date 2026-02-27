@@ -374,3 +374,80 @@ def pipeline():
     ...
 ```
 {% endsection %}
+
+{% section jinja-template-variables %}
+## id
+jinja-template-variables
+
+## airflow_pattern
+Jinja2 template variables rendered by Airflow's template engine at task execution time. Operators accept template fields where `{{ variable }}` syntax is evaluated before the operator runs.
+
+## prefect_pattern
+Pure Python via `prefect.runtime` module, flow parameters, and `prefect.variables`. No template engine — write Python directly. Import `from prefect import runtime` and access the runtime context as a regular object.
+
+## rules
+- `{{ ds }}` → `runtime.flow_run.scheduled_start_time.strftime("%Y-%m-%d")`
+  - Intent: the logical execution date as a date string. In Airflow this is the start of the schedule interval; in Prefect use `scheduled_start_time`.
+- `{{ ts }}` → `runtime.flow_run.scheduled_start_time.isoformat()`
+  - Intent: the full ISO 8601 timestamp of the scheduled run.
+- `{{ execution_date }}` → `runtime.flow_run.scheduled_start_time`
+  - Intent: a datetime object for the scheduled run time. In Prefect this is a `datetime` with timezone.
+- `{{ ds_nodash }}` → `runtime.flow_run.scheduled_start_time.strftime("%Y%m%d")`
+  - Intent: date string without separators, useful for file paths and partition keys.
+- `{{ run_id }}` → `runtime.flow_run.name` or `str(runtime.flow_run.id)`
+  - Intent: a unique identifier for this specific run. `flow_run.name` is human-readable; `flow_run.id` is the UUID.
+- `{{ dag_run.conf }}` → flow function parameters (typed)
+  - Intent: runtime configuration passed when triggering the DAG/flow. In Prefect, pass as typed flow parameters rather than an untyped dict.
+- `{{ params.x }}` → flow function parameter `x`
+  - Intent: a DAG-level parameter with a default value. Becomes a typed function parameter.
+- `{{ var.value.x }}` → `Variable.get("x")` from `prefect.variables`
+  - Intent: a globally stored configuration value. Import `from prefect.variables import Variable`.
+- `{{ macros.ds_add(ds, N) }}` → `(datetime.strptime(ds, "%Y-%m-%d") + timedelta(days=N)).strftime("%Y-%m-%d")`
+  - Intent: add N days to a date string. Use `from datetime import datetime, timedelta` directly.
+- `{{ macros.ds_format(ds, input_format, output_format) }}` → `datetime.strptime(ds, input_format).strftime(output_format)`
+  - Intent: reformat a date string. Pure Python datetime.
+- `{{ macros.datetime }}` → `from datetime import datetime`
+  - Intent: access to Python's datetime class. Use it directly in your code.
+- `{{ macros.timedelta }}` → `from datetime import timedelta`
+  - Intent: access to Python's timedelta class. Use it directly in your code.
+- `{{ task_instance.task_id }}` → `runtime.task_run.task_name` (within a `@task`)
+  - Intent: the name of the currently running task. Access from `prefect.runtime` inside a `@task`.
+- `{{ next_ds }}` and `{{ prev_ds }}` — PARADIGM SHIFT: Prefect flows don't own their schedule — the deployment does. There is no built-in `next_ds` or `prev_ds`. If the interval matters, pass it as a flow parameter: `def my_flow(scheduled_date: datetime, interval_days: int = 1)`. Compute next/prev from `scheduled_start_time` and the interval parameter.
+
+## example
+### before
+```python
+def process(**context):
+    ds = context["ds"]                          # "2024-01-15"
+    ds_nodash = context["ds_nodash"]            # "20240115"
+    run_id = context["run_id"]                  # "scheduled__2024-01-15T00:00:00+00:00"
+    env = context["params"]["env"]              # "prod"
+    api_key = Variable.get("api_key")           # Airflow Variable
+    next_date = macros.ds_add(ds, 7)            # "2024-01-22"
+
+BashOperator(
+    task_id="export",
+    bash_command="dump --date {{ ds }} --env {{ params.env }}",
+)
+```
+### after
+```python
+from datetime import datetime, timedelta
+from prefect import flow, task, runtime
+from prefect.variables import Variable
+
+@task
+def process(env: str, api_key: str):
+    ds = runtime.flow_run.scheduled_start_time.strftime("%Y-%m-%d")
+    ds_nodash = runtime.flow_run.scheduled_start_time.strftime("%Y%m%d")
+    run_id = runtime.flow_run.name
+    next_date = (datetime.strptime(ds, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
+    # Use ds, ds_nodash, run_id, next_date as plain Python strings
+    subprocess.run(["dump", "--date", ds, "--env", env])
+
+@flow
+def my_flow(env: str = "prod"):
+    api_key = Variable.get("api_key")
+    process(env=env, api_key=api_key)
+```
+{% endsection %}

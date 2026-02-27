@@ -564,6 +564,180 @@ deployments:
 ```
 {% endsection %}
 
+{% section depends-on-past %}
+## id
+depends-on-past
+
+## airflow
+### name
+depends_on_past
+### description
+Prevents a task from running if its previous DAG run instance failed. Enforces sequential data integrity across scheduled runs — each run can only proceed if the same task in the prior run succeeded.
+### module
+airflow.models.dag
+
+## prefect
+### name
+No direct equivalent
+### description
+Prefect flows are stateless by default — each run is independent. There is no built-in mechanism to check whether the previous run's tasks succeeded before starting the current run.
+### equivalent: none
+### workaround
+Query the Prefect API at flow start to check the previous run's state. If it failed, raise an exception to abort the current run.
+
+```python
+from prefect import flow, get_client
+from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterFlowName
+from prefect.client.schemas.sorting import FlowRunSort
+
+@flow
+async def my_flow():
+    async with get_client() as client:
+        # Fetch the most recent prior run of this same flow
+        runs = await client.read_flow_runs(
+            flow_run_filter=FlowRunFilter(
+                name=FlowRunFilterFlowName(like_="my-flow-%"),
+            ),
+            sort=FlowRunSort.EXPECTED_START_TIME_DESC,
+            limit=2,  # current + previous
+        )
+        prior_runs = [r for r in runs if r.state_name != "Running"]
+        if prior_runs and prior_runs[0].state.is_failed():
+            raise RuntimeError(
+                f"Previous run {prior_runs[0].name} failed — "
+                "aborting to enforce sequential data integrity."
+            )
+    # proceed with the rest of the flow
+    ...
+```
+
+## rules
+- There is no drop-in replacement. If data integrity requires sequential success, query the Prefect API at the start of the flow.
+- This is an explicit choice — most Prefect flows benefit from independent runs. Only add this pattern if your data pipeline genuinely requires strict sequential integrity (e.g., cumulative aggregations, incremental loads with no idempotency).
+- This Airflow concept achieves sequential data integrity — each run depends on the previous one completing successfully. In Prefect, this paradigm doesn't exist because flows are designed to be independent. The workaround is to explicitly query for the previous run's state.
+- Honest and opinionated: no direct equivalent. Here's what we recommend instead — keep flows independent and design for idempotency instead. Use this workaround only when truly necessary.
+
+## example
+### before
+```python
+with DAG("daily_aggregate", schedule_interval="@daily") as dag:
+    compute = PythonOperator(
+        task_id="compute",
+        python_callable=run_aggregation,
+        depends_on_past=True,  # skip if yesterday failed
+    )
+```
+### after
+```python
+@flow
+async def daily_aggregate():
+    # Explicit guard: abort if the previous run failed
+    async with get_client() as client:
+        runs = await client.read_flow_runs(...)
+        if prior_runs and prior_runs[0].state.is_failed():
+            raise RuntimeError("Previous run failed — enforcing sequential integrity")
+    compute()
+```
+{% endsection %}
+
+{% section deferrable-operators %}
+## id
+deferrable-operators
+
+## airflow
+### name
+Deferrable Operators / Async Sensors
+### description
+A deferrable operator suspends itself and frees the worker slot while waiting for an external event, handing off to a Trigger component running in the Triggerer service. Avoids wasting worker resources on long-running waits — the operator is "parked" cheaply until the condition is met.
+### module
+airflow.sensors.base (BaseSensorOperator with deferrable=True)
+
+## prefect
+### name
+No direct equivalent
+### description
+Prefect 3.x does not have Airflow-style deferrable operators. There is no Triggerer component. Workers hold the thread/process for the duration of a task run unless you explicitly structure around it.
+### equivalent: none
+### workaround
+Choose a pattern based on your wait duration:
+
+**Pattern 1 — Short waits (< 5 minutes): retry on failure**
+```python
+@task(retries=30, retry_delay_seconds=10)
+def wait_for_s3_object(bucket: str, key: str):
+    """Polls S3 every 10s, up to 5 minutes."""
+    import boto3
+    s3 = boto3.client("s3")
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+    except s3.exceptions.ClientError:
+        raise  # triggers retry
+```
+Note: the worker holds the slot between retries. Same overhead as Airflow's poke mode.
+
+**Pattern 2 — Long waits (minutes to hours): event-driven with Automations**
+```
+1. External system emits a Prefect event (via REST API or prefect-events SDK)
+2. Prefect Automation triggers a deployment run when the event arrives
+3. No worker held during the wait
+```
+This is the closest conceptual equivalent to Airflow's reschedule mode. The flow is not running during the wait — a new run starts when the event fires.
+
+**Pattern 3 — Polling loops with explicit sleep (same trade-off as Airflow poke mode)**
+```python
+import time
+from prefect import task
+
+@task(timeout_seconds=3600)
+def poll_until_ready(check_fn, interval: int = 60):
+    """Poll every interval seconds until check_fn returns True."""
+    while not check_fn():
+        time.sleep(interval)
+```
+Worker holds the slot the entire time. Use only for short waits or when Automations are not feasible.
+
+## rules
+- Prefect 3.x does not have Airflow-style deferrable operators. There is no Triggerer component.
+- If resource efficiency during long waits is critical, use Automations + event-driven deployment triggers (Pattern 2). This is the architecture that most closely matches the intent of deferrable operators.
+- For short polling (< 5 min): use Prefect retries (Pattern 1). Workers hold slots between retries, but the overall cost is acceptable at short intervals.
+- Be honest: Patterns 1 and 3 both hold worker resources during the wait, which is exactly what deferrable operators were designed to avoid. If worker resource efficiency is paramount, commit to Pattern 2 (event-driven).
+- This Airflow concept achieves resource efficiency during long waits — the worker is freed while a lightweight Trigger polls. In Prefect, this paradigm doesn't exist because there is no Triggerer component.
+
+## example
+### before
+```python
+from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
+
+wait_for_data = S3KeySensor(
+    task_id="wait_for_data",
+    bucket_name="my-bucket",
+    bucket_key="data/{{ ds }}/input.csv",
+    deferrable=True,          # free the worker slot during wait
+    poke_interval=60,
+    timeout=7200,
+)
+```
+### after
+```python
+# Pattern 1: short waits — retry approach
+from prefect import task
+
+@task(retries=120, retry_delay_seconds=60)
+def wait_for_s3_data(bucket: str, key: str) -> None:
+    """Check S3 every 60s, up to 2 hours. Worker holds slot."""
+    import boto3
+    s3 = boto3.client("s3")
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+    except Exception:
+        raise  # retry
+
+# Pattern 2: long waits — event-driven (no worker held)
+# Configure an Automation: trigger deployment when event "s3.data.ready" fires.
+# Upstream process emits: emit_event(event="s3.data.ready", resource={"key": key})
+```
+{% endsection %}
+
 {% section schedule-timetable %}
 ## id
 schedule-timetable
