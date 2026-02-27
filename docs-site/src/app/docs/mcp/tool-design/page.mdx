@@ -76,11 +76,11 @@ We intentionally **do not parse DAGs into AST structures**. LLMs are better at r
 
 ### Why Not Generate Code?
 
-The tools provide knowledge, not code. LLMs generate better code when given rich context than any template system could produce:
+The tools provide knowledge, not code. The LLM does the generation:
 
-- Rich context enables LLM creativity
-- Idiomatic output matching target conventions
-- Extensible through better knowledge, not more templates
+- Source code and translation rules in, working Prefect code out
+- Idiomatic output that matches how a Prefect developer would write it
+- Improve results by improving knowledge, not maintaining templates
 
 ## Tool Categories
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 
 # Documentation
 
-LLM-native tools for converting Airflow DAGs to Prefect flows.
+An MCP server that converts Airflow DAGs to Prefect flows.
 
 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
   <Link href="/docs/getting-started/installation" className="block">
@@ -44,7 +44,7 @@ LLM-native tools for converting Airflow DAGs to Prefect flows.
 
 **Deterministic code templating is brittle.** Airflow and Prefect are architecturally dissimilar—edge cases are inevitable.
 
-Instead, we provide **translation knowledge and live documentation** that enable LLMs to generate complete, functional Prefect flows using their knowledge of Python and Prefect patterns.
+Instead, we give the LLM raw source code and **translation knowledge compiled from live sources**. It generates the Prefect code. Not a scaffold with TODOs — working code.
 
 ## Workflow
 

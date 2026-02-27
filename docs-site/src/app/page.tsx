@@ -168,7 +168,7 @@ export default function Home() {
                 className="group gap-2 rounded-full bg-gradient-to-r from-chart-1 via-chart-3 to-chart-2 px-8 text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
               >
                 <Link href="/docs">
-                  Begin Transformation
+                  Get Started
                   <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 </Link>
               </Button>
@@ -212,7 +212,7 @@ export default function Home() {
                 <div className="terminal-dot terminal-dot-yellow" />
                 <div className="terminal-dot terminal-dot-green" />
                 <span className="ml-3 text-xs text-muted-foreground font-mono">
-                  transformation.py
+                  convert.py
                 </span>
               </div>
               <pre className="overflow-x-auto p-6 text-sm leading-relaxed">
@@ -269,9 +269,8 @@ export default function Home() {
               <span className="text-muted-foreground">LLMs are adaptive.</span>
             </h2>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-              Traditional conversion tools rely on rigid templates that break on edge cases.
-              We provide rich, structured payloads that enable LLMs to generate
-              idiomatic, context-aware Prefect code that actually works.
+              Traditional conversion tools rely on rigid templates that break on the first edge case.
+              We give the LLM raw source code and translation knowledge. It writes the Prefect code.
             </p>
           </div>
 
@@ -300,10 +299,10 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-2">
-                <p>• Rich context enables adaptive generation</p>
-                <p>• Idiomatic code tailored to each DAG</p>
-                <p>• Handles complex patterns naturally</p>
-                <p>• Continuous improvement with model updates</p>
+                <p>• Source code + translation knowledge in, working code out</p>
+                <p>• Idiomatic Prefect, not templates with TODOs</p>
+                <p>• Handles custom operators and edge cases</p>
+                <p>• Gets better as models get better</p>
               </CardContent>
             </Card>
           </div>
@@ -324,7 +323,7 @@ export default function Home() {
             >
               Everything you need
               <br />
-              <span className="text-gradient">for transformation</span>
+              <span className="text-gradient">to convert DAGs</span>
             </h2>
           </div>
 
@@ -423,7 +422,7 @@ export default function Home() {
               <span className="text-gradient">migrate</span>?
             </h2>
             <p className="mt-6 text-lg text-muted-foreground">
-              Let your LLM generate clean Prefect flows from comprehensive DAG analysis.
+              Five MCP tools. Any Airflow DAG. Working Prefect code.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
@@ -457,7 +456,7 @@ export default function Home() {
                   airflow-unfactor
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  LLM-native DAG transformation
+                  Airflow to Prefect, the fast way
                 </p>
               </div>
             </div>
