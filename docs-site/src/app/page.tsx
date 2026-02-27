@@ -70,7 +70,7 @@ export default function Home() {
                 airflow-unfactor
               </span>
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Digital Alchemy
+                DAG Migration
               </span>
             </div>
           </Link>
@@ -156,8 +156,8 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl leading-relaxed">
-              LLM-native analysis that transmutes Apache Airflow DAGs into
-              idiomatic Prefect flows. Rich payloads. Intelligent context. Validated output.
+              Point it at an Airflow DAG and get idiomatic Prefect code back.
+              Raw source in, working flow out. Thirty seconds, not thirty hours.
             </p>
 
             {/* CTA buttons */}
@@ -420,7 +420,7 @@ export default function Home() {
               style={{ fontFamily: 'var(--font-display)' }}
             >
               Ready to{" "}
-              <span className="text-gradient">transmute</span>?
+              <span className="text-gradient">migrate</span>?
             </h2>
             <p className="mt-6 text-lg text-muted-foreground">
               Let your LLM generate clean Prefect flows from comprehensive DAG analysis.

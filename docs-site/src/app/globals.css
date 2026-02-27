@@ -52,9 +52,9 @@
 }
 
 /*
- * DIGITAL ALCHEMY THEME
+ * MIGRATION THEME
  * Transformation from Airflow (warm orange) to Prefect (cool blue)
- * with alchemical gold accents representing the "transmutation"
+ * with gold accents marking the transition
  */
 
 :root {
@@ -63,8 +63,8 @@
   /* Transformation colors */
   --airflow-orange: oklch(0.72 0.18 45);
   --prefect-blue: oklch(0.55 0.20 255);
-  --alchemy-gold: oklch(0.78 0.16 85);
-  --transmute-violet: oklch(0.58 0.22 300);
+  --accent-gold: oklch(0.78 0.16 85);
+  --transition-violet: oklch(0.58 0.22 300);
 
   /* Light mode - crisp and luminous */
   --background: oklch(0.985 0.005 260);
@@ -87,7 +87,7 @@
   --muted: oklch(0.95 0.01 260);
   --muted-foreground: oklch(0.50 0.02 260);
 
-  /* Accent: Alchemy gold - the catalyst */
+  /* Accent: Gold - the transition point */
   --accent: oklch(0.78 0.16 85);
   --accent-foreground: oklch(0.25 0.05 85);
 
