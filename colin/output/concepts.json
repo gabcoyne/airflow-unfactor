@@ -1,0 +1,396 @@
+{
+  "dag-to-flow": {
+    "id": "dag-to-flow",
+    "airflow": {
+      "name": "DAG (Directed Acyclic Graph)",
+      "description": "Top-level workflow container. Defined with `DAG()` context manager or `@dag` decorator. Contains tasks and their dependencies.",
+      "module": "airflow.models.dag"
+    },
+    "prefect": {
+      "name": "Flow",
+      "description": "Top-level workflow container. Defined with `@flow` decorator on a Python function.",
+      "package": "prefect",
+      "import_statement": "from prefect import flow"
+    },
+    "rules": [
+      "Replace `with DAG(...) as dag:` context manager with `@flow` decorator",
+      "DAG `dag_id` becomes the flow function name or `name=` parameter",
+      "`schedule_interval` / `schedule` moves to deployment configuration in `prefect.yaml`",
+      "`default_args` like `retries`, `retry_delay` become `@task` decorator defaults",
+      "`catchup=False` has no direct equivalent; Prefect deployments run from creation time by default",
+      "`tags` map directly to `@flow(tags=[...])`",
+      "`params` become flow function parameters with type annotations"
+    ],
+    "example": {
+      "before": "```python\nfrom airflow import DAG\nfrom datetime import datetime\n\nwith DAG(\n    dag_id=\"etl_pipeline\",\n    schedule_interval=\"0 6 * * *\",\n    start_date=datetime(2024, 1, 1),\n    catchup=False,\n    tags=[\"etl\"],\n) as dag:\n    ...\n```",
+      "after": "```python\nfrom prefect import flow\n\n@flow(name=\"etl-pipeline\", tags=[\"etl\"])\ndef etl_pipeline():\n    ...\n```"
+    },
+    "related": [
+      "operator-to-task",
+      "schedule-cron"
+    ]
+  },
+  "operator-to-task": {
+    "id": "operator-to-task",
+    "airflow": {
+      "name": "Operator",
+      "description": "Base unit of work in a DAG. Each operator type wraps specific logic (Python callable, Bash command, SQL query, etc.).",
+      "module": "airflow.models.baseoperator"
+    },
+    "prefect": {
+      "name": "Task",
+      "description": "Base unit of work in a flow. Defined with `@task` decorator on a Python function.",
+      "package": "prefect",
+      "import_statement": "from prefect import task"
+    },
+    "rules": [
+      "Replace each operator instantiation with a `@task`-decorated function",
+      "The operator's `task_id` becomes the function name",
+      "`python_callable` (PythonOperator) becomes the function body",
+      "`op_args` / `op_kwargs` become function parameters",
+      "`retries` maps to `@task(retries=N)`",
+      "`retry_delay` maps to `@task(retry_delay_seconds=N)`",
+      "`trigger_rule` requires state inspection (see trigger-rule pattern)",
+      "`pool` maps to work pool / task concurrency limits"
+    ],
+    "example": {
+      "before": "```python\ntask1 = PythonOperator(\n    task_id=\"extract\",\n    python_callable=extract_data,\n    op_kwargs={\"source\": \"api\"},\n    retries=3,\n)\n```",
+      "after": "```python\n@task(retries=3)\ndef extract(source: str):\n    return extract_data(source=source)\n```"
+    },
+    "related": [
+      "dag-to-flow",
+      "xcom-to-return-values"
+    ]
+  },
+  "xcom-to-return-values": {
+    "id": "xcom-to-return-values",
+    "airflow": {
+      "name": "XCom",
+      "description": "Cross-communication mechanism for passing data between tasks. Tasks push/pull via `ti.xcom_push()` / `ti.xcom_pull()`.",
+      "module": "airflow.models.xcom"
+    },
+    "prefect": {
+      "name": "Task return values",
+      "description": "Tasks return values directly. Downstream tasks receive them as function arguments.",
+      "package": "prefect",
+      "import_statement": "from prefect import task, flow"
+    },
+    "rules": [
+      "Replace `ti.xcom_push(key, value)` with `return value` from the task",
+      "Replace `ti.xcom_pull(task_ids='...')` with passing the upstream task's return value as a parameter",
+      "Multiple return values: return a dict or tuple",
+      "For large data, use Prefect artifacts or result serializers instead of returning directly",
+      "Remove all `provide_context=True` arguments (no longer needed)"
+    ],
+    "example": {
+      "before": "```python\ndef extract(**context):\n    data = fetch_api()\n    context['ti'].xcom_push(key='data', value=data)\n\ndef transform(**context):\n    data = context['ti'].xcom_pull(task_ids='extract', key='data')\n    return process(data)\n```",
+      "after": "```python\n@task\ndef extract():\n    return fetch_api()\n\n@task\ndef transform(data):\n    return process(data)\n\n@flow\ndef pipeline():\n    data = extract()\n    result = transform(data)\n```"
+    },
+    "gotchas": [
+      "Prefect task results must be serializable",
+      "Large datasets should use result storage, not return values",
+      "XCom with custom keys: restructure to use multiple return values or a dict"
+    ]
+  },
+  "connection-to-block": {
+    "id": "connection-to-block",
+    "airflow": {
+      "name": "Connection",
+      "description": "Stores credentials and connection parameters for external systems. Managed via Airflow UI/CLI/env.",
+      "module": "airflow.models.connection"
+    },
+    "prefect": {
+      "name": "Block",
+      "description": "Typed configuration objects storing credentials and connection parameters. Created via UI, CLI, or code.",
+      "package": "prefect",
+      "import_statement": "from prefect.blocks.core import Block"
+    },
+    "rules": [
+      "Each Airflow connection type maps to a specific Prefect block type",
+      "Create blocks via `prefect block register` then configure in UI, or create in code",
+      "Replace `BaseHook.get_connection(conn_id)` with `Block.load(\"block-name\")`",
+      "Connection extras map to block configuration fields",
+      "See connections.md for specific connection-to-block mappings"
+    ],
+    "example": {
+      "before": "```python\nfrom airflow.hooks.base import BaseHook\nconn = BaseHook.get_connection(\"postgres_default\")\nuri = conn.get_uri()\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\nconnector = SqlAlchemyConnector.load(\"postgres-default\")\n```"
+    },
+    "related": [
+      "hook-to-integration-client"
+    ]
+  },
+  "variable-to-prefect-variable": {
+    "id": "variable-to-prefect-variable",
+    "airflow": {
+      "name": "Variable",
+      "description": "Key-value store for DAG configuration. Accessed via `Variable.get()`.",
+      "module": "airflow.models.variable"
+    },
+    "prefect": {
+      "name": "Variable",
+      "description": "Key-value store for flow configuration. Accessed via `variables.get()`.",
+      "package": "prefect",
+      "import_statement": "from prefect.variables import Variable"
+    },
+    "rules": [
+      "Replace `Variable.get(\"key\")` with `Variable.get(\"key\")` (similar API)",
+      "Replace `Variable.get(\"key\", default)` with `Variable.get(\"key\", default=default)`",
+      "JSON variables: `Variable.get(\"key\", deserialize_json=True)` becomes `json.loads(Variable.get(\"key\"))`",
+      "Set variables via CLI: `prefect variable set key=value`",
+      "Consider using Prefect blocks for structured configuration instead of flat variables"
+    ],
+    "example": {
+      "before": "```python\nfrom airflow.models import Variable\napi_url = Variable.get(\"api_url\")\nconfig = Variable.get(\"config\", deserialize_json=True)\n```",
+      "after": "```python\nfrom prefect.variables import Variable\napi_url = Variable.get(\"api_url\")\nconfig = json.loads(Variable.get(\"config\"))\n```"
+    }
+  },
+  "sensor-to-polling": {
+    "id": "sensor-to-polling",
+    "airflow": {
+      "name": "Sensor",
+      "description": "Operators that wait for a condition to be met before proceeding. Supports `poke` and `reschedule` modes.",
+      "module": "airflow.sensors.base"
+    },
+    "prefect": {
+      "name": "Polling task or event trigger",
+      "description": "Use a task with retry/polling logic, or Prefect events and automations for event-driven patterns.",
+      "package": "prefect",
+      "import_statement": "from prefect import task"
+    },
+    "rules": [
+      "Simple sensors: convert to a `@task` with a polling loop and `time.sleep()`",
+      "`poke_interval` becomes the sleep duration in the polling loop",
+      "`timeout` becomes task timeout or max retries",
+      "`mode='reschedule'` sensors: use `@task(retries=N, retry_delay_seconds=M)`",
+      "For file sensors: use `pathlib.Path.exists()` in a polling task",
+      "For external trigger sensors: use Prefect events + automations",
+      "S3/GCS sensors: use integration packages with polling"
+    ],
+    "example": {
+      "before": "```python\nwait_for_file = FileSensor(\n    task_id=\"wait_for_file\",\n    filepath=\"/data/input.csv\",\n    poke_interval=60,\n    timeout=3600,\n)\n```",
+      "after": "```python\n@task(retries=60, retry_delay_seconds=60)\ndef wait_for_file(filepath: str):\n    from pathlib import Path\n    if not Path(filepath).exists():\n        raise Exception(f\"File {filepath} not found, retrying...\")\n    return filepath\n```"
+    }
+  },
+  "dataset-to-automation": {
+    "id": "dataset-to-automation",
+    "airflow": {
+      "name": "Dataset",
+      "description": "Represents a logical dataset that triggers downstream DAGs when updated.",
+      "module": "airflow.datasets"
+    },
+    "prefect": {
+      "name": "Automation / Event",
+      "description": "Use Prefect events and automations for data-driven triggering between flows.",
+      "package": "prefect",
+      "import_statement": "from prefect.events import emit_event"
+    },
+    "rules": [
+      "Replace `Dataset(\"s3://bucket/path\")` with Prefect event emission",
+      "Producer DAG: emit an event when data is ready using `emit_event()`",
+      "Consumer DAG: create an automation that triggers the flow on the event",
+      "Alternative: use `run_deployment()` to directly trigger downstream flows"
+    ],
+    "example": {
+      "before": "```python\n# Producer\ndag = DAG(schedule=[Dataset(\"s3://bucket/output\")])\n\n# Consumer\ndag = DAG(schedule=[Dataset(\"s3://bucket/output\")])\n```",
+      "after": "```python\n# Producer flow\n@flow\ndef producer():\n    write_data()\n    emit_event(event=\"data.ready\", resource={\"prefect.resource.id\": \"s3://bucket/output\"})\n\n# Automation triggers consumer flow on \"data.ready\" event\n```"
+    }
+  },
+  "hook-to-integration-client": {
+    "id": "hook-to-integration-client",
+    "airflow": {
+      "name": "Hook",
+      "description": "Interface to external systems (databases, APIs, cloud services). Wraps connections with typed clients.",
+      "module": "airflow.hooks.base"
+    },
+    "prefect": {
+      "name": "Integration block/client",
+      "description": "Prefect integration packages provide typed blocks that wrap external system clients.",
+      "package": "varies by integration",
+      "import_statement": "varies by integration"
+    },
+    "rules": [
+      "Replace `SomeHook(conn_id)` with the corresponding Prefect integration block",
+      "Hook methods map to block methods (often similar names)",
+      "`get_conn()` becomes loading the block and accessing its client",
+      "Common mappings: PostgresHook \u2192 SqlAlchemyConnector, S3Hook \u2192 S3Bucket, GCSHook \u2192 GcsBucket"
+    ],
+    "example": {
+      "before": "```python\nfrom airflow.providers.postgres.hooks.postgres import PostgresHook\nhook = PostgresHook(postgres_conn_id=\"my_db\")\nrecords = hook.get_records(\"SELECT * FROM table\")\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\nconnector = SqlAlchemyConnector.load(\"my-db\")\nwith connector.get_connection() as conn:\n    records = conn.execute(\"SELECT * FROM table\").fetchall()\n```"
+    }
+  },
+  "pool-to-work-pool": {
+    "id": "pool-to-work-pool",
+    "airflow": {
+      "name": "Pool",
+      "description": "Limits concurrent task execution across DAGs. Tasks assigned to a pool share its slot limit.",
+      "module": "airflow.models.pool"
+    },
+    "prefect": {
+      "name": "Work pool / concurrency limit",
+      "description": "Work pools manage infrastructure for flow runs. Concurrency limits control parallel execution.",
+      "package": "prefect",
+      "import_statement": "from prefect import task"
+    },
+    "rules": [
+      "Airflow pools limiting concurrency: use `@task(tags=[\"pool-name\"])` with tag-based concurrency limits",
+      "Set concurrency limits via CLI: `prefect concurrency-limit create pool-name N`",
+      "For infrastructure-level pooling: use work pools with concurrency settings",
+      "`pool_slots` parameter: use task-level concurrency via tags"
+    ],
+    "example": {
+      "before": "```python\ntask = PythonOperator(\n    task_id=\"api_call\",\n    pool=\"api_pool\",\n    pool_slots=1,\n    python_callable=call_api,\n)\n```",
+      "after": "```python\n@task(tags=[\"api-pool\"])\ndef api_call():\n    return call_api()\n\n# CLI: prefect concurrency-limit create api-pool 5\n```"
+    }
+  },
+  "callback-to-state-hook": {
+    "id": "callback-to-state-hook",
+    "airflow": {
+      "name": "Callbacks",
+      "description": "Functions called on task/DAG state changes: `on_success_callback`, `on_failure_callback`, `on_retry_callback`.",
+      "module": "airflow.models.baseoperator"
+    },
+    "prefect": {
+      "name": "State change hooks",
+      "description": "Functions triggered on flow/task state transitions. Defined as `on_completion`, `on_failure`, `on_cancellation`.",
+      "package": "prefect",
+      "import_statement": "from prefect import flow, task"
+    },
+    "rules": [
+      "`on_success_callback` \u2192 `on_completion` (check state is Completed)",
+      "`on_failure_callback` \u2192 `on_failure`",
+      "`on_retry_callback` \u2192 no direct equivalent; use retry hooks or custom logic",
+      "DAG-level callbacks \u2192 `@flow(on_failure=[...], on_completion=[...])`",
+      "Task-level callbacks \u2192 `@task(on_failure=[...], on_completion=[...])`",
+      "For complex alerting: use Prefect automations instead of inline callbacks"
+    ],
+    "example": {
+      "before": "```python\ndef alert_on_failure(context):\n    send_slack(f\"Task {context['task_instance'].task_id} failed\")\n\ntask = PythonOperator(\n    task_id=\"etl\",\n    on_failure_callback=alert_on_failure,\n)\n```",
+      "after": "```python\ndef alert_on_failure(flow, flow_run, state):\n    send_slack(f\"Flow {flow_run.name} failed\")\n\n@flow(on_failure=[alert_on_failure])\ndef etl():\n    ...\n```"
+    }
+  },
+  "schedule-cron": {
+    "id": "schedule-cron",
+    "airflow": {
+      "name": "Schedule (cron)",
+      "description": "Cron expressions or timedelta for DAG scheduling via `schedule_interval` or `schedule`.",
+      "module": "airflow.models.dag"
+    },
+    "prefect": {
+      "name": "Deployment schedule",
+      "description": "Schedules defined in deployment configuration (`prefect.yaml` or `flow.deploy()`).",
+      "package": "prefect",
+      "import_statement": "from prefect import flow"
+    },
+    "rules": [
+      "`schedule_interval=\"0 6 * * *\"` \u2192 `cron: \"0 6 * * *\"` in `prefect.yaml` schedule",
+      "`schedule_interval=timedelta(hours=1)` \u2192 `interval: 3600` in deployment",
+      "`schedule_interval=\"@daily\"` \u2192 `cron: \"0 0 * * *\"`",
+      "Schedules are NOT on the flow itself \u2014 they live in deployment config",
+      "Multiple schedules per deployment are supported"
+    ],
+    "example": {
+      "before": "```python\ndag = DAG(\n    dag_id=\"hourly_etl\",\n    schedule_interval=\"0 * * * *\",\n)\n```",
+      "after": "```yaml\n# prefect.yaml\ndeployments:\n  - name: hourly-etl\n    flow: flows/etl.py:hourly_etl\n    schedule:\n      cron: \"0 * * * *\"\n```"
+    }
+  },
+  "schedule-timetable": {
+    "id": "schedule-timetable",
+    "airflow": {
+      "name": "Timetable",
+      "description": "Custom scheduling logic beyond cron. Allows business-day-only schedules, event-driven triggers, etc.",
+      "module": "airflow.timetables.base"
+    },
+    "prefect": {
+      "name": "RRule or custom schedule",
+      "description": "Use RRule schedules for complex patterns, or automations for event-driven triggering.",
+      "package": "prefect",
+      "import_statement": "from prefect.client.schemas.schedules import RRuleSchedule"
+    },
+    "rules": [
+      "Simple timetables (business days): use RRule with `BYDAY`",
+      "Complex custom timetables: use Prefect automations for event-driven triggering",
+      "Data-dependent schedules: use `emit_event()` + automations",
+      "AfterDatasetChanged timetable: convert to event-based automation"
+    ],
+    "example": {
+      "before": "```python\nfrom airflow.timetables.trigger import CronTriggerTimetable\ndag = DAG(\n    timetable=CronTriggerTimetable(\"0 9 * * MON-FRI\"),\n)\n```",
+      "after": "```yaml\n# prefect.yaml\ndeployments:\n  - name: business-days\n    schedule:\n      rrule: \"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=9\"\n```"
+    }
+  },
+  "depends_on_past": {
+    "id": "depends_on_past",
+    "concept_type": "concept",
+    "airflow": {
+      "name": "depends_on_past",
+      "description": "Prevents a task from running if its previous DAG run instance failed. Enforces sequential data integrity across scheduled runs.",
+      "module": "airflow.models.dag"
+    },
+    "prefect": {
+      "name": "No direct equivalent",
+      "description": "Prefect flows are stateless by default — each run is independent. There is no built-in mechanism to check whether the previous run's tasks succeeded before starting the current run.",
+      "equivalent": "none"
+    },
+    "workaround": "Query the Prefect API at flow start to check the previous run's state using get_client(). If the previous run failed, raise RuntimeError to abort.",
+    "rules": [
+      "no direct equivalent — Prefect flows are independent by design.",
+      "Use the Prefect API workaround to query prior run state at flow start if sequential integrity is truly required.",
+      "Most flows benefit from independence and idempotency rather than sequential dependency."
+    ]
+  },
+  "depends-on-past": {
+    "id": "depends-on-past",
+    "airflow": {
+      "name": "depends_on_past",
+      "description": "Prevents a task from running if its previous DAG run instance failed. Enforces sequential data integrity across scheduled runs — each run can only proceed if the same task in the prior run succeeded.",
+      "module": "airflow.models.dag"
+    },
+    "prefect": {
+      "name": "No direct equivalent",
+      "description": "Prefect flows are stateless by default — each run is independent. There is no built-in mechanism to check whether the previous run's tasks succeeded before starting the current run.",
+      "equivalent": "none"
+    },
+    "workaround": "Query the Prefect API at flow start to check the previous run's state. If it failed, raise an exception to abort the current run. Use async with get_client() as client: runs = await client.read_flow_runs(...) and check prior_runs[0].state.is_failed().",
+    "rules": [
+      "There is no drop-in replacement. If data integrity requires sequential success, query the Prefect API at the start of the flow.",
+      "no direct equivalent — most Prefect flows benefit from independent runs. Only add this pattern for strict sequential integrity (cumulative aggregations, incremental loads with no idempotency).",
+      "This Airflow concept achieves sequential data integrity — each run depends on the previous one completing successfully. In Prefect, this paradigm does not exist because flows are designed to be independent.",
+      "Honest and opinionated: no direct equivalent. Keep flows independent and design for idempotency instead. Use the workaround only when truly necessary."
+    ],
+    "example": {
+      "before": "```python\nwith DAG(\"daily_aggregate\", schedule_interval=\"@daily\") as dag:\n    compute = PythonOperator(\n        task_id=\"compute\",\n        python_callable=run_aggregation,\n        depends_on_past=True,\n    )\n```",
+      "after": "```python\nfrom prefect import flow, get_client\nfrom prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterFlowName\nfrom prefect.client.schemas.sorting import FlowRunSort\n\n@flow\nasync def daily_aggregate():\n    async with get_client() as client:\n        runs = await client.read_flow_runs(\n            flow_run_filter=FlowRunFilter(\n                name=FlowRunFilterFlowName(like_=\"daily-aggregate-%\"),\n            ),\n            sort=FlowRunSort.EXPECTED_START_TIME_DESC,\n            limit=2,\n        )\n        prior_runs = [r for r in runs if r.state_name != \"Running\"]\n        if prior_runs and prior_runs[0].state.is_failed():\n            raise RuntimeError(\"Previous run failed — enforcing sequential integrity\")\n    compute()\n```"
+    }
+  },
+  "deferrable-operators": {
+    "id": "deferrable-operators",
+    "airflow": {
+      "name": "Deferrable Operators / Async Sensors",
+      "description": "A deferrable operator suspends itself and frees the worker slot while waiting for an external event, handing off to a Trigger component running in the Triggerer service. Avoids wasting worker resources on long-running waits.",
+      "module": "airflow.sensors.base (BaseSensorOperator with deferrable=True)"
+    },
+    "prefect": {
+      "name": "No direct equivalent",
+      "description": "Prefect 3.x does not have Airflow-style deferrable operators. There is no Triggerer component. Workers hold the thread/process for the duration of a task run unless you explicitly structure around it.",
+      "equivalent": "none"
+    },
+    "workaround": "Choose a pattern based on wait duration: (1) Short waits < 5 min: use @task(retries=N, retry_delay_seconds=M) — worker holds slot between retries. (2) Long waits — hours: use Prefect Automations triggered by events (closest to reschedule mode). (3) Explicit polling loop: @task with time.sleep() — same worker overhead as poke mode.",
+    "rules": [
+      "Prefect 3.x does not have Airflow-style deferrable operators. There is no Triggerer component.",
+      "If resource efficiency during long waits is critical, use Automations + event-driven deployment triggers (Pattern 2). This is the architecture most closely matching deferrable operators.",
+      "For short polling (< 5 min): use Prefect retries (Pattern 1). Workers hold slots between retries.",
+      "Be honest: Patterns 1 and 3 both hold worker resources during the wait, which is exactly what deferrable operators were designed to avoid.",
+      "no direct equivalent — the paradigm of a lightweight Triggerer component does not exist in Prefect 3.x."
+    ],
+    "patterns": {
+      "pattern_1_short_waits": "Use @task(retries=30, retry_delay_seconds=10) for < 5 minute waits. Worker holds slot between retries.",
+      "pattern_2_long_waits_automations": "Use Prefect Automations triggered by events for long waits (minutes to hours). External system emits event via prefect-events SDK; Automation triggers deployment run. No worker held during wait.",
+      "pattern_3_polling_loop": "Use @task(timeout_seconds=3600) with explicit time.sleep() polling loop. Worker holds slot. Use only for short waits or when Automations are not feasible."
+    },
+    "example": {
+      "before": "```python\nfrom airflow.providers.amazon.aws.sensors.s3 import S3KeySensor\n\nwait_for_data = S3KeySensor(\n    task_id=\"wait_for_data\",\n    bucket_name=\"my-bucket\",\n    bucket_key=\"data/{{ ds }}/input.csv\",\n    deferrable=True,\n    poke_interval=60,\n    timeout=7200,\n)\n```",
+      "after": "```python\n# Pattern 1: short waits\n@task(retries=120, retry_delay_seconds=60)\ndef wait_for_s3_data(bucket: str, key: str) -> None:\n    import boto3\n    s3 = boto3.client(\"s3\")\n    try:\n        s3.head_object(Bucket=bucket, Key=key)\n    except Exception:\n        raise  # retry\n\n# Pattern 2: long waits (no worker held)\n# Configure Automation: trigger deployment when event \"s3.data.ready\" fires\n# emit_event(event=\"s3.data.ready\", resource={\"key\": key})\n```"
+    }
+  }
+}

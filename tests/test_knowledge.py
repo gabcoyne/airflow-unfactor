@@ -146,9 +146,9 @@ class TestNormalizeQuery:
         assert result == "ds_add(ds, 5)"
 
     def test_normalize_var_value(self):
-        """Strips var.value. prefix from variable lookup syntax."""
+        """Maps var.value.* prefix to canonical var_value key for Variable.get() lookup."""
         result = normalize_query("var.value.my_key")
-        assert result == "my_key"
+        assert result == "var_value"
 
     def test_normalize_plain(self):
         """Plain operator names pass through unchanged."""

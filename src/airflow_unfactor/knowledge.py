@@ -222,8 +222,9 @@ FALLBACK_KNOWLEDGE: dict[str, dict[str, Any]] = {
 def normalize_query(query: str) -> str:
     """Normalize Jinja-style queries for lookup.
 
-    Strips {{ }}, macros., and var.value. prefixes so that
-    lookup_concept("{{ macros.ds_add(ds, 5) }}") finds the ds_add entry.
+    Strips {{ }} and macros. prefix; maps var.value.* to "var_value" so that
+    lookup_concept("{{ macros.ds_add(ds, 5) }}") finds the ds_add entry and
+    lookup_concept("var.value.my_key") finds the Variable.get() translation.
 
     Args:
         query: The raw query string, possibly wrapped in Jinja syntax.
@@ -239,9 +240,11 @@ def normalize_query(query: str) -> str:
     # Strip macros. prefix
     if q.startswith("macros."):
         q = q[len("macros."):]
-    # Strip var.value. prefix
+    # Normalize var.value. prefix — map to canonical "var_value" key
+    # Stripping to just the key name (e.g., "my_key") would lose all context;
+    # mapping to "var_value" routes to the Variable.get() translation entry.
     if q.startswith("var.value."):
-        q = q[len("var.value."):]
+        q = "var_value"
     return q
 
 

@@ -1,0 +1,40 @@
+{
+  "DbtCloudRunJobOperator": {
+    "name": "DbtCloudRunJobOperator",
+    "concept_type": "operator",
+    "intent": "Triggers a dbt Cloud job and waits for it to complete. Used in DAGs that orchestrate dbt transformations as part of an ELT pipeline — for example, running a dbt Cloud job after raw data loads into the warehouse, before downstream reporting or analytics tasks execute. The operator handles the trigger-then-poll lifecycle and surfaces job logs on failure.",
+    "airflow": {
+      "name": "DbtCloudRunJobOperator",
+      "module": "airflow.providers.dbt.cloud.operators.dbt",
+      "source_context": "Operator uses dbt_cloud_conn_id, job_id, account_id (optional, defaults to connection value), trigger_reason (string label for the triggered run), and wait_for_termination (True by default). It calls the dbt Cloud API to trigger a job run, then polls until the run reaches a terminal state, raising AirflowException on failure."
+    },
+    "prefect_equivalent": {
+      "pattern": "trigger_dbt_cloud_job_run_and_wait_for_completion",
+      "package": "prefect-dbt[cloud]",
+      "import": "from prefect import flow\nfrom prefect_dbt.cloud import DbtCloudCredentials\nfrom prefect_dbt.cloud.jobs import trigger_dbt_cloud_job_run_and_wait_for_completion",
+      "description": "trigger_dbt_cloud_job_run_and_wait_for_completion from prefect_dbt.cloud.jobs with a DbtCloudCredentials block. The credentials block stores the dbt Cloud API key and account ID — load it by name in your flow. The function handles the full trigger-then-poll lifecycle, matching DbtCloudRunJobOperator's default wait_for_termination=True behavior."
+    },
+    "translation_rules": [
+      "Use trigger_dbt_cloud_job_run_and_wait_for_completion NOT the fire-and-forget trigger_dbt_cloud_job_run",
+      "DbtCloudRunJobOperator waits by default (wait_for_termination=True) — match this with the _and_wait_for_completion variant",
+      "Create a DbtCloudCredentials block with api_key and account_id — load by name in the flow",
+      "The account_id lives in the DbtCloudCredentials block — you do not need to pass it separately",
+      "retry_filtered_models_attempts re-runs only failed models, not the full job — set to 0 to disable",
+      "Install: uv pip install 'prefect-dbt[cloud]'"
+    ],
+    "notes": [
+      "Use trigger_dbt_cloud_job_run_and_wait_for_completion NOT the fire-and-forget trigger_dbt_cloud_job_run",
+      "Install: uv pip install 'prefect-dbt[cloud]'",
+      "Credential block setup: DbtCloudCredentials(api_key='dbt_api_key_here', account_id=123456789).save('my-dbt-credentials')",
+      "The account_id lives in the DbtCloudCredentials block — you do not need to pass it separately to the task function",
+      "retry_filtered_models_attempts re-runs only the failed models, not the full job — set to 0 to disable, or 1-3 for typical usage",
+      "If the dbt Cloud job fails, trigger_dbt_cloud_job_run_and_wait_for_completion raises an exception with job run details",
+      "For Cosmos/dbt Core (running dbt CLI commands, not dbt Cloud): use DbtCoreOperation from prefect_dbt.core — DbtCloudRunJobOperator specifically maps to the Cloud API approach"
+    ],
+    "example": {
+      "before": "from airflow.providers.dbt.cloud.operators.dbt import DbtCloudRunJobOperator\n\nrun_dbt_job = DbtCloudRunJobOperator(\n    task_id='run_dbt_transformations',\n    dbt_cloud_conn_id='dbt_cloud_default',\n    job_id=12345,\n    trigger_reason='Triggered by Airflow DAG daily_elt',\n    wait_for_termination=True,\n)",
+      "after": "from prefect import flow, task\nfrom prefect_dbt.cloud import DbtCloudCredentials\nfrom prefect_dbt.cloud.jobs import trigger_dbt_cloud_job_run_and_wait_for_completion\n\n@flow\ndef run_dbt_transformations(job_id: int = 12345):\n    credentials = DbtCloudCredentials.load('my-dbt-credentials')\n    result = trigger_dbt_cloud_job_run_and_wait_for_completion(\n        dbt_cloud_credentials=credentials,\n        job_id=job_id,\n        trigger_reason='Triggered by Prefect flow daily_elt',\n        retry_filtered_models_attempts=3,\n    )\n    return result"
+    },
+    "related_concepts": ["prefect-dbt-cloud", "dbt-cloud-credentials", "trigger-and-wait-pattern"]
+  }
+}
