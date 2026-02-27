@@ -3,12 +3,55 @@
 import json
 from pathlib import Path
 
+# Airflow preset schedule names → cron equivalents
+_PRESET_CRON: dict[str, str] = {
+    "@daily": "0 0 * * *",
+    "@hourly": "0 * * * *",
+    "@weekly": "0 0 * * 0",
+    "@monthly": "0 0 1 * *",
+    "@yearly": "0 0 1 1 *",
+    "@annually": "0 0 1 1 *",
+}
+
+
+def _schedule_yaml(schedule_interval: str | None) -> str:
+    """Generate the schedules YAML block for a deployment entry.
+
+    Per project conventions: when schedule_interval is None or @once,
+    omit the schedules section entirely — no comments, no placeholders.
+
+    Args:
+        schedule_interval: A cron string, preset alias (@daily, etc.),
+            seconds as a digit string, or None.
+
+    Returns:
+        YAML string for the schedules block (with leading indentation),
+        or empty string if no schedule should be emitted.
+    """
+    if not schedule_interval or schedule_interval.strip() == "@once":
+        return ""
+
+    interval = schedule_interval.strip()
+
+    # Preset alias conversion
+    if interval in _PRESET_CRON:
+        cron = _PRESET_CRON[interval]
+        return f'    schedules:\n      - cron: "{cron}"\n'
+
+    # Interval in seconds (pure digits)
+    if interval.isdigit():
+        return f"    schedules:\n      - interval: {interval}\n"
+
+    # Cron expression (contains spaces or starts with @)
+    return f'    schedules:\n      - cron: "{interval}"\n'
+
 
 async def scaffold_project(
     output_directory: str,
     project_name: str | None = None,
     include_docker: bool = True,
     include_github_actions: bool = True,
+    schedule_interval: str | None = None,
 ) -> str:
     """Generate a clean project skeleton for Prefect flows.
 
@@ -22,6 +65,9 @@ async def scaffold_project(
         project_name: Project name (defaults to directory name)
         include_docker: Include Dockerfile and docker-compose.yml
         include_github_actions: Include CI workflow
+        schedule_interval: Cron string, preset alias (@daily, etc.),
+            seconds as digits, or None. Generates real schedule config in
+            prefect.yaml when provided; omits schedules section when None.
 
     Returns:
         JSON with scaffold report including created directories and next steps
@@ -53,7 +99,7 @@ async def scaffold_project(
     _write_conftest(dirs["tests"])
     created_files.append("tests/conftest.py")
 
-    _write_prefect_yaml(output_dir, project_name)
+    _write_prefect_yaml(output_dir, project_name, schedule_interval)
     created_files.append("prefect.yaml")
 
     if include_docker:
@@ -74,6 +120,7 @@ async def scaffold_project(
             "docker": include_docker,
             "ci": include_github_actions,
         },
+        "schedule": schedule_interval,
         "next_steps": [
             "1. Use analyze() to analyze your Airflow DAGs",
             "2. Use get_context() to fetch relevant Prefect patterns",
@@ -181,8 +228,41 @@ def prefect_harness():
     (tests_dir / "conftest.py").write_text(content)
 
 
-def _write_prefect_yaml(output_dir: Path, project_name: str) -> None:
-    """Write prefect.yaml deployment configuration template."""
+def _write_prefect_yaml(
+    output_dir: Path,
+    project_name: str,
+    schedule_interval: str | None = None,
+) -> None:
+    """Write prefect.yaml deployment configuration template.
+
+    When schedule_interval is provided, generates a real deployment entry
+    with schedule config. When None, keeps a commented-out example.
+    """
+    schedule_block = _schedule_yaml(schedule_interval)
+
+    if schedule_block:
+        # Real deployment entry with schedule
+        deployments_section = (
+            f"deployments:\n"
+            f"  - name: {project_name}\n"
+            f"    entrypoint: deployments/default/{project_name}/flow.py:{project_name}\n"
+            f"{schedule_block}"
+            f"    work_pool: *default_pool\n"
+        )
+    else:
+        # Commented-out example (no schedule)
+        deployments_section = (
+            "deployments:\n"
+            "  # Example deployment:\n"
+            "  # - name: My Flow\n"
+            "  #   description: Converted from Airflow DAG 'my_dag'\n"
+            "  #   entrypoint: deployments/default/my-flow/flow.py:my_flow\n"
+            "  #   schedules:\n"
+            "  #     - *hourly\n"
+            "  #   work_pool: *default_pool\n"
+            "  []\n"
+        )
+
     content = f"""# Prefect deployment configuration
 # See: https://docs.prefect.io/concepts/deployments/
 
@@ -210,16 +290,7 @@ definitions:
       cron: "0 0 * * *"
 
 # Deployments - add your flows here
-deployments:
-  # Example deployment:
-  # - name: My Flow
-  #   description: Converted from Airflow DAG 'my_dag'
-  #   entrypoint: deployments/default/my-flow/flow.py:my_flow
-  #   schedules:
-  #     - *hourly
-  #   work_pool: *default_pool
-  []
-"""
+{deployments_section}"""
     (output_dir / "prefect.yaml").write_text(content)
 
 

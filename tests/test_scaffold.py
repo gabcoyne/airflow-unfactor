@@ -8,6 +8,7 @@ import asyncio
 import json
 
 from airflow_unfactor.tools.scaffold import (
+    _schedule_yaml,
     _write_conftest,
     _write_docker_compose,
     _write_dockerfile,
@@ -216,3 +217,151 @@ class TestWriteGithubWorkflow:
         content = workflow_path.read_text()
         assert "pytest" in content
         assert "actions/checkout" in content
+
+
+class TestScheduleYaml:
+    """Tests for _schedule_yaml helper function."""
+
+    def test_none_returns_empty(self):
+        """None schedule_interval returns empty string."""
+        assert _schedule_yaml(None) == ""
+
+    def test_empty_string_returns_empty(self):
+        """Empty string returns empty string."""
+        assert _schedule_yaml("") == ""
+
+    def test_once_returns_empty(self):
+        """@once schedule returns empty string."""
+        assert _schedule_yaml("@once") == ""
+
+    def test_cron_string(self):
+        """Cron expression generates cron block."""
+        result = _schedule_yaml("0 6 * * *")
+        assert 'cron: "0 6 * * *"' in result
+        assert "schedules:" in result
+
+    def test_interval_seconds(self):
+        """Digit-only string generates interval block."""
+        result = _schedule_yaml("3600")
+        assert "interval: 3600" in result
+        assert "schedules:" in result
+
+    def test_preset_daily(self):
+        """@daily preset maps to cron 0 0 * * *."""
+        result = _schedule_yaml("@daily")
+        assert 'cron: "0 0 * * *"' in result
+
+    def test_preset_hourly(self):
+        """@hourly preset maps to cron 0 * * * *."""
+        result = _schedule_yaml("@hourly")
+        assert 'cron: "0 * * * *"' in result
+
+    def test_preset_weekly(self):
+        """@weekly preset maps to cron 0 0 * * 0."""
+        result = _schedule_yaml("@weekly")
+        assert 'cron: "0 0 * * 0"' in result
+
+    def test_preset_monthly(self):
+        """@monthly preset maps to cron 0 0 1 * *."""
+        result = _schedule_yaml("@monthly")
+        assert 'cron: "0 0 1 * *"' in result
+
+
+class TestScheduleTranslation:
+    """Tests for schedule_interval parameter in scaffold_project."""
+
+    def test_scaffold_with_cron_schedule(self, tmp_path):
+        """scaffold_project with cron schedule generates cron in prefect.yaml."""
+        output_dir = tmp_path / "output"
+        asyncio.run(
+            scaffold_project(
+                output_directory=str(output_dir),
+                project_name="my_flow",
+                schedule_interval="0 6 * * *",
+            )
+        )
+        content = (output_dir / "prefect.yaml").read_text()
+        assert 'cron: "0 6 * * *"' in content
+        # Should be under deployments section (real entry, not commented)
+        lines = content.splitlines()
+        cron_line = next((i for i, l in enumerate(lines) if 'cron: "0 6 * * *"' in l), None)
+        assert cron_line is not None, "cron line not found"
+        # Verify it's not commented out
+        assert not lines[cron_line].lstrip().startswith("#")
+
+    def test_scaffold_with_interval_schedule(self, tmp_path):
+        """scaffold_project with seconds string generates interval in prefect.yaml."""
+        output_dir = tmp_path / "output"
+        asyncio.run(
+            scaffold_project(
+                output_directory=str(output_dir),
+                project_name="my_flow",
+                schedule_interval="3600",
+            )
+        )
+        content = (output_dir / "prefect.yaml").read_text()
+        assert "interval: 3600" in content
+
+    def test_scaffold_with_no_schedule(self, tmp_path):
+        """scaffold_project with no schedule omits schedules from real deployment."""
+        output_dir = tmp_path / "output"
+        asyncio.run(
+            scaffold_project(
+                output_directory=str(output_dir),
+                project_name="my_flow",
+                schedule_interval=None,
+            )
+        )
+        content = (output_dir / "prefect.yaml").read_text()
+        # deployments section should exist but have no real (uncommented) deployment
+        assert "deployments:" in content
+        # The real deployments list should be empty ([]); cron may appear in commented examples
+        assert "  []" in content
+
+    def test_scaffold_with_once_schedule(self, tmp_path):
+        """scaffold_project with @once omits schedules section."""
+        output_dir = tmp_path / "output"
+        asyncio.run(
+            scaffold_project(
+                output_directory=str(output_dir),
+                project_name="my_flow",
+                schedule_interval="@once",
+            )
+        )
+        content = (output_dir / "prefect.yaml").read_text()
+        # Should behave like None — no real deployment with schedules
+        assert "  []" in content
+
+    def test_scaffold_with_preset_daily(self, tmp_path):
+        """scaffold_project with @daily generates cron 0 0 * * * in prefect.yaml."""
+        output_dir = tmp_path / "output"
+        asyncio.run(
+            scaffold_project(
+                output_directory=str(output_dir),
+                project_name="my_flow",
+                schedule_interval="@daily",
+            )
+        )
+        content = (output_dir / "prefect.yaml").read_text()
+        assert 'cron: "0 0 * * *"' in content
+
+    def test_scaffold_report_includes_schedule(self, tmp_path):
+        """scaffold_project result JSON includes schedule field."""
+        output_dir = tmp_path / "output"
+        result_json = asyncio.run(
+            scaffold_project(
+                output_directory=str(output_dir),
+                schedule_interval="0 6 * * *",
+            )
+        )
+        result = json.loads(result_json)
+        assert result["schedule"] == "0 6 * * *"
+
+    def test_scaffold_report_schedule_none(self, tmp_path):
+        """scaffold_project result JSON has schedule: null when not provided."""
+        output_dir = tmp_path / "output"
+        result_json = asyncio.run(
+            scaffold_project(output_directory=str(output_dir))
+        )
+        result = json.loads(result_json)
+        assert result["schedule"] is None

@@ -10,6 +10,7 @@ from airflow_unfactor.knowledge import (
     FALLBACK_KNOWLEDGE,
     load_knowledge,
     lookup,
+    normalize_query,
     suggestions,
 )
 
@@ -134,6 +135,52 @@ class TestPhase1Operators:
         result = lookup(operator_name, knowledge)
         assert result["status"] == "found", f"{operator_name} not found in Colin output"
         assert result["source"] == "colin", f"{operator_name} found but source is {result['source']}, expected colin"
+
+
+class TestNormalizeQuery:
+    """Tests for normalize_query function (KNOW-09 query normalization)."""
+
+    def test_normalize_jinja_wrapper(self):
+        """Strips {{ }} and macros. prefix from Jinja macro syntax."""
+        result = normalize_query("{{ macros.ds_add(ds, 5) }}")
+        assert result == "ds_add(ds, 5)"
+
+    def test_normalize_var_value(self):
+        """Strips var.value. prefix from variable lookup syntax."""
+        result = normalize_query("var.value.my_key")
+        assert result == "my_key"
+
+    def test_normalize_plain(self):
+        """Plain operator names pass through unchanged."""
+        result = normalize_query("PythonOperator")
+        assert result == "PythonOperator"
+
+    def test_normalize_jinja_simple_ds(self):
+        """Strips {{ }} from simple ds variable."""
+        result = normalize_query("{{ ds }}")
+        assert result == "ds"
+
+    def test_normalize_macros_no_jinja(self):
+        """Strips macros. prefix even without {{ }} wrapping."""
+        result = normalize_query("macros.ds_add")
+        assert result == "ds_add"
+
+    def test_normalize_whitespace(self):
+        """Leading/trailing whitespace is stripped."""
+        result = normalize_query("  PythonOperator  ")
+        assert result == "PythonOperator"
+
+    def test_normalize_jinja_whitespace_inside(self):
+        """Internal whitespace in {{ }} is handled."""
+        result = normalize_query("{{  ds  }}")
+        assert result == "ds"
+
+    def test_lookup_with_jinja_syntax(self):
+        """lookup() resolves Jinja-wrapped concept via normalize_query."""
+        knowledge = {"ds_add": {"concept_type": "jinja-macro", "description": "add days"}}
+        result = lookup("{{ macros.ds_add(ds, 5) }}", knowledge)
+        # After normalization: "ds_add(ds, 5)" — substring match finds "ds_add"
+        assert result["status"] == "found"
 
 
 class TestParseErrorLogging:

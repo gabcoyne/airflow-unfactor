@@ -7,6 +7,7 @@ minimal built-in mappings otherwise.
 import difflib
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -218,6 +219,32 @@ FALLBACK_KNOWLEDGE: dict[str, dict[str, Any]] = {
 }
 
 
+def normalize_query(query: str) -> str:
+    """Normalize Jinja-style queries for lookup.
+
+    Strips {{ }}, macros., and var.value. prefixes so that
+    lookup_concept("{{ macros.ds_add(ds, 5) }}") finds the ds_add entry.
+
+    Args:
+        query: The raw query string, possibly wrapped in Jinja syntax.
+
+    Returns:
+        Normalized query string suitable for knowledge lookup.
+    """
+    q = query.strip()
+    # Strip {{ }} wrapper
+    match = re.match(r"^\{\{\s*(.+?)\s*\}\}$", q)
+    if match:
+        q = match.group(1)
+    # Strip macros. prefix
+    if q.startswith("macros."):
+        q = q[len("macros."):]
+    # Strip var.value. prefix
+    if q.startswith("var.value."):
+        q = q[len("var.value."):]
+    return q
+
+
 def load_knowledge(colin_output_dir: str = "colin/output") -> dict[str, Any]:
     """Load compiled knowledge from Colin output directory.
 
@@ -263,6 +290,8 @@ def lookup(concept: str, knowledge: dict[str, Any]) -> dict[str, Any]:
     """Look up a concept in the knowledge base.
 
     Tries exact match first, then case-insensitive, then substring.
+    Normalizes Jinja syntax before lookup so that queries like
+    "{{ macros.ds_add(ds, 5) }}" resolve to the ds_add entry.
 
     Args:
         concept: The concept to look up (operator name, pattern, etc.)
@@ -271,6 +300,8 @@ def lookup(concept: str, knowledge: dict[str, Any]) -> dict[str, Any]:
     Returns:
         The matching entry, or a not_found result with suggestions.
     """
+    concept = normalize_query(concept)
+
     # Exact match
     if concept in knowledge:
         return {"status": "found", "source": "colin", **knowledge[concept]}
