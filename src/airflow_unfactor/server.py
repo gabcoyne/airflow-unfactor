@@ -129,6 +129,7 @@ async def scaffold(
     flow_names: list[str] | None = None,
     include_docker: bool = True,
     include_github_actions: bool = True,
+    schedule_interval: str | None = None,
 ) -> str:
     """Generate a Prefect project directory structure.
 
@@ -142,6 +143,7 @@ async def scaffold(
         flow_names: List of flow names to create directories for
         include_docker: Include Dockerfile template
         include_github_actions: Include CI workflow template
+        schedule_interval: Cron string, preset (@daily etc.), seconds, or None.
 
     Returns:
         JSON with created_directories, created_files, prefect_yaml_template, next_steps
@@ -151,6 +153,7 @@ async def scaffold(
         project_name=project_name,
         include_docker=include_docker,
         include_github_actions=include_github_actions,
+        schedule_interval=schedule_interval,
     )
 
 
