@@ -2,8 +2,13 @@
 
 import asyncio
 import json
+from pathlib import Path
+
+import pytest
 
 from airflow_unfactor.tools.validate import validate_conversion
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 class TestValidateConversion:
@@ -66,3 +71,62 @@ class TestValidateConversion:
         assert "dependencies" in guidance.lower() or "dependency" in guidance.lower()
         assert "XCom" in guidance or "xcom" in guidance.lower()
         assert "connections" in guidance.lower() or "Connections" in guidance
+
+
+class TestPhase4Validation:
+    """VALD-01 + VALD-02: operator-specific guidance and production-style fixture DAGs."""
+
+    @pytest.mark.parametrize(
+        "fixture_name,expected_fragment",
+        [
+            ("kubernetes_pod_operator.py", "Kubernetes"),
+            ("databricks_submit_run.py", "prefect-databricks"),
+            ("azure_data_factory.py", "prefect-azure"),
+            ("dbt_cloud_run_job.py", "prefect-dbt"),
+            ("http_operator.py", "httpx"),
+            ("ssh_operator.py", "Secret block"),
+        ],
+    )
+    def test_operator_specific_guidance(self, fixture_name, expected_fragment):
+        """validate_conversion returns operator-specific checklist items."""
+        dag_source = (FIXTURES_DIR / fixture_name).read_text()
+        flow_stub = "from prefect import flow\n\n@flow\ndef stub(): pass"
+        result = json.loads(asyncio.run(validate_conversion(dag_source, flow_stub)))
+        guidance = result["comparison_guidance"]
+        assert expected_fragment in guidance, (
+            f"Expected '{expected_fragment}' in guidance for {fixture_name};\n"
+            f"Got: {guidance}"
+        )
+
+    def test_base_guidance_unchanged_for_plain_dag(self):
+        """Plain DAG without new operators returns only base guidance."""
+        dag_source = (
+            "from airflow import DAG\n"
+            "from airflow.operators.python import PythonOperator\n"
+            "dag = DAG('simple')"
+        )
+        flow_stub = "from prefect import flow\n\n@flow\ndef stub(): pass"
+        result = json.loads(asyncio.run(validate_conversion(dag_source, flow_stub)))
+        guidance = result["comparison_guidance"]
+        assert "Kubernetes" not in guidance
+        assert "Databricks" not in guidance
+        assert "Azure" not in guidance
+        assert "dbt Cloud" not in guidance
+        assert "httpx" not in guidance
+        assert "Secret block" not in guidance
+        # Base items still present
+        assert "tasks" in guidance.lower()
+        assert "dependencies" in guidance.lower()
+
+    def test_multiple_operator_types_in_one_dag(self):
+        """DAG with multiple new operator types gets all relevant guidance."""
+        dag_source = (
+            "from airflow import DAG\n"
+            "from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator\n"
+            "from airflow.providers.http.operators.http import SimpleHttpOperator\n"
+        )
+        flow_stub = "from prefect import flow\n\n@flow\ndef stub(): pass"
+        result = json.loads(asyncio.run(validate_conversion(dag_source, flow_stub)))
+        guidance = result["comparison_guidance"]
+        assert "Kubernetes" in guidance
+        assert "httpx" in guidance
