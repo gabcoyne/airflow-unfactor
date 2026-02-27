@@ -241,6 +241,119 @@ class TestSuggestionsFuzzy:
         )
 
 
+class TestPhase3Integration:
+    """End-to-end integration tests for Phase 3 knowledge requirements (KNOW-07 through KNOW-12).
+
+    These tests use the real colin/output/ directory (not mocks) to verify that
+    Colin models authored in Plans 01 and 02 are compiled to JSON and discoverable
+    through the full lookup pipeline.
+    """
+
+    COLIN_OUTPUT_DIR = str(Path(__file__).parent.parent / "colin" / "output")
+
+    @pytest.mark.parametrize("operator_name,expected_content", [
+        ("AzureDataFactoryRunPipelineOperator", "ARCHITECTURE SHIFT"),  # KNOW-07
+        ("WasbOperator", "AzureBlobStorageCredentials"),                # KNOW-07
+        ("DbtCloudRunJobOperator", "trigger_dbt_cloud_job_run_and_wait_for_completion"),  # KNOW-08
+    ])
+    def test_phase3_operator_lookup(self, operator_name, expected_content):
+        """Phase 3 operators are findable via lookup with expected content."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup(operator_name, knowledge)
+        assert result["status"] == "found", f"{operator_name} not found in Colin output"
+        result_str = json.dumps(result)
+        assert expected_content in result_str, (
+            f"Expected '{expected_content}' in {operator_name} result"
+        )
+
+    @pytest.mark.parametrize("concept,expected_in_result", [
+        ("depends_on_past", "no direct equivalent"),  # KNOW-10
+        ("deferrable", "Automations"),                # KNOW-11
+    ])
+    def test_phase3_concept_lookup(self, concept, expected_in_result):
+        """Phase 3 concepts are findable via lookup with expected guidance."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup(concept, knowledge)
+        assert result["status"] == "found", f"'{concept}' not found in Colin output"
+        result_str = json.dumps(result).lower()
+        assert expected_in_result.lower() in result_str, (
+            f"Expected '{expected_in_result}' in result for '{concept}'"
+        )
+
+    @pytest.mark.parametrize("query", [
+        "macros.ds_add",                  # KNOW-09: macros prefix stripped
+        "{{ macros.ds_add(ds, 5) }}",     # KNOW-09: Jinja wrapper + macros prefix stripped
+        "dag_run.conf",                   # KNOW-09: dag_run.conf variable
+        "{{ dag_run.conf }}",             # KNOW-09: Jinja-wrapped dag_run.conf
+        "var.value.my_key",               # KNOW-09: var.value prefix normalized to var_value
+    ])
+    def test_phase3_jinja_macro_lookup(self, query):
+        """Jinja macro queries are findable after normalization (KNOW-09)."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup(query, knowledge)
+        assert result["status"] == "found", (
+            f"'{query}' returned not_found — normalization or knowledge entry missing"
+        )
+
+    def test_azure_adf_is_architecture_shift(self):
+        """AzureDataFactoryRunPipelineOperator result explicitly warns of architecture shift."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup("AzureDataFactoryRunPipelineOperator", knowledge)
+        assert result["status"] == "found"
+        result_str = json.dumps(result)
+        assert "ARCHITECTURE SHIFT" in result_str, (
+            "ADF entry must contain ARCHITECTURE SHIFT warning"
+        )
+        assert "prefect_azure" in result_str, (
+            "ADF entry must mention prefect_azure (to warn against using it)"
+        )
+
+    def test_dbt_cloud_operator_uses_wait_for_completion_variant(self):
+        """DbtCloudRunJobOperator maps to the _and_wait_for_completion function, not fire-and-forget."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup("DbtCloudRunJobOperator", knowledge)
+        assert result["status"] == "found"
+        result_str = json.dumps(result)
+        assert "trigger_dbt_cloud_job_run_and_wait_for_completion" in result_str, (
+            "dbt entry must specify the _and_wait_for_completion variant"
+        )
+
+    def test_depends_on_past_has_workaround(self):
+        """depends_on_past result contains a workaround using get_client()."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup("depends_on_past", knowledge)
+        assert result["status"] == "found"
+        result_str = json.dumps(result)
+        assert "get_client" in result_str or "workaround" in result_str, (
+            "depends_on_past entry must include workaround guidance"
+        )
+
+    def test_deferrable_has_automations_pattern(self):
+        """deferrable operator result mentions Automations as the resource-efficient alternative."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup("deferrable", knowledge)
+        assert result["status"] == "found"
+        result_str = json.dumps(result)
+        assert "Automation" in result_str or "automation" in result_str, (
+            "deferrable entry must reference Prefect Automations as alternative"
+        )
+
+    def test_phase3_source_is_colin(self):
+        """All Phase 3 entries should be sourced from Colin output, not fallback."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        phase3_operators = [
+            "AzureDataFactoryRunPipelineOperator",
+            "WasbOperator",
+            "DbtCloudRunJobOperator",
+        ]
+        for name in phase3_operators:
+            result = lookup(name, knowledge)
+            assert result["status"] == "found", f"{name} not found"
+            assert result["source"] == "colin", (
+                f"{name} found from {result['source']}, expected colin"
+            )
+
+
 class TestFallbackExpanded:
     """Tests for expanded FALLBACK_KNOWLEDGE entries (SRVR-03)."""
 
