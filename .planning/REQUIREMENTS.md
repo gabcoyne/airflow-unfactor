@@ -18,8 +18,8 @@ Requirements for completeness milestone. Each maps to roadmap phases.
 
 ### P2 Knowledge Expansion
 
-- [ ] **KNOW-07**: Colin model for Azure operators (AzureDataFactoryRunPipelineOperator, WasbOperator) → prefect-azure
-- [ ] **KNOW-08**: Colin model for DbtCloudRunJobOperator → prefect-dbt DbtCloudCredentials + tasks
+- [x] **KNOW-07**: Colin model for Azure operators (AzureDataFactoryRunPipelineOperator, WasbOperator) → prefect-azure
+- [x] **KNOW-08**: Colin model for DbtCloudRunJobOperator → prefect-dbt DbtCloudCredentials + tasks
 - [ ] **KNOW-09**: Extended Jinja macro patterns: `{{ macros.ds_add() }}`, `{{ dag_run.conf }}`, `{{ next_ds }}`, `{{ prev_ds }}`, `{{ run_id }}`
 - [ ] **KNOW-10**: `depends_on_past` concept entry with explicit "no direct equivalent" workarounds
 - [ ] **KNOW-11**: Deferrable operator / async sensor migration gotchas (poke vs reschedule vs deferrable semantics)
@@ -82,8 +82,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | SRVR-02 | Phase 2 | Complete |
 | SRVR-03 | Phase 2 | Complete |
 | SRVR-04 | Phase 2 | Complete |
-| KNOW-07 | Phase 3 | Pending |
-| KNOW-08 | Phase 3 | Pending |
+| KNOW-07 | Phase 3 | Complete |
+| KNOW-08 | Phase 3 | Complete |
 | KNOW-09 | Phase 3 | Pending |
 | KNOW-10 | Phase 3 | Pending |
 | KNOW-11 | Phase 3 | Pending |
