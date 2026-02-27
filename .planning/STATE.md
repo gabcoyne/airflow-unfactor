@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 ## Current Position
 
 Phase: 3 of 4 (P2 Knowledge Expansion)
-Plan: 1 of 6 in current phase (COMPLETE)
-Status: Phase 3 plan 01 complete — Azure operator + dbt Cloud Colin models authored
-Last activity: 2026-02-27 — azure.md (3 sections: AzureDataFactoryRunPipelineOperator, WasbOperator, WasbDeleteOperator) + dbt.md (DbtCloudRunJobOperator) + _index.md updated
+Plan: 2 of 6 in current phase (COMPLETE)
+Status: Phase 3 plan 02 complete — Jinja macro translations, depends_on_past/deferrable concepts, query normalization, schedule-aware scaffold
+Last activity: 2026-02-27 — 13 Jinja macros in patterns.md; depends-on-past and deferrable-operators concept entries with equivalent: none; normalize_query() in knowledge.py; schedule_interval in scaffold_project(); 121 tests passing
 
-Progress: [███████░░░] 70% (6 of ~9 total plans across phases 1-3)
+Progress: [████████░░] 75% (7 of ~9 total plans across phases 1-3)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [███████░░░] 70% (6 of ~9 total plans across phase
 | Phase 01-p1-knowledge-expansion P03 | 10 | 2 tasks | 6 files |
 | Phase 02-server-quality P02 | 3 | 2 tasks | 4 files |
 | Phase 03-p2-knowledge-expansion P01 | 2 | 2 tasks | 3 files |
+| Phase 03-p2-knowledge-expansion P02 | 4 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ Recent decisions affecting current work:
 - [Phase 02-server-quality P01]: 9 new FALLBACK_KNOWLEDGE entries cover sensors, branching, cross-DAG operators
 - [Phase 03-p2-knowledge-expansion P01]: WasbDeleteOperator included in azure.md per RESEARCH.md Open Question 3 — same credential pattern, minimal scope
 - [Phase 03-p2-knowledge-expansion P01]: ADF section includes full polling loop in @task to mirror wait_for_termination=True behavior
+- [Phase 03-p2-knowledge-expansion P02]: normalize_query strips {{ }}, macros., and var.value. at lookup() entry point — all callers benefit
+- [Phase 03-p2-knowledge-expansion P02]: schedule_interval is str | None (not str | timedelta) — MCP receives strings; digits represent seconds
+- [Phase 03-p2-knowledge-expansion P02]: depends-on-past and deferrable-operators both use equivalent: none — honest about paradigm gaps per CONTEXT.md locked decision
 
 ### Pending Todos
 
@@ -84,5 +88,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 03-01-PLAN.md — Azure operator Colin models (azure.md, dbt.md) + _index.md updated
+Stopped at: Completed 03-02-PLAN.md — Jinja macros + depends-on-past + deferrable-operators + normalize_query + schedule scaffold; 121 tests passing
 Resume file: None

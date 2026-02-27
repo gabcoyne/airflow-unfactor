@@ -20,10 +20,10 @@ Requirements for completeness milestone. Each maps to roadmap phases.
 
 - [x] **KNOW-07**: Colin model for Azure operators (AzureDataFactoryRunPipelineOperator, WasbOperator) → prefect-azure
 - [x] **KNOW-08**: Colin model for DbtCloudRunJobOperator → prefect-dbt DbtCloudCredentials + tasks
-- [ ] **KNOW-09**: Extended Jinja macro patterns: `{{ macros.ds_add() }}`, `{{ dag_run.conf }}`, `{{ next_ds }}`, `{{ prev_ds }}`, `{{ run_id }}`
-- [ ] **KNOW-10**: `depends_on_past` concept entry with explicit "no direct equivalent" workarounds
-- [ ] **KNOW-11**: Deferrable operator / async sensor migration gotchas (poke vs reschedule vs deferrable semantics)
-- [ ] **KNOW-12**: Schedule translation in scaffold tool: `schedule_interval`/cron → `prefect.yaml` schedule config
+- [x] **KNOW-09**: Extended Jinja macro patterns: `{{ macros.ds_add() }}`, `{{ dag_run.conf }}`, `{{ next_ds }}`, `{{ prev_ds }}`, `{{ run_id }}`
+- [x] **KNOW-10**: `depends_on_past` concept entry with explicit "no direct equivalent" workarounds
+- [x] **KNOW-11**: Deferrable operator / async sensor migration gotchas (poke vs reschedule vs deferrable semantics)
+- [x] **KNOW-12**: Schedule translation in scaffold tool: `schedule_interval`/cron → `prefect.yaml` schedule config
 
 ### Server Quality
 
@@ -84,10 +84,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | SRVR-04 | Phase 2 | Complete |
 | KNOW-07 | Phase 3 | Complete |
 | KNOW-08 | Phase 3 | Complete |
-| KNOW-09 | Phase 3 | Pending |
-| KNOW-10 | Phase 3 | Pending |
-| KNOW-11 | Phase 3 | Pending |
-| KNOW-12 | Phase 3 | Pending |
+| KNOW-09 | Phase 3 | Complete |
+| KNOW-10 | Phase 3 | Complete |
+| KNOW-11 | Phase 3 | Complete |
+| KNOW-12 | Phase 3 | Complete |
 | VALD-01 | Phase 4 | Pending |
 | VALD-02 | Phase 4 | Pending |
 
