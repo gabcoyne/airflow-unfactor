@@ -1,8 +1,8 @@
-# airflow-unfactor — Completeness Audit
+# airflow-unfactor
 
 ## What This Is
 
-An MCP server that helps LLMs convert Apache Airflow 2.x DAGs to Prefect flows. The LLM reads raw DAG source code directly and generates complete Prefect flows using pre-compiled translation knowledge from Colin and live Prefect documentation. This milestone is a comprehensive completeness pass — research what real-world Airflow users need converted, identify gaps, and close them.
+An MCP server that helps LLMs convert Apache Airflow 2.x DAGs to Prefect flows. The LLM reads raw DAG source code directly and generates complete Prefect flows using pre-compiled translation knowledge from Colin and live Prefect documentation. Five MCP tools provide the full conversion workflow: read DAG source, look up translation knowledge, search live Prefect docs, validate generated code, and scaffold project structure.
 
 ## Core Value
 
@@ -12,36 +12,49 @@ Every Airflow 2.x operator, pattern, and connection type a user encounters in pr
 
 ### Validated
 
-- ✓ Read raw DAG source code (file path or inline) — existing
-- ✓ Look up Airflow→Prefect translation knowledge (Colin + fallback) — existing
-- ✓ Search live Prefect documentation for gaps — existing
-- ✓ Validate generated flow (syntax check + both sources for comparison) — existing
-- ✓ Scaffold Prefect project directory structure — existing
-- ✓ Graceful degradation when Colin output or Prefect MCP unavailable — existing
-- ✓ 60 passing tests with async support — existing
+- ✓ Read raw DAG source code (file path or inline) — v1.0
+- ✓ Look up Airflow→Prefect translation knowledge (Colin + fallback) — v1.0
+- ✓ Search live Prefect documentation for gaps — v1.0
+- ✓ Validate generated flow (syntax check + both sources for comparison) — v1.0
+- ✓ Scaffold Prefect project directory structure with schedule support — v1.0
+- ✓ Graceful degradation when Colin output or Prefect MCP unavailable — v1.0
+- ✓ Colin models for enterprise operators: Kubernetes, Databricks, Spark, HTTP, SSH — v1.0
+- ✓ Colin models for cloud/SaaS operators: Azure ADF, Azure Blob, dbt Cloud — v1.0
+- ✓ Jinja macro translation: ds_add, dag_run.conf, var.value, next_ds, prev_ds, run_id — v1.0
+- ✓ Concept entries for depends_on_past and deferrable operators with "no direct equivalent" guidance — v1.0
+- ✓ Schedule translation: cron, interval, presets → prefect.yaml schedule config — v1.0
+- ✓ Fuzzy matching via difflib for misspelled operator lookups — v1.0
+- ✓ 15-entry fallback knowledge for users without Colin output — v1.0
+- ✓ Startup warning when Colin output missing or empty — v1.0
+- ✓ JSON parse error logging with filename and error type — v1.0
+- ✓ Operator-specific validation guidance for Kubernetes, Databricks, Azure, dbt, HTTP, SSH — v1.0
+- ✓ Production-style fixture DAGs for all new operator types — v1.0
+- ✓ 147 passing tests — v1.0
 
 ### Active
 
-- [ ] Comprehensive operator coverage for Airflow 2.x ecosystem
-- [ ] Coverage of complex DAG patterns (dynamic DAGs, branching, sensors, callbacks)
-- [ ] Coverage of connection/hook types used in production
-- [ ] Validation against real-world production-style DAGs
-- [ ] Gap analysis: what operators/patterns are users most likely to encounter?
+(None yet — define with next milestone)
 
 ### Out of Scope
 
-- Airflow 1.x compatibility — targeting 2.x only
-- TaskFlow API decorator patterns — can add later if needed
-- Runtime execution of converted flows — we generate code, not run it
-- UI/visual features — focus on MCP tool completeness
+- Airflow 1.x compatibility — targeting 2.x only; 1.x is EOL with substantially different APIs
+- TaskFlow API decorator patterns — syntactic sugar over standard operators; can add later
+- Runtime execution of converted flows — we generate code, not run it; running unreviewed code risks data corruption
+- AST-based structural analysis — LLMs understand intent from raw source better than AST captures structure
+- UI/visual features — engineering effort better spent on knowledge completeness
+- Automatic block/secret creation — requires live Prefect API credentials; blocks are environment-specific
 
 ## Context
 
-The codebase is mature with clean architecture: 5 MCP tools, a knowledge compilation pipeline (Colin), and external Prefect MCP integration. The fallback knowledge base covers only 6 core concepts (PythonOperator, BashOperator, BranchPythonOperator, XCom, TaskGroup, connections). Colin-compiled output covers more, but we haven't audited whether it covers the full Airflow 2.x operator landscape.
+**Current state:** v1.0 shipped. 4,782 lines of Python across `src/` and `tests/`. 147 tests passing. Colin knowledge covers 12+ operator families, Jinja macros, and advanced patterns. The server handles misspelled lookups, missing Colin output, and corrupt JSON gracefully.
 
-The concerns audit flagged: limited fallback knowledge, simple suggestion algorithm, silent JSON parse failures, and no startup warning when Colin output is missing.
+**Tech stack:** Python 3.12+, MCP SDK (mcp[cli]), Colin (knowledge compilation), uv (package management).
 
-Test fixtures come from Astronomer 2.9 but may not cover the breadth of real-world DAG patterns.
+**Known tech debt:**
+- `workspace`/`flow_names` silently dropped in scaffold MCP wrapper
+- `SparkSubmitOperator` missing from validate_conversion() detection
+- `validate_generated_code()` orphaned in validation.py
+- Phase 1 missing VERIFICATION.md
 
 ## Constraints
 
@@ -53,9 +66,15 @@ Test fixtures come from Astronomer 2.9 but may not cover the breadth of real-wor
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Airflow 2.x only | Vast majority of production installs; 1.x adds complexity for diminishing returns | — Pending |
-| Research + real DAG validation | Confidence requires both directions: know what's expected AND test against reality | — Pending |
-| Expand fallback knowledge | Users without Colin output should still get useful guidance for common operators | — Pending |
+| Airflow 2.x only | Vast majority of production installs; 1.x adds complexity for diminishing returns | ✓ Good — focused scope delivered faster |
+| LLM reads raw source, no AST | LLMs understand intent from source better than AST captures structure | ✓ Good — simpler architecture, better results |
+| Colin for knowledge compilation | Live source + LLM summarization produces higher-quality knowledge than static mappings | ✓ Good — 12+ operator families compiled successfully |
+| Expand fallback knowledge to 15 | Users without Colin output need guidance for common operators | ✓ Good — covers sensors, branching, cross-DAG operators |
+| difflib for fuzzy matching | Simple, stdlib, effective at cutoff=0.4 with case-insensitive wrapper | ✓ Good — handles typos and case differences |
+| normalize_query at lookup() entry | All callers benefit from Jinja syntax stripping transparently | ✓ Good — `{{ macros.ds_add }}` works without caller changes |
+| schedule_interval as str, not timedelta | MCP receives strings; digits represent seconds; keeps interface simple | ✓ Good — clean API surface |
+| depends_on_past/deferrable: equivalent=none | Honest about paradigm gaps; workarounds documented, not false equivalences | ✓ Good — prevents incorrect conversions |
+| Conditional operator guidance in validate | Appends extras only when detected; base checklist unchanged | ✓ Good — no regression for existing users |
 
 ---
-*Last updated: 2026-02-26 after initialization*
+*Last updated: 2026-02-27 after v1.0 milestone*
