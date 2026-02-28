@@ -97,8 +97,11 @@ Generate a Prefect project directory structure following `prefecthq/flows` conve
 {
   "output_directory": "/path/to/project",
   "project_name": "my-project",
+  "workspace": "default",
+  "flow_names": ["my_flow"],
   "include_docker": true,
-  "include_github_actions": true
+  "include_github_actions": true,
+  "schedule_interval": "@daily"
 }
 ```
 

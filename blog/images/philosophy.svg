@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500">
+  <defs>
+    <linearGradient id="ph-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0f"/>
+      <stop offset="100%" stop-color="#0d0d18"/>
+    </linearGradient>
+    <filter id="ph-glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="500" fill="url(#ph-bg)" rx="16"/>
+
+  <!-- Divider line -->
+  <line x1="600" y1="40" x2="600" y2="460" stroke="#262626" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- LEFT SIDE: Templates are Brittle -->
+  <text x="300" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#ef4444" text-anchor="middle" font-weight="700" opacity="0.9">Templates Are Brittle</text>
+
+  <!-- Broken gears -->
+  <g transform="translate(200, 200)" opacity="0.7">
+    <!-- Gear 1 with crack -->
+    <circle cx="0" cy="0" r="40" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.4"/>
+    <circle cx="0" cy="0" r="28" fill="#ef4444" opacity="0.08"/>
+    <!-- Gear teeth -->
+    <g stroke="#ef4444" stroke-width="2" opacity="0.4">
+      <line x1="0" y1="-40" x2="0" y2="-48"/>
+      <line x1="28" y1="-28" x2="34" y2="-34"/>
+      <line x1="40" y1="0" x2="48" y2="0"/>
+      <line x1="28" y1="28" x2="34" y2="34"/>
+      <line x1="0" y1="40" x2="0" y2="48"/>
+      <line x1="-28" y1="28" x2="-34" y2="34"/>
+      <line x1="-40" y1="0" x2="-48" y2="0"/>
+      <line x1="-28" y1="-28" x2="-34" y2="-34"/>
+    </g>
+    <!-- Crack -->
+    <path d="M-5,-20 L2,-8 L-4,5 L3,20" stroke="#ef4444" stroke-width="2.5" fill="none" opacity="0.8"/>
+  </g>
+
+  <!-- Gear 2 broken -->
+  <g transform="translate(380, 180)" opacity="0.5">
+    <circle cx="0" cy="0" r="30" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.3" stroke-dasharray="8,4"/>
+    <circle cx="0" cy="0" r="20" fill="#ef4444" opacity="0.06"/>
+    <!-- Warning symbol -->
+    <polygon points="0,-12 10,8 -10,8" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.6"/>
+    <line x1="0" y1="-5" x2="0" y2="2" stroke="#ef4444" stroke-width="1.5" opacity="0.6"/>
+    <circle cx="0" cy="5" r="1" fill="#ef4444" opacity="0.6"/>
+  </g>
+
+  <!-- Rigid connection lines breaking -->
+  <g stroke="#ef4444" stroke-width="1" opacity="0.25">
+    <line x1="130" y1="150" x2="170" y2="170"/>
+    <line x1="240" y1="200" x2="350" y2="180"/>
+    <line x1="170" y1="280" x2="250" y2="260"/>
+    <!-- Broken segments -->
+    <line x1="300" y1="250" x2="330" y2="240" stroke-dasharray="3,3"/>
+    <line x1="340" y1="235" x2="370" y2="220" stroke-dasharray="3,3"/>
+  </g>
+
+  <!-- Template boxes cracking -->
+  <g transform="translate(130, 300)">
+    <rect width="100" height="60" rx="4" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.3"/>
+    <line x1="10" y1="20" x2="70" y2="20" stroke="#ef4444" stroke-width="1" opacity="0.2"/>
+    <line x1="10" y1="32" x2="55" y2="32" stroke="#ef4444" stroke-width="1" opacity="0.2"/>
+    <line x1="10" y1="44" x2="60" y2="44" stroke="#ef4444" stroke-width="1" opacity="0.2"/>
+    <!-- Crack across box -->
+    <path d="M80,10 L65,25 L75,40 L60,55" stroke="#ef4444" stroke-width="1.5" fill="none" opacity="0.5"/>
+  </g>
+
+  <g transform="translate(330, 280)">
+    <rect width="100" height="60" rx="4" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.3"/>
+    <line x1="10" y1="20" x2="70" y2="20" stroke="#ef4444" stroke-width="1" opacity="0.2"/>
+    <line x1="10" y1="32" x2="45" y2="32" stroke="#ef4444" stroke-width="1" opacity="0.2"/>
+    <!-- X mark -->
+    <g transform="translate(70, 42)" stroke="#ef4444" stroke-width="2" opacity="0.5">
+      <line x1="-6" y1="-6" x2="6" y2="6"/>
+      <line x1="6" y1="-6" x2="-6" y2="6"/>
+    </g>
+  </g>
+
+  <!-- Left bullet points -->
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#737373">
+    <text x="140" y="420">Rigid patterns break on variations</text>
+    <text x="140" y="440">Non-idiomatic output</text>
+    <text x="140" y="460">Template maintenance burden</text>
+    <circle cx="132" cy="416" r="2" fill="#ef4444" opacity="0.6"/>
+    <circle cx="132" cy="436" r="2" fill="#ef4444" opacity="0.6"/>
+    <circle cx="132" cy="456" r="2" fill="#ef4444" opacity="0.6"/>
+  </g>
+
+  <!-- RIGHT SIDE: LLMs Are Adaptive -->
+  <text x="900" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#10b981" text-anchor="middle" font-weight="700" opacity="0.9">LLMs Are Adaptive</text>
+
+  <!-- Neural network pathways -->
+  <g filter="url(#ph-glow)">
+    <!-- Layer 1 nodes -->
+    <circle cx="720" cy="160" r="6" fill="#10b981" opacity="0.7"/>
+    <circle cx="720" cy="210" r="6" fill="#06b6d4" opacity="0.7"/>
+    <circle cx="720" cy="260" r="6" fill="#10b981" opacity="0.7"/>
+    <circle cx="720" cy="310" r="6" fill="#06b6d4" opacity="0.7"/>
+
+    <!-- Layer 2 nodes -->
+    <circle cx="840" cy="180" r="8" fill="#10b981" opacity="0.8"/>
+    <circle cx="840" cy="240" r="8" fill="#06b6d4" opacity="0.8"/>
+    <circle cx="840" cy="300" r="8" fill="#10b981" opacity="0.8"/>
+
+    <!-- Layer 3 nodes -->
+    <circle cx="960" cy="200" r="10" fill="#10b981" opacity="0.9"/>
+    <circle cx="960" cy="270" r="10" fill="#06b6d4" opacity="0.9"/>
+
+    <!-- Layer 4: output -->
+    <circle cx="1070" cy="235" r="12" fill="#10b981" opacity="0.95"/>
+  </g>
+
+  <!-- Flowing connections -->
+  <g stroke="#10b981" stroke-width="1" opacity="0.25" fill="none">
+    <!-- Layer 1→2 -->
+    <path d="M726,160 C780,160 790,180 832,180"/>
+    <path d="M726,160 C780,170 790,240 832,240"/>
+    <path d="M726,210 C780,210 790,180 832,180"/>
+    <path d="M726,210 C780,220 790,240 832,240"/>
+    <path d="M726,210 C780,230 790,300 832,300"/>
+    <path d="M726,260 C780,260 790,240 832,240"/>
+    <path d="M726,260 C780,270 790,300 832,300"/>
+    <path d="M726,310 C780,310 790,300 832,300"/>
+    <!-- Layer 2→3 -->
+    <path d="M848,180 C900,180 910,200 952,200"/>
+    <path d="M848,180 C900,190 910,270 952,270"/>
+    <path d="M848,240 C900,240 910,200 952,200"/>
+    <path d="M848,240 C900,250 910,270 952,270"/>
+    <path d="M848,300 C900,300 910,270 952,270"/>
+    <!-- Layer 3→4 -->
+    <path d="M970,200 C1020,200 1030,235 1058,235"/>
+    <path d="M970,270 C1020,270 1030,235 1058,235"/>
+  </g>
+
+  <!-- Flowing data particles along paths -->
+  <g fill="#10b981" opacity="0.4">
+    <circle cx="770" cy="165" r="2"/>
+    <circle cx="810" cy="225" r="2"/>
+    <circle cx="890" cy="205" r="2"/>
+    <circle cx="930" cy="260" r="2"/>
+    <circle cx="1010" cy="240" r="2.5"/>
+  </g>
+
+  <!-- Sparkle on output -->
+  <g transform="translate(1088, 220)" fill="#10b981" opacity="0.5">
+    <polygon points="0,-8 2,-2 8,0 2,2 0,8 -2,2 -8,0 -2,-2"/>
+  </g>
+
+  <!-- Clean output representation -->
+  <g transform="translate(750, 330)">
+    <rect width="280" height="50" rx="8" fill="#10b981" fill-opacity="0.06" stroke="#10b981" stroke-width="1" stroke-opacity="0.2"/>
+    <!-- Clean code lines -->
+    <line x1="16" y1="18" x2="60" y2="18" stroke="#10b981" stroke-width="1.5" opacity="0.3"/>
+    <line x1="16" y1="30" x2="100" y2="30" stroke="#06b6d4" stroke-width="1.5" opacity="0.3"/>
+    <line x1="24" y1="42" x2="80" y2="42" stroke="#10b981" stroke-width="1.5" opacity="0.2"/>
+    <!-- Checkmark -->
+    <g transform="translate(248, 25)" stroke="#10b981" stroke-width="2" opacity="0.6" fill="none">
+      <polyline points="-6,0 -2,4 6,-4"/>
+    </g>
+  </g>
+
+  <!-- Right bullet points -->
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#737373">
+    <text x="760" y="420">Rich context enables adaptive generation</text>
+    <text x="760" y="440">Idiomatic code tailored to each DAG</text>
+    <text x="760" y="460">Continuous improvement with model updates</text>
+    <circle cx="752" cy="416" r="2" fill="#10b981" opacity="0.6"/>
+    <circle cx="752" cy="436" r="2" fill="#10b981" opacity="0.6"/>
+    <circle cx="752" cy="456" r="2" fill="#10b981" opacity="0.6"/>
+  </g>
+
+  <!-- VS in center -->
+  <g transform="translate(600, 250)">
+    <circle cx="0" cy="0" r="20" fill="#1a1a24" stroke="#262626" stroke-width="1"/>
+    <text x="0" y="5" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#525252" text-anchor="middle" font-weight="600">VS</text>
+  </g>
+</svg>

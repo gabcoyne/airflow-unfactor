@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0f"/>
+      <stop offset="50%" stop-color="#0d0d18"/>
+      <stop offset="100%" stop-color="#0a0a0f"/>
+    </linearGradient>
+    <linearGradient id="airflow-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ea580c" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="prefect-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="center-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.9"/>
+    </linearGradient>
+    <radialGradient id="orb-left" cx="25%" cy="50%" r="30%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb-right" cx="75%" cy="50%" r="30%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb-center" cx="50%" cy="50%" r="20%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-strong">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="0.5" fill="#ffffff" opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Ambient orbs -->
+  <rect width="1200" height="630" fill="url(#orb-left)"/>
+  <rect width="1200" height="630" fill="url(#orb-right)"/>
+  <rect width="1200" height="630" fill="url(#orb-center)"/>
+
+  <!-- Left side: Airflow tangled DAG nodes -->
+  <!-- Tangled connection lines -->
+  <g opacity="0.4" stroke="#f59e0b" stroke-width="1.5" fill="none">
+    <path d="M120,200 C180,180 160,280 220,260"/>
+    <path d="M120,200 C200,220 140,340 220,340"/>
+    <path d="M220,260 C280,240 250,360 320,320"/>
+    <path d="M220,340 C260,360 290,290 320,320"/>
+    <path d="M220,260 C260,230 300,250 320,240"/>
+    <path d="M320,240 C360,230 350,310 400,280"/>
+    <path d="M320,320 C380,340 360,280 400,280"/>
+    <path d="M140,380 C200,400 180,320 220,340"/>
+    <path d="M140,380 C220,390 280,360 320,320"/>
+    <path d="M100,300 C160,280 130,220 120,200"/>
+    <path d="M100,300 C170,310 180,360 220,340"/>
+    <path d="M320,240 C350,200 390,220 400,200"/>
+    <path d="M400,200 C430,180 440,250 400,280"/>
+  </g>
+
+  <!-- Airflow nodes -->
+  <g filter="url(#glow)">
+    <circle cx="120" cy="200" r="14" fill="#f59e0b" opacity="0.9"/>
+    <circle cx="100" cy="300" r="11" fill="#ea580c" opacity="0.8"/>
+    <circle cx="140" cy="380" r="12" fill="#f59e0b" opacity="0.7"/>
+    <circle cx="220" cy="260" r="16" fill="#ea580c" opacity="0.85"/>
+    <circle cx="220" cy="340" r="13" fill="#f59e0b" opacity="0.8"/>
+    <circle cx="320" cy="240" r="12" fill="#ea580c" opacity="0.75"/>
+    <circle cx="320" cy="320" r="15" fill="#f59e0b" opacity="0.85"/>
+    <circle cx="400" cy="200" r="10" fill="#ea580c" opacity="0.7"/>
+    <circle cx="400" cy="280" r="14" fill="#f59e0b" opacity="0.8"/>
+  </g>
+
+  <!-- Center: AI transformation core -->
+  <g filter="url(#glow-strong)">
+    <!-- Outer ring -->
+    <circle cx="600" cy="315" r="80" fill="none" stroke="url(#center-glow)" stroke-width="1" opacity="0.3"/>
+    <circle cx="600" cy="315" r="60" fill="none" stroke="url(#center-glow)" stroke-width="1.5" opacity="0.5"/>
+
+    <!-- Inner core -->
+    <circle cx="600" cy="315" r="36" fill="url(#center-glow)" opacity="0.15"/>
+    <circle cx="600" cy="315" r="24" fill="url(#center-glow)" opacity="0.25"/>
+    <circle cx="600" cy="315" r="12" fill="#10b981" opacity="0.8"/>
+
+    <!-- Neural rays -->
+    <g stroke="url(#center-glow)" stroke-width="1" opacity="0.4">
+      <line x1="600" y1="235" x2="600" y2="260"/>
+      <line x1="600" y1="370" x2="600" y2="395"/>
+      <line x1="520" y1="315" x2="545" y2="315"/>
+      <line x1="655" y1="315" x2="680" y2="315"/>
+      <line x1="544" y1="259" x2="562" y2="277"/>
+      <line x1="638" y1="353" x2="656" y2="371"/>
+      <line x1="544" y1="371" x2="562" y2="353"/>
+      <line x1="638" y1="277" x2="656" y2="259"/>
+    </g>
+
+    <!-- Orbiting particles -->
+    <circle cx="555" cy="275" r="3" fill="#10b981" opacity="0.7"/>
+    <circle cx="645" cy="355" r="3" fill="#06b6d4" opacity="0.7"/>
+    <circle cx="560" cy="360" r="2.5" fill="#8b5cf6" opacity="0.6"/>
+    <circle cx="640" cy="270" r="2.5" fill="#10b981" opacity="0.6"/>
+  </g>
+
+  <!-- Flow lines from left DAG to center -->
+  <g stroke="#f59e0b" stroke-width="1" fill="none" opacity="0.3">
+    <path d="M414,280 C460,280 500,300 540,315"/>
+    <path d="M414,200 C470,210 510,270 540,300"/>
+  </g>
+
+  <!-- Flow lines from center to right flows -->
+  <g stroke="#6366f1" stroke-width="1" fill="none" opacity="0.3">
+    <path d="M660,315 C700,310 740,280 780,270"/>
+    <path d="M660,300 C710,290 750,320 780,340"/>
+  </g>
+
+  <!-- Right side: Clean Prefect flow nodes -->
+  <!-- Clean structured connections -->
+  <g opacity="0.5" stroke="#6366f1" stroke-width="1.5" fill="none">
+    <path d="M780,200 L880,260"/>
+    <path d="M880,260 L980,260"/>
+    <path d="M980,260 L1080,300"/>
+    <path d="M780,340 L880,340"/>
+    <path d="M880,340 L980,340"/>
+    <path d="M980,340 L1080,300"/>
+    <path d="M880,260 L880,340"/>
+  </g>
+
+  <!-- Prefect nodes -->
+  <g filter="url(#glow)">
+    <rect x="766" y="186" width="28" height="28" rx="6" fill="#3b82f6" opacity="0.9"/>
+    <rect x="866" y="246" width="28" height="28" rx="6" fill="#6366f1" opacity="0.85"/>
+    <rect x="966" y="246" width="28" height="28" rx="6" fill="#3b82f6" opacity="0.8"/>
+    <rect x="766" y="326" width="28" height="28" rx="6" fill="#6366f1" opacity="0.85"/>
+    <rect x="866" y="326" width="28" height="28" rx="6" fill="#3b82f6" opacity="0.9"/>
+    <rect x="966" y="326" width="28" height="28" rx="6" fill="#6366f1" opacity="0.8"/>
+    <rect x="1066" y="286" width="28" height="28" rx="6" fill="#3b82f6" opacity="0.9"/>
+  </g>
+
+  <!-- Labels -->
+  <text x="200" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#f59e0b" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">AIRFLOW DAGS</text>
+  <text x="600" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#10b981" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">AI + MCP</text>
+  <text x="920" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#6366f1" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">PREFECT FLOWS</text>
+
+  <!-- Subtle arrows showing flow direction -->
+  <g stroke="#ffffff" stroke-width="1" opacity="0.15" fill="none">
+    <path d="M460,315 L510,315 M500,308 L510,315 L500,322"/>
+    <path d="M690,315 L740,315 M730,308 L740,315 L730,322"/>
+  </g>
+</svg>

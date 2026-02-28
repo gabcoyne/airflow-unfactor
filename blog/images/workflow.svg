@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320">
+  <defs>
+    <linearGradient id="wf-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0f"/>
+      <stop offset="100%" stop-color="#0d0d18"/>
+    </linearGradient>
+    <filter id="wf-glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="wf-soft">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#wf-bg)" rx="16"/>
+
+  <!-- Step 1: Read DAG -->
+  <g transform="translate(100, 100)">
+    <circle cx="0" cy="0" r="44" fill="#f59e0b" opacity="0.1" filter="url(#wf-glow)"/>
+    <circle cx="0" cy="0" r="34" fill="#f59e0b" opacity="0.15"/>
+    <circle cx="0" cy="0" r="28" fill="#f59e0b" opacity="0.9"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#000" text-anchor="middle" font-weight="700">1</text>
+    <text x="0" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">Read DAG</text>
+    <text x="0" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#a3a3a3" text-anchor="middle">read_dag</text>
+    <text x="0" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Raw source code</text>
+  </g>
+
+  <!-- Arrow 1→2 -->
+  <g transform="translate(155, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  </g>
+
+  <!-- Step 2: Lookup -->
+  <g transform="translate(340, 100)">
+    <circle cx="0" cy="0" r="44" fill="#3b82f6" opacity="0.1" filter="url(#wf-glow)"/>
+    <circle cx="0" cy="0" r="34" fill="#3b82f6" opacity="0.15"/>
+    <circle cx="0" cy="0" r="28" fill="#3b82f6" opacity="0.9"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#000" text-anchor="middle" font-weight="700">2</text>
+    <text x="0" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">Lookup</text>
+    <text x="0" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#a3a3a3" text-anchor="middle">lookup_concept</text>
+    <text x="0" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Translation rules</text>
+  </g>
+
+  <!-- Arrow 2→3 -->
+  <g transform="translate(395, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  </g>
+
+  <!-- Step 3: Search Docs -->
+  <g transform="translate(580, 100)">
+    <circle cx="0" cy="0" r="44" fill="#8b5cf6" opacity="0.1" filter="url(#wf-glow)"/>
+    <circle cx="0" cy="0" r="34" fill="#8b5cf6" opacity="0.15"/>
+    <circle cx="0" cy="0" r="28" fill="#8b5cf6" opacity="0.9"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+    <text x="0" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">Search Docs</text>
+    <text x="0" y="80" font-family="ui-monospace, monospace" font-size="10" fill="#a3a3a3" text-anchor="middle">search_prefect_docs</text>
+    <text x="0" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Live Prefect docs</text>
+    <rect x="-28" y="-50" width="56" height="16" rx="8" fill="#8b5cf6" opacity="0.2"/>
+    <text x="0" y="-38" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="500" letter-spacing="1">OPTIONAL</text>
+  </g>
+
+  <!-- Arrow 3→4 -->
+  <g transform="translate(635, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  </g>
+
+  <!-- Step 4: LLM Generates (highlighted) -->
+  <g transform="translate(820, 100)">
+    <circle cx="0" cy="0" r="52" fill="#10b981" opacity="0.08" filter="url(#wf-glow)"/>
+    <circle cx="0" cy="0" r="42" fill="#10b981" opacity="0.12"/>
+    <circle cx="0" cy="0" r="34" fill="#10b981" opacity="0.9"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#000" text-anchor="middle" font-weight="700">4</text>
+    <!-- Sparkle accent -->
+    <g transform="translate(22, -22)" fill="#10b981" opacity="0.6">
+      <polygon points="0,-6 1.5,-1.5 6,0 1.5,1.5 0,6 -1.5,1.5 -6,0 -1.5,-1.5"/>
+    </g>
+    <text x="0" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">LLM Generates</text>
+    <text x="0" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Complete Prefect flow</text>
+  </g>
+
+  <!-- Arrow 4→5 -->
+  <g transform="translate(880, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  </g>
+
+  <!-- Step 5: Validate -->
+  <g transform="translate(1060, 100)">
+    <circle cx="0" cy="0" r="44" fill="#f43f5e" opacity="0.1" filter="url(#wf-glow)"/>
+    <circle cx="0" cy="0" r="34" fill="#f43f5e" opacity="0.15"/>
+    <circle cx="0" cy="0" r="28" fill="#f43f5e" opacity="0.9"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">5</text>
+    <text x="0" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">Validate</text>
+    <text x="0" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#a3a3a3" text-anchor="middle">validate</text>
+    <text x="0" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Syntax + comparison</text>
+  </g>
+
+  <!-- Bottom tagline -->
+  <text x="600" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#525252" text-anchor="middle" font-weight="400" letter-spacing="3">WE READ  ·  THE LLM GENERATES  ·  WE VALIDATE</text>
+</svg>

@@ -177,10 +177,11 @@ Generate a Prefect project directory structure.
   "properties": {
     "output_directory": { "type": "string", "description": "Where to create the project" },
     "project_name": { "type": ["string", "null"], "description": "Project name (defaults to directory name)" },
-    "workspace": { "type": "string", "default": "default" },
-    "flow_names": { "type": ["array", "null"], "items": { "type": "string" } },
+    "workspace": { "type": "string", "default": "default", "description": "Workspace name for deployments/<workspace>/ structure" },
+    "flow_names": { "type": ["array", "null"], "items": { "type": "string" }, "description": "List of flow names to create directories for" },
     "include_docker": { "type": "boolean", "default": true },
-    "include_github_actions": { "type": "boolean", "default": true }
+    "include_github_actions": { "type": "boolean", "default": true },
+    "schedule_interval": { "type": ["string", "null"], "description": "Cron string, preset (@daily etc.), seconds, or None" }
   },
   "required": ["output_directory"]
 }
