@@ -1,27 +1,23 @@
 # Installation
 
-Install airflow-unfactor to access the MCP tools for Airflow→Prefect migration.
-
 ## Requirements
 
 - Python 3.11+
-- An MCP-compatible client (Claude Code, Cursor, or any MCP client)
+- An MCP-compatible client (Claude Code, Claude Desktop, Cursor)
 
-## Installation Methods
-
-### Using uv (Recommended)
-
-```bash
-uv pip install airflow-unfactor
-```
-
-### Using pip
+## Install from PyPI
 
 ```bash
 pip install airflow-unfactor
 ```
 
-### From Source
+Or with uv:
+
+```bash
+uv pip install airflow-unfactor
+```
+
+## Install from source (development)
 
 ```bash
 git clone https://github.com/gabcoyne/airflow-unfactor
@@ -29,45 +25,9 @@ cd airflow-unfactor
 uv sync
 ```
 
-## Running the MCP Server
-
-The server communicates via stdin/stdout using the MCP protocol:
-
-```bash
-airflow-unfactor
-```
-
-This is designed for integration with Claude Code, Cursor, and other MCP clients. The server does not accept command-line arguments.
-
 ## Client Configuration
 
-### Claude Code
-
-Add to `.mcp.json` in your project directory:
-
-```json
-{
-  "mcpServers": {
-    "airflow-unfactor": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/airflow-unfactor", "run", "airflow-unfactor"]
-    }
-  }
-}
-```
-
-Or add to `~/.claude/settings.json` for global availability:
-
-```json
-{
-  "mcpServers": {
-    "airflow-unfactor": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/airflow-unfactor", "run", "airflow-unfactor"]
-    }
-  }
-}
-```
+The server runs over stdio — you don't start it manually. Your MCP client launches it.
 
 ### Claude Desktop
 
@@ -77,12 +37,29 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "airflow-unfactor": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/airflow-unfactor", "run", "airflow-unfactor"]
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
     }
   }
 }
 ```
+
+### Claude Code
+
+Add to `.mcp.json` in your project directory:
+
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
+```
+
+For global availability, add to `~/.claude/settings.json` instead.
 
 ### Cursor
 
@@ -90,78 +67,55 @@ Add to Cursor's MCP settings:
 
 ```json
 {
-  "mcp": {
-    "servers": {
-      "airflow-unfactor": {
-        "command": "airflow-unfactor"
-      }
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
     }
   }
 }
 ```
 
+> **Development installs**: If you cloned the repo and want to use your local copy, replace `uvx` with `uv` and add `"--directory", "/path/to/airflow-unfactor", "run"` before `"airflow-unfactor"` in the args array.
+
 ## Verify Installation
 
-Test that the server responds to MCP protocol by sending an initialize request:
+Test that the server responds:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | airflow-unfactor
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | uvx airflow-unfactor
 ```
 
 You should see a JSON response with `serverInfo.name: "airflow-unfactor"` and 5 tools listed.
 
-In your MCP client, try reading a DAG:
+## Optional: Live Prefect Doc Search
 
-```json
-{
-  "tool": "read_dag",
-  "args": {
-    "content": "from airflow import DAG\nfrom airflow.operators.python import PythonOperator\n\nwith DAG('test') as dag:\n    t1 = PythonOperator(task_id='task1', python_callable=lambda: None)"
-  }
-}
-```
-
-## Optional Configuration
-
-For live Prefect documentation search via `search_prefect_docs`:
+`search_prefect_docs` queries the Prefect documentation server. Enabled by default:
 
 ```bash
-# Enabled by default — set to "false" to disable
-export MCP_PREFECT_ENABLED=true
+export MCP_PREFECT_ENABLED=true       # default
 export MCP_PREFECT_URL="https://docs.prefect.io/mcp"
 ```
 
+Set `MCP_PREFECT_ENABLED=false` to disable.
+
 ## Troubleshooting
 
-### Command Not Found
+### Command not found
 
-If `airflow-unfactor` is not found after installation:
-
-```bash
-# Check if it's in PATH
-which airflow-unfactor
-
-# Or run via uv
-uv run airflow-unfactor
-```
-
-### Permission Errors
-
-On macOS/Linux, you may need to ensure the script is executable:
+If `uvx airflow-unfactor` fails, verify the package is installed:
 
 ```bash
-chmod +x $(which airflow-unfactor)
+pip show airflow-unfactor
 ```
 
-### MCP Connection Issues
+### MCP client can't connect
 
-If your MCP client can't connect:
-
-1. Verify the server starts without errors: pipe an initialize request (see above)
-2. Check the command path in your MCP configuration
-3. Ensure no other process is using the same stdio streams
+1. Verify the server starts: run the initialize request above
+2. Check the command path in your MCP client config
+3. Make sure you're using `uvx` (not just `airflow-unfactor`) — MCP clients don't inherit your shell PATH
 
 ## Next Steps
 
 - [Quick Start](/docs/getting-started/quick-start) — Convert your first DAG
-- [MCP Tools](/docs/mcp) — Learn about available tools
+- [MCP Tools](/docs/mcp) — Learn about the five tools

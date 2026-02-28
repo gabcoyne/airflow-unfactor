@@ -8,6 +8,7 @@ import pytest
 
 from airflow_unfactor.knowledge import (
     FALLBACK_KNOWLEDGE,
+    _find_knowledge_dir,
     load_knowledge,
     lookup,
     normalize_query,
@@ -19,9 +20,24 @@ class TestLoadKnowledge:
     """Tests for load_knowledge function."""
 
     def test_missing_directory_returns_empty(self):
-        """Missing Colin output dir returns empty dict."""
+        """Explicit nonexistent path returns empty dict."""
         result = load_knowledge("/nonexistent/path")
         assert result == {}
+
+    def test_no_knowledge_anywhere_returns_empty(self, monkeypatch):
+        """When no bundled data or colin dir is found, returns empty dict."""
+        monkeypatch.setattr(
+            "airflow_unfactor.knowledge._find_knowledge_dir",
+            lambda *a, **kw: None,
+        )
+        result = load_knowledge()
+        assert result == {}
+
+    def test_bundled_data_found(self):
+        """Bundled package data is discovered by default."""
+        data_dir = _find_knowledge_dir()
+        assert data_dir is not None
+        assert list(data_dir.glob("*.json"))
 
     def test_loads_json_files(self, tmp_path):
         """Loads and merges JSON files from Colin output."""

@@ -1,0 +1,187 @@
+{
+  "PythonOperator": {
+    "operator": "PythonOperator",
+    "module": "airflow.operators.python",
+    "source_context": "Executes an arbitrary Python callable. The `execute()` method calls `self.python_callable` with `op_args` and `op_kwargs`. Supports templates in args.",
+    "prefect_pattern": "@task decorated function",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import task",
+    "example": {
+      "before": "```python\ndef extract_data(source, limit=100):\n    return fetch(source, limit)\n\ntask = PythonOperator(\n    task_id=\"extract\",\n    python_callable=extract_data,\n    op_kwargs={\"source\": \"api\", \"limit\": 500},\n)\n```",
+      "after": "```python\n@task\ndef extract(source: str, limit: int = 100):\n    return fetch(source, limit)\n```"
+    },
+    "notes": [
+      "The python_callable becomes the decorated function body",
+      "op_args become positional function parameters",
+      "op_kwargs become keyword function parameters",
+      "provide_context=True is not needed; use Prefect runtime context instead"
+    ],
+    "related_concepts": [
+      "operator-to-task",
+      "xcom-to-return-values"
+    ]
+  },
+  "BashOperator": {
+    "operator": "BashOperator",
+    "module": "airflow.operators.bash",
+    "source_context": "Executes a bash command via subprocess. The `execute()` method runs `bash_command` in a subprocess and captures output. Supports Jinja templating in the command string.",
+    "prefect_pattern": "ShellOperation.run() or subprocess",
+    "prefect_package": "prefect-shell",
+    "prefect_import": "from prefect_shell import ShellOperation",
+    "example": {
+      "before": "```python\ntask = BashOperator(\n    task_id=\"dump_db\",\n    bash_command=\"pg_dump mydb > /tmp/backup.sql\",\n    env={\"PGPASSWORD\": \"{{ var.value.db_password }}\"},\n)\n```",
+      "after": "```python\nfrom prefect_shell import ShellOperation\n\n@task\ndef dump_db():\n    ShellOperation(commands=[\"pg_dump mydb > /tmp/backup.sql\"]).run()\n```"
+    },
+    "notes": [
+      "bash_command becomes the commands list",
+      "env vars can be passed to ShellOperation",
+      "For simple commands, subprocess.run() is also fine",
+      "Jinja templates in commands must be replaced with Python string formatting"
+    ],
+    "related_concepts": [
+      "operator-to-task",
+      "jinja-ds-to-runtime"
+    ]
+  },
+  "PythonVirtualenvOperator": {
+    "operator": "PythonVirtualenvOperator",
+    "module": "airflow.operators.python",
+    "source_context": "Creates a temporary virtualenv, installs requirements, serializes the callable and args, runs in the venv, and deserializes the result.",
+    "prefect_pattern": "Subprocess with venv or Docker task",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import task",
+    "example": {
+      "before": "```python\ntask = PythonVirtualenvOperator(\n    task_id=\"ml_train\",\n    python_callable=train_model,\n    requirements=[\"scikit-learn==1.3.0\"],\n)\n```",
+      "after": "```python\n@task\ndef ml_train():\n    import subprocess\n    subprocess.run([\"pip\", \"install\", \"scikit-learn==1.3.0\"], check=True)\n    train_model()\n```"
+    },
+    "notes": [
+      "Consider using a Docker-based work pool for isolated environments",
+      "Requirements can be baked into a Dockerfile for the deployment",
+      "For simple cases, install packages at task runtime"
+    ]
+  },
+  "EmptyOperator": {
+    "operator": "EmptyOperator",
+    "module": "airflow.operators.empty",
+    "source_context": "No-op operator used as a dependency anchor point. The `execute()` method does nothing.",
+    "prefect_pattern": "Remove entirely or use a pass-through task",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import task",
+    "example": {
+      "before": "```python\nstart = EmptyOperator(task_id=\"start\")\nend = EmptyOperator(task_id=\"end\")\nstart >> [task_a, task_b] >> end\n```",
+      "after": "```python\n@flow\ndef pipeline():\n    # No need for start/end markers\n    a = task_a()\n    b = task_b()\n```"
+    },
+    "notes": [
+      "Usually safe to remove entirely",
+      "If used as join point, the flow function's control flow handles this naturally",
+      "DummyOperator is an alias for EmptyOperator"
+    ]
+  },
+  "BranchPythonOperator": {
+    "operator": "BranchPythonOperator",
+    "module": "airflow.operators.python",
+    "source_context": "Executes a Python callable that returns the task_id(s) of the branch(es) to follow. All other downstream tasks are skipped.",
+    "prefect_pattern": "Python if/else in the flow function",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import flow",
+    "example": {
+      "before": "```python\ndef choose_branch(**context):\n    if context['params']['env'] == 'prod':\n        return 'deploy_prod'\n    return 'deploy_staging'\n\nbranch = BranchPythonOperator(task_id=\"branch\", python_callable=choose_branch)\nbranch >> [deploy_prod, deploy_staging]\n```",
+      "after": "```python\n@flow\ndef pipeline(env: str = \"staging\"):\n    if env == \"prod\":\n        deploy_prod()\n    else:\n        deploy_staging()\n```"
+    },
+    "notes": [
+      "No skip semantics needed; just don't call the unused branch",
+      "The branching callable's logic becomes regular Python control flow"
+    ],
+    "related_concepts": [
+      "branch-to-conditional"
+    ]
+  },
+  "ShortCircuitOperator": {
+    "operator": "ShortCircuitOperator",
+    "module": "airflow.operators.python",
+    "source_context": "Evaluates a callable; if it returns False, all downstream tasks are skipped.",
+    "prefect_pattern": "Early return from flow function",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import flow",
+    "example": {
+      "before": "```python\ncheck = ShortCircuitOperator(\n    task_id=\"check_data\",\n    python_callable=has_new_data,\n)\ncheck >> process >> load\n```",
+      "after": "```python\n@flow\ndef pipeline():\n    if not has_new_data():\n        return\n    data = process()\n    load(data)\n```"
+    },
+    "notes": [
+      "Replace with early return or conditional in flow function",
+      "No skip propagation needed"
+    ],
+    "related_concepts": [
+      "short-circuit-to-early-return"
+    ]
+  },
+  "TriggerDagRunOperator": {
+    "operator": "TriggerDagRunOperator",
+    "module": "airflow.operators.trigger_dagrun",
+    "source_context": "Triggers a run of another DAG, optionally passing a conf dict and waiting for completion.",
+    "prefect_pattern": "run_deployment() or subflow call",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect.deployments import run_deployment",
+    "example": {
+      "before": "```python\ntrigger = TriggerDagRunOperator(\n    task_id=\"trigger_etl\",\n    trigger_dag_id=\"downstream_etl\",\n    conf={\"date\": \"{{ ds }}\"},\n    wait_for_completion=True,\n)\n```",
+      "after": "```python\nfrom prefect.deployments import run_deployment\n\n@task\ndef trigger_etl(date: str):\n    run_deployment(\n        name=\"downstream-etl/default\",\n        parameters={\"date\": date},\n        timeout=3600,\n    )\n```"
+    },
+    "notes": [
+      "If target is in same codebase, call as subflow instead",
+      "conf dict maps to deployment parameters",
+      "wait_for_completion maps to timeout parameter"
+    ],
+    "related_concepts": [
+      "trigger-dag-to-run-deployment"
+    ]
+  },
+  "EmailOperator": {
+    "operator": "EmailOperator",
+    "module": "airflow.operators.email",
+    "source_context": "Sends an email using the configured SMTP connection. Supports HTML body and attachments.",
+    "prefect_pattern": "email_send_message from prefect-email",
+    "prefect_package": "prefect-email",
+    "prefect_import": "from prefect_email import email_send_message, EmailServerCredentials",
+    "example": {
+      "before": "```python\nemail = EmailOperator(\n    task_id=\"send_report\",\n    to=\"team@company.com\",\n    subject=\"Daily Report\",\n    html_content=\"<h1>Report</h1>\",\n)\n```",
+      "after": "```python\nfrom prefect_email import email_send_message, EmailServerCredentials\n\n@task\ndef send_report():\n    creds = EmailServerCredentials.load(\"email-default\")\n    email_send_message(\n        email_server_credentials=creds,\n        subject=\"Daily Report\",\n        msg=\"<h1>Report</h1>\",\n        email_to=\"team@company.com\",\n    )\n```"
+    }
+  },
+  "LatestOnlyOperator": {
+    "operator": "LatestOnlyOperator",
+    "module": "airflow.operators.latest_only",
+    "source_context": "Skips downstream tasks if the DAG run is not for the most recent schedule interval.",
+    "prefect_pattern": "No direct equivalent \u2014 Prefect does not backfill by default",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import flow",
+    "example": {
+      "before": "```python\nlatest_only = LatestOnlyOperator(task_id=\"latest_only\")\nlatest_only >> deploy_task\n```",
+      "after": "```python\n# Not needed \u2014 Prefect deployments run from creation time\n# If backfill is enabled, check runtime context:\nfrom prefect import runtime\n\n@task\ndef deploy():\n    # Only deploy if this is the latest run\n    ...\n```"
+    },
+    "notes": [
+      "Usually safe to remove entirely",
+      "Prefect doesn't have backfill-by-default behavior"
+    ]
+  },
+  "ExternalTaskSensor": {
+    "operator": "ExternalTaskSensor",
+    "module": "airflow.sensors.external_task",
+    "source_context": "Waits for a task in another DAG to complete. Polls the Airflow metadata database for task instance state.",
+    "prefect_pattern": "Event-driven automation or run_deployment with wait",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect.events import emit_event",
+    "example": {
+      "before": "```python\nwait = ExternalTaskSensor(\n    task_id=\"wait_for_upstream\",\n    external_dag_id=\"upstream_dag\",\n    external_task_id=\"final_task\",\n    poke_interval=60,\n    timeout=3600,\n)\n```",
+      "after": "```python\n# Option 1: Call upstream as subflow\n# Option 2: Event-driven\nfrom prefect.events import emit_event\n\n# In upstream flow:\nemit_event(event=\"upstream.complete\", resource={\"prefect.resource.id\": \"upstream-dag\"})\n\n# In downstream: create automation triggered by \"upstream.complete\" event\n```"
+    },
+    "notes": [
+      "Prefer direct subflow calls when both flows are in the same codebase",
+      "For cross-deployment dependencies, use events and automations",
+      "Polling approach: use a task with retries that checks deployment status"
+    ],
+    "related_concepts": [
+      "sensor-to-polling",
+      "trigger-dag-to-run-deployment"
+    ]
+  }
+}

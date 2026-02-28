@@ -1,0 +1,95 @@
+{
+  "FileSensor": {
+    "operator": "FileSensor",
+    "module": "airflow.sensors.filesystem",
+    "source_context": "Polls for file existence at a given path. Supports glob patterns via `fs_conn_id`.",
+    "prefect_pattern": "Polling task with retries",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import task",
+    "example": {
+      "before": "```python\nwait = FileSensor(\n    task_id=\"wait_for_file\",\n    filepath=\"/data/input.csv\",\n    poke_interval=60,\n    timeout=3600,\n)\n```",
+      "after": "```python\nfrom pathlib import Path\n\n@task(retries=60, retry_delay_seconds=60)\ndef wait_for_file(filepath: str) -> str:\n    if not Path(filepath).exists():\n        raise FileNotFoundError(f\"{filepath} not yet available\")\n    return filepath\n```"
+    },
+    "notes": [
+      "poke_interval maps to retry_delay_seconds",
+      "timeout / poke_interval gives approximate retries count",
+      "For glob patterns, use Path.glob() in the task"
+    ]
+  },
+  "S3KeySensor": {
+    "operator": "S3KeySensor",
+    "module": "airflow.providers.amazon.aws.sensors.s3",
+    "source_context": "Polls for the existence of a key (object) in an S3 bucket. Uses boto3 `head_object` to check.",
+    "prefect_pattern": "S3Bucket check with retries",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import S3Bucket",
+    "example": {
+      "before": "```python\nwait = S3KeySensor(\n    task_id=\"wait_for_s3\",\n    bucket_key=\"s3://my-bucket/data/output.parquet\",\n    aws_conn_id=\"aws_default\",\n    poke_interval=300,\n    timeout=7200,\n)\n```",
+      "after": "```python\nfrom prefect_aws import S3Bucket\n\n@task(retries=24, retry_delay_seconds=300)\ndef wait_for_s3(key: str) -> str:\n    bucket = S3Bucket.load(\"my-bucket\")\n    objects = bucket.list_objects(folder=key.rsplit(\"/\", 1)[0])\n    if not any(key in str(o) for o in objects):\n        raise FileNotFoundError(f\"S3 key {key} not yet available\")\n    return key\n```"
+    },
+    "notes": [
+      "wildcard_match in S3KeySensor: use prefix listing in Prefect",
+      "For event-driven: use S3 event notifications \u2192 Prefect automation"
+    ]
+  },
+  "HttpSensor": {
+    "operator": "HttpSensor",
+    "module": "airflow.providers.http.sensors.http",
+    "source_context": "Makes HTTP requests and checks the response. Default checks for 2xx status. Custom `response_check` callable for complex checks.",
+    "prefect_pattern": "HTTP polling task with retries",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import task",
+    "example": {
+      "before": "```python\nwait = HttpSensor(\n    task_id=\"wait_for_api\",\n    http_conn_id=\"api\",\n    endpoint=\"status\",\n    response_check=lambda r: r.json()[\"ready\"],\n    poke_interval=30,\n    timeout=600,\n)\n```",
+      "after": "```python\nimport httpx\n\n@task(retries=20, retry_delay_seconds=30)\ndef wait_for_api(url: str) -> bool:\n    resp = httpx.get(f\"{url}/status\")\n    if not resp.json().get(\"ready\"):\n        raise Exception(\"API not ready\")\n    return True\n```"
+    },
+    "notes": [
+      "response_check callable becomes the conditional in the task",
+      "http_conn_id credentials: store in a Secret block"
+    ]
+  },
+  "SqlSensor": {
+    "operator": "SqlSensor",
+    "module": "airflow.sensors.sql",
+    "source_context": "Executes a SQL query and checks if it returns a truthy value. Pokes until the query returns non-empty/non-zero.",
+    "prefect_pattern": "SQL polling task with retries",
+    "prefect_package": "prefect-sqlalchemy",
+    "prefect_import": "from prefect_sqlalchemy import SqlAlchemyConnector",
+    "example": {
+      "before": "```python\nwait = SqlSensor(\n    task_id=\"wait_for_data\",\n    conn_id=\"postgres_default\",\n    sql=\"SELECT COUNT(*) FROM staging WHERE date = '{{ ds }}'\",\n    poke_interval=120,\n    timeout=3600,\n)\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\n\n@task(retries=30, retry_delay_seconds=120)\ndef wait_for_data(date: str) -> bool:\n    connector = SqlAlchemyConnector.load(\"postgres-default\")\n    with connector.get_connection() as conn:\n        result = conn.execute(\n            text(\"SELECT COUNT(*) FROM staging WHERE date = :d\"),\n            {\"d\": date}\n        ).scalar()\n    if not result:\n        raise Exception(f\"No data for {date} yet\")\n    return True\n```"
+    },
+    "notes": [
+      "Jinja templates in SQL must be replaced with parameterized queries",
+      "conn_id maps to the block name"
+    ]
+  },
+  "DateTimeSensor": {
+    "operator": "DateTimeSensor",
+    "module": "airflow.sensors.date_time",
+    "source_context": "Waits until a specific datetime is reached. Uses `target_time` parameter.",
+    "prefect_pattern": "time.sleep or scheduled deployment",
+    "prefect_package": "prefect",
+    "prefect_import": "from prefect import task",
+    "example": {
+      "before": "```python\nwait = DateTimeSensor(\n    task_id=\"wait_until_noon\",\n    target_time=\"{{ execution_date.replace(hour=12) }}\",\n)\n```",
+      "after": "```python\nfrom datetime import datetime\nimport time\n\n@task\ndef wait_until(target: datetime):\n    now = datetime.now(target.tzinfo)\n    if now < target:\n        time.sleep((target - now).total_seconds())\n```"
+    },
+    "notes": [
+      "Consider using deployment schedules instead of sleep-based waiting",
+      "For long waits, prefer scheduled deployment triggers"
+    ]
+  },
+  "GCSObjectExistenceSensor": {
+    "operator": "GCSObjectExistenceSensor",
+    "module": "airflow.providers.google.cloud.sensors.gcs",
+    "source_context": "Polls Google Cloud Storage for the existence of an object. Uses `google.cloud.storage` client.",
+    "prefect_pattern": "GCS check with retries",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import GcsBucket",
+    "example": {
+      "before": "```python\nwait = GCSObjectExistenceSensor(\n    task_id=\"wait_for_gcs\",\n    bucket=\"my-bucket\",\n    object=\"data/output.parquet\",\n    poke_interval=300,\n)\n```",
+      "after": "```python\nfrom prefect_gcp import GcsBucket\n\n@task(retries=24, retry_delay_seconds=300)\ndef wait_for_gcs(blob_name: str) -> str:\n    bucket = GcsBucket.load(\"my-gcs-bucket\")\n    blobs = bucket.list_blobs(folder=blob_name.rsplit(\"/\", 1)[0])\n    if not any(blob_name in b for b in blobs):\n        raise FileNotFoundError(f\"GCS object {blob_name} not found\")\n    return blob_name\n```"
+    }
+  }
+}

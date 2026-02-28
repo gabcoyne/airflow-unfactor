@@ -1,0 +1,78 @@
+{
+  "BigQueryInsertJobOperator": {
+    "operator": "BigQueryInsertJobOperator",
+    "module": "airflow.providers.google.cloud.operators.bigquery",
+    "source_context": "Submits a BigQuery job (query, load, extract, or copy). Wraps the BigQuery jobs.insert API.",
+    "prefect_pattern": "BigQueryWarehouse or google-cloud-bigquery client",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import BigQueryWarehouse",
+    "example": {
+      "before": "```python\nquery = BigQueryInsertJobOperator(\n    task_id=\"bq_query\",\n    configuration={\"query\": {\"query\": \"SELECT * FROM dataset.table\", \"useLegacySql\": False}},\n)\n```",
+      "after": "```python\nfrom prefect_gcp import BigQueryWarehouse\n\n@task\ndef bq_query(sql: str):\n    bq = BigQueryWarehouse.load(\"bigquery-default\")\n    return bq.fetch_many(sql)\n```"
+    },
+    "notes": [
+      "For simple queries, BigQueryWarehouse is sufficient",
+      "For complex jobs (load, extract), use the google.cloud.bigquery client directly"
+    ]
+  },
+  "GCSToGCSOperator": {
+    "operator": "GCSToGCSOperator",
+    "module": "airflow.providers.google.cloud.transfers.gcs_to_gcs",
+    "source_context": "Copies objects between GCS buckets or prefixes.",
+    "prefect_pattern": "GcsBucket operations",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import GcsBucket",
+    "example": {
+      "before": "```python\ncopy = GCSToGCSOperator(\n    task_id=\"copy_gcs\",\n    source_bucket=\"src-bucket\",\n    source_object=\"data/*.csv\",\n    destination_bucket=\"dst-bucket\",\n    destination_object=\"archive/\",\n)\n```",
+      "after": "```python\nfrom prefect_gcp import GcsBucket, GcpCredentials\n\n@task\ndef copy_gcs(source_prefix: str, dest_prefix: str):\n    creds = GcpCredentials.load(\"gcp-default\")\n    from google.cloud import storage\n    client = storage.Client(credentials=creds.get_credentials())\n    src_bucket = client.bucket(\"src-bucket\")\n    dst_bucket = client.bucket(\"dst-bucket\")\n    for blob in src_bucket.list_blobs(prefix=source_prefix):\n        src_bucket.copy_blob(blob, dst_bucket, dest_prefix + blob.name.split(\"/\")[-1])\n```"
+    }
+  },
+  "DataprocSubmitJobOperator": {
+    "operator": "DataprocSubmitJobOperator",
+    "module": "airflow.providers.google.cloud.operators.dataproc",
+    "source_context": "Submits a job to a Dataproc cluster. Supports Spark, PySpark, Hive, Pig, and Hadoop jobs.",
+    "prefect_pattern": "google.cloud.dataproc client via GcpCredentials",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import GcpCredentials",
+    "example": {
+      "before": "```python\nspark = DataprocSubmitJobOperator(\n    task_id=\"spark_job\",\n    job={\"reference\": {\"project_id\": \"my-project\"}, \"placement\": {\"cluster_name\": \"my-cluster\"},\n         \"pyspark_job\": {\"main_python_file_uri\": \"gs://bucket/job.py\"}},\n    region=\"us-central1\",\n)\n```",
+      "after": "```python\nfrom prefect_gcp import GcpCredentials\nfrom google.cloud import dataproc_v1\n\n@task\ndef spark_job(cluster: str, main_file: str):\n    creds = GcpCredentials.load(\"gcp-default\")\n    client = dataproc_v1.JobControllerClient(credentials=creds.get_credentials())\n    job = {\"placement\": {\"cluster_name\": cluster}, \"pyspark_job\": {\"main_python_file_uri\": main_file}}\n    operation = client.submit_job_as_operation(project_id=\"my-project\", region=\"us-central1\", job=job)\n    return operation.result()\n```"
+    }
+  },
+  "GCSToLocalFilesystemOperator": {
+    "operator": "GCSToLocalFilesystemOperator",
+    "module": "airflow.providers.google.cloud.transfers.gcs_to_local",
+    "source_context": "Downloads a file from GCS to the local filesystem.",
+    "prefect_pattern": "GcsBucket.download_object_to_path",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import GcsBucket",
+    "example": {
+      "before": "```python\ndownload = GCSToLocalFilesystemOperator(\n    task_id=\"download\",\n    object_name=\"data/input.csv\",\n    bucket=\"my-bucket\",\n    filename=\"/tmp/input.csv\",\n)\n```",
+      "after": "```python\nfrom prefect_gcp import GcsBucket\n\n@task\ndef download(blob_name: str, local_path: str):\n    bucket = GcsBucket.load(\"my-gcs-bucket\")\n    bucket.download_object_to_path(blob_name, local_path)\n    return local_path\n```"
+    }
+  },
+  "CloudDataFusionStartPipelineOperator": {
+    "operator": "CloudDataFusionStartPipelineOperator",
+    "module": "airflow.providers.google.cloud.operators.datafusion",
+    "source_context": "Starts a Cloud Data Fusion pipeline and optionally waits for completion.",
+    "prefect_pattern": "google.cloud REST API via httpx",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import GcpCredentials",
+    "example": {
+      "before": "```python\npipeline = CloudDataFusionStartPipelineOperator(\n    task_id=\"start_pipeline\",\n    pipeline_name=\"my-pipeline\",\n    instance_name=\"my-instance\",\n    location=\"us-central1\",\n)\n```",
+      "after": "```python\nfrom prefect_gcp import GcpCredentials\nimport httpx\n\n@task\ndef start_datafusion_pipeline(instance_url: str, pipeline_name: str):\n    creds = GcpCredentials.load(\"gcp-default\")\n    token = creds.get_credentials().token\n    resp = httpx.post(\n        f\"{instance_url}/api/v3/namespaces/default/apps/{pipeline_name}/workflows/DataPipelineWorkflow/start\",\n        headers={\"Authorization\": f\"Bearer {token}\"},\n    )\n    resp.raise_for_status()\n```"
+    }
+  },
+  "PubSubPublishMessageOperator": {
+    "operator": "PubSubPublishMessageOperator",
+    "module": "airflow.providers.google.cloud.operators.pubsub",
+    "source_context": "Publishes messages to a Google Cloud Pub/Sub topic.",
+    "prefect_pattern": "google.cloud.pubsub client",
+    "prefect_package": "prefect-gcp",
+    "prefect_import": "from prefect_gcp import GcpCredentials",
+    "example": {
+      "before": "```python\npublish = PubSubPublishMessageOperator(\n    task_id=\"publish\",\n    topic=\"my-topic\",\n    messages=[{\"data\": b\"message\"}],\n)\n```",
+      "after": "```python\nfrom prefect_gcp import GcpCredentials\nfrom google.cloud import pubsub_v1\n\n@task\ndef publish(topic: str, messages: list[bytes]):\n    creds = GcpCredentials.load(\"gcp-default\")\n    publisher = pubsub_v1.PublisherClient(credentials=creds.get_credentials())\n    topic_path = publisher.topic_path(\"my-project\", topic)\n    for msg in messages:\n        publisher.publish(topic_path, data=msg)\n```"
+    }
+  }
+}

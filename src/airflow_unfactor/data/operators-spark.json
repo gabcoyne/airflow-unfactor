@@ -1,0 +1,27 @@
+{
+  "SparkSubmitOperator": {
+    "operator": "SparkSubmitOperator",
+    "module": "airflow.providers.apache.spark.operators.spark_submit",
+    "source_context": "Submits a Spark application using spark-submit CLI. Takes application path, conf dict, deploy_mode, executor_memory, driver_memory, and other spark-submit flags. Uses conn_id for Spark cluster connection.",
+    "prefect_pattern": "Option 1 (self-managed Spark): ShellOperation with spark-submit CLI. Option 2 (managed Spark via Databricks): DatabricksSubmitRun with spark_python_task. Option 3 (managed Spark via GCP): Dataproc job submission.",
+    "prefect_package": "prefect-shell (Option 1), prefect-databricks (Option 2), prefect-gcp (Option 3)",
+    "prefect_import": "from prefect_shell import ShellOperation",
+    "example": {
+      "before": "```python\nfrom airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator\n\nspark_job = SparkSubmitOperator(\n    task_id=\"run_spark\",\n    application=\"/opt/spark/jobs/etl.py\",\n    conn_id=\"spark_default\",\n    conf={\"spark.sql.shuffle.partitions\": \"200\"},\n    deploy_mode=\"cluster\",\n    executor_memory=\"4g\",\n)\n```",
+      "after": "```python\n# Option 1: Self-managed Spark cluster — spark-submit via ShellOperation\nfrom prefect import task\nfrom prefect_shell import ShellOperation\n\n@task\ndef run_spark_job(application: str):\n    result = ShellOperation(\n        commands=[\n            f\"spark-submit \"\n            f\"--conf spark.sql.shuffle.partitions=200 \"\n            f\"--deploy-mode cluster \"\n            f\"--executor-memory 4g \"\n            f\"{application}\"\n        ],\n        stream_output=True,\n    ).run()\n    return result\n\n# Option 2: Managed Spark via Databricks (preferred if available)\nfrom prefect import task\nfrom prefect_databricks import DatabricksCredentials\nfrom prefect_databricks.jobs import jobs_runs_submit\n\n@task\ndef run_spark_on_databricks(script_path: str):\n    credentials = DatabricksCredentials.load(\"databricks-default\")\n    run = jobs_runs_submit(\n        databricks_credentials=credentials,\n        json={\n            \"new_cluster\": {\"spark_version\": \"13.3.x-scala2.12\", \"num_workers\": 4},\n            \"spark_python_task\": {\"python_file\": script_path},\n        },\n    )\n    return run\n```"
+    },
+    "notes": [
+      "THREE execution paths — choose based on infrastructure: 1. Self-managed Spark cluster: Use ShellOperation with spark-submit (requires spark-submit on PATH). 2. Databricks-managed Spark: Use prefect-databricks DatabricksSubmitRun with spark_python_task. 3. GCP Dataproc: Use prefect-gcp DataprocSubmitJob",
+      "ShellOperation with stream_output=True preserves Spark logs in Prefect's log view",
+      "Do NOT use subprocess.run or os.system — ShellOperation integrates with Prefect logging and observability",
+      "spark_conn_id → for self-managed: configure Spark master URL as environment variable or Secret block",
+      "For conf dict: pass as spark-submit --conf flags in the command string (e.g., --conf key=value)",
+      "executor_memory, driver_memory, num_executors → map directly to spark-submit flags"
+    ],
+    "related_concepts": [
+      "shell-operation-pattern",
+      "managed-spark-alternative"
+    ],
+    "concept_type": "operator"
+  }
+}

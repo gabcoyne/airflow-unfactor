@@ -49,20 +49,24 @@ def _schedule_yaml(schedule_interval: str | None) -> str:
 async def scaffold_project(
     output_directory: str,
     project_name: str | None = None,
+    workspace: str = "default",
+    flow_names: list[str] | None = None,
     include_docker: bool = True,
     include_github_actions: bool = True,
     schedule_interval: str | None = None,
 ) -> str:
     """Generate a clean project skeleton for Prefect flows.
 
-    Creates a well-organized project structure following Prefect best practices,
-    inspired by prefecthq/flows architecture.
+    Creates a well-organized project structure following prefecthq/flows
+    conventions: deployments/<workspace>/<flow-name>/flow.py
 
     This tool creates the directory structure only - the LLM generates the flow code.
 
     Args:
-        output_directory: Where to create the new project
+        output_directory: Where to create the project
         project_name: Project name (defaults to directory name)
+        workspace: Workspace name for deployments/<workspace>/ structure
+        flow_names: List of flow names to create directories for
         include_docker: Include Dockerfile and docker-compose.yml
         include_github_actions: Include CI workflow
         schedule_interval: Cron string, preset alias (@daily, etc.),
@@ -76,11 +80,18 @@ async def scaffold_project(
     project_name = project_name or output_dir.name.replace("-", "_").replace(" ", "_")
 
     # Create project structure following prefecthq/flows conventions
+    workspace_dir = output_dir / "deployments" / workspace
     dirs = {
         "deployments": output_dir / "deployments",
-        "deployments_default": output_dir / "deployments" / "default",
+        "deployments_workspace": workspace_dir,
         "tests": output_dir / "tests",
     }
+
+    # Create per-flow directories if flow names provided
+    if flow_names:
+        for flow_name in flow_names:
+            key = f"flow_{flow_name}"
+            dirs[key] = workspace_dir / flow_name
 
     created_directories = []
     for dir_path in dirs.values():
@@ -122,11 +133,11 @@ async def scaffold_project(
         },
         "schedule": schedule_interval,
         "next_steps": [
-            "1. Use analyze() to analyze your Airflow DAGs",
-            "2. Use get_context() to fetch relevant Prefect patterns",
-            "3. Generate Prefect flow code and place in deployments/<workspace>/<flow>/flow.py",
-            "4. Update prefect.yaml with your deployment configuration",
-            "5. Run tests with: pytest",
+            "1. Use read_dag() to read your Airflow DAG source code",
+            "2. Use lookup_concept() for Airflow→Prefect translation knowledge",
+            f"3. Generate Prefect flow code and place in deployments/{workspace}/<flow>/flow.py",
+            "4. Use validate() to check the generated code against the original DAG",
+            "5. Update prefect.yaml with your deployment configuration",
             "6. Deploy with: prefect deploy --all",
         ],
     }

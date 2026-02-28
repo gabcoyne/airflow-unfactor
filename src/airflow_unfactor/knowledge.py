@@ -248,21 +248,50 @@ def normalize_query(query: str) -> str:
     return q
 
 
-def load_knowledge(colin_output_dir: str = "colin/output") -> dict[str, Any]:
-    """Load compiled knowledge from Colin output directory.
+def _find_knowledge_dir(colin_output_dir: str = "colin/output") -> Path | None:
+    """Locate the knowledge data directory.
 
-    Reads all JSON files from the Colin output directory and merges
-    them into a single lookup dictionary keyed by concept name.
+    Checks in order:
+    1. Bundled package data (src/airflow_unfactor/data/) — used by PyPI installs
+    2. colin/output/ relative to cwd — used during development
+
+    Returns:
+        Path to the directory containing JSON knowledge files, or None.
+    """
+    # Bundled package data (works for pip/uvx installs)
+    bundled = Path(__file__).parent / "data"
+    if bundled.exists() and list(bundled.glob("*.json")):
+        return bundled
+
+    # Development: colin/output relative to cwd
+    dev_path = Path(colin_output_dir)
+    if dev_path.exists() and list(dev_path.glob("*.json")):
+        return dev_path
+
+    return None
+
+
+def load_knowledge(colin_output_dir: str | None = None) -> dict[str, Any]:
+    """Load compiled knowledge from bundled data or Colin output.
+
+    When colin_output_dir is explicitly provided, uses that path directly.
+    Otherwise searches bundled package data first, then colin/output.
 
     Args:
-        colin_output_dir: Path to Colin's compiled output.
+        colin_output_dir: Explicit path to knowledge JSON files.
+            When None, auto-discovers via _find_knowledge_dir().
 
     Returns:
         Dict mapping concept names to their translation knowledge.
     """
-    output_path = Path(colin_output_dir)
-    if not output_path.exists():
-        return {}
+    if colin_output_dir is not None:
+        output_path = Path(colin_output_dir)
+        if not output_path.exists():
+            return {}
+    else:
+        output_path = _find_knowledge_dir()
+        if output_path is None:
+            return {}
 
     knowledge: dict[str, Any] = {}
     for json_file in output_path.glob("*.json"):

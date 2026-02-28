@@ -1,0 +1,112 @@
+{
+  "AzureDataFactoryRunPipelineOperator": {
+    "name": "AzureDataFactoryRunPipelineOperator",
+    "concept_type": "operator",
+    "intent": "Triggers an Azure Data Factory pipeline run and polls for completion. Used in DAGs that orchestrate ADF pipelines as part of a data processing or ELT workflow — for example, kicking off an ADF pipeline that copies and transforms data before downstream tasks run. The operator abstracts the ADF REST API and handles the run-then-poll lifecycle.",
+    "airflow": {
+      "name": "AzureDataFactoryRunPipelineOperator",
+      "module": "airflow.providers.microsoft.azure.operators.data_factory",
+      "source_context": "Operator uses azure_data_factory_conn_id, pipeline_name, resource_group_name, factory_name, parameters (dict of pipeline parameters), and wait_for_termination (True by default). Under the hood it calls the ADF REST API to create a run and then polls PipelineRunClient.get_pipeline_run() until the run reaches a terminal state."
+    },
+    "prefect_equivalent": {
+      "pattern": "ARCHITECTURE SHIFT: azure-mgmt-datafactory SDK in @task",
+      "package": "none (use azure-mgmt-datafactory + azure-identity directly)",
+      "import": "from azure.identity import ClientSecretCredential\nfrom azure.mgmt.datafactory import DataFactoryManagementClient\nfrom azure.mgmt.datafactory.models import PipelineRun\nfrom prefect import task\nfrom prefect.blocks.system import Secret",
+      "description": "ARCHITECTURE SHIFT — prefect-azure has no Azure Data Factory module. Do NOT attempt from prefect_azure import DataFactory* — no such class exists. The correct pattern is to use the azure-mgmt-datafactory SDK directly inside a @task, authenticating with ClientSecretCredential populated from Prefect Secret blocks. The task creates a DataFactoryManagementClient, calls pipelines.create_run(), then polls pipeline_runs.get() until the run completes. Wrap with @task(retries=3, retry_delay_seconds=30) for transient ADF API errors."
+    },
+    "translation_rules": [
+      "ARCHITECTURE SHIFT: prefect-azure has no ADF module. Use azure-mgmt-datafactory SDK directly.",
+      "Do NOT attempt from prefect_azure import DataFactory* — this import will fail.",
+      "Authenticate with ClientSecretCredential from Prefect Secret blocks.",
+      "Create DataFactoryManagementClient, call pipelines.create_run(), poll pipeline_runs.get() until terminal state.",
+      "Wrap with @task(retries=3, retry_delay_seconds=30) for transient ADF API errors.",
+      "Terminal states: Succeeded, Failed, Cancelled — raise RuntimeError on non-Succeeded.",
+      "Install: uv pip install azure-mgmt-datafactory azure-identity"
+    ],
+    "notes": [
+      "WARNING: No prefect-azure ADF module exists — do NOT attempt from prefect_azure import DataFactory*. This import will fail.",
+      "Do NOT use AzureContainerInstanceCredentials for ADF — that block is for Azure Container Instances, not Data Factory.",
+      "Install dependencies: uv pip install azure-mgmt-datafactory azure-identity",
+      "Create Prefect Secret blocks for ADF credentials (run once before deploying)",
+      "Use @task(retries=3, retry_delay_seconds=30) to handle transient ADF API 429/503 errors",
+      "If you need DefaultAzureCredential (managed identity), replace ClientSecretCredential with from azure.identity import DefaultAzureCredential"
+    ],
+    "example": {
+      "before": "from airflow.providers.microsoft.azure.operators.data_factory import AzureDataFactoryRunPipelineOperator\n\nrun_pipeline = AzureDataFactoryRunPipelineOperator(\n    task_id='run_adf_pipeline',\n    azure_data_factory_conn_id='azure_data_factory_default',\n    pipeline_name='copy_and_transform',\n    resource_group_name='my-resource-group',\n    factory_name='my-data-factory',\n    parameters={'batch_date': '{{ ds }}', 'env': 'prod'},\n    wait_for_termination=True,\n)",
+      "after": "import time\nfrom azure.identity import ClientSecretCredential\nfrom azure.mgmt.datafactory import DataFactoryManagementClient\nfrom prefect import flow, task\nfrom prefect.blocks.system import Secret\n\n@task(retries=3, retry_delay_seconds=30)\ndef run_adf_pipeline(\n    subscription_id: str,\n    resource_group: str,\n    factory_name: str,\n    pipeline_name: str,\n    parameters: dict | None = None,\n) -> str:\n    tenant_id = Secret.load('adf-tenant-id').get()\n    client_id = Secret.load('adf-client-id').get()\n    client_secret = Secret.load('adf-client-secret').get()\n    credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)\n    adf_client = DataFactoryManagementClient(credential, subscription_id)\n    run_response = adf_client.pipelines.create_run(resource_group, factory_name, pipeline_name, parameters=parameters or {})\n    run_id = run_response.run_id\n    terminal_states = {'Succeeded', 'Failed', 'Cancelled'}\n    while True:\n        run = adf_client.pipeline_runs.get(resource_group, factory_name, run_id)\n        if run.status in terminal_states:\n            break\n        time.sleep(30)\n    if run.status != 'Succeeded':\n        raise RuntimeError(f\"ADF pipeline '{pipeline_name}' run {run_id} ended with status: {run.status}\")\n    return run_id"
+    },
+    "related_concepts": ["azure-mgmt-datafactory-sdk", "prefect-secret-blocks", "architecture-shift"]
+  },
+  "WasbOperator": {
+    "name": "WasbOperator",
+    "concept_type": "operator",
+    "intent": "Reads or writes blob data to Azure Blob Storage using the wasb:// protocol. Used in DAGs that process files stored in Azure containers — for example, downloading a file before processing or uploading transformed results. The operator wraps Azure Blob Storage operations with Airflow connection management.",
+    "airflow": {
+      "name": "WasbOperator",
+      "module": "airflow.providers.microsoft.azure.operators.wasb_delete",
+      "source_context": "Operator uses wasb_conn_id, container_name, blob_name, and operation-specific parameters. For reads it retrieves blob content; for writes it uploads data. The wasb connection stores Azure storage account credentials (connection string or service principal)."
+    },
+    "prefect_equivalent": {
+      "pattern": "AzureBlobStorageCredentials block with blob_storage_download / blob_storage_upload",
+      "package": "prefect-azure[blob_storage]",
+      "import": "from prefect import flow, task\nfrom prefect_azure import AzureBlobStorageCredentials\nfrom prefect_azure.blob_storage import blob_storage_download, blob_storage_upload",
+      "description": "Use AzureBlobStorageCredentials block from prefect_azure with blob_storage_download or blob_storage_upload tasks from prefect_azure.blob_storage. The credential block stores either a connection string or service principal credentials — set it up once, then load by name in your tasks."
+    },
+    "translation_rules": [
+      "Use AzureBlobStorageCredentials block from prefect_azure (NOT AzureBlobCredentials — that is for flow storage)",
+      "Load credentials by name: AzureBlobStorageCredentials.load('my-azure-blob-credentials')",
+      "For downloads: blob_storage_download(container=..., blob=..., blob_storage_credentials=credentials)",
+      "For uploads: blob_storage_upload(data=..., container=..., blob=..., blob_storage_credentials=credentials, overwrite=True)",
+      "Install: uv pip install 'prefect-azure[blob_storage]'",
+      "blob_storage_download returns bytes; decode with .decode('utf-8') for text content"
+    ],
+    "notes": [
+      "Use AzureBlobStorageCredentials NOT AzureBlobCredentials — AzureBlobCredentials is an older class for flow code storage blocks, not blob tasks",
+      "Install: uv pip install 'prefect-azure[blob_storage]'",
+      "Credential setup — connection string: AzureBlobStorageCredentials(connection_string='...').save('my-azure-blob-credentials')",
+      "Credential setup — service principal: AzureBlobStorageCredentials(account_url=..., tenant_id=..., client_id=..., client_secret=...).save('...')",
+      "blob_storage_download returns bytes; decode with .decode('utf-8') for text content",
+      "For large files, consider streaming — blob_storage_download loads entire blob into memory"
+    ],
+    "example": {
+      "before": "from airflow.providers.microsoft.azure.hooks.wasb import WasbHook\n\ndef process_blob(**context):\n    hook = WasbHook(wasb_conn_id='azure_wasb_default')\n    blob_data = hook.read_file(container_name='my-container', blob_name='data/input.csv')",
+      "after": "from prefect import flow, task\nfrom prefect_azure import AzureBlobStorageCredentials\nfrom prefect_azure.blob_storage import blob_storage_download, blob_storage_upload\n\n@task\ndef download_blob(container: str, blob: str) -> bytes:\n    credentials = AzureBlobStorageCredentials.load('my-azure-blob-credentials')\n    return blob_storage_download(container=container, blob=blob, blob_storage_credentials=credentials)"
+    },
+    "related_concepts": ["prefect-azure-credentials", "blob-storage-tasks"]
+  },
+  "WasbDeleteOperator": {
+    "name": "WasbDeleteOperator",
+    "concept_type": "operator",
+    "intent": "Deletes blobs from Azure Blob Storage. A cleanup companion to WasbOperator — used in DAGs that delete temporary or processed files after downstream tasks have consumed them, or to implement data retention policies.",
+    "airflow": {
+      "name": "WasbDeleteOperator",
+      "module": "airflow.providers.microsoft.azure.operators.wasb_delete",
+      "source_context": "Operator uses wasb_conn_id, container_name, blob_name. Optionally accepts check_options for prefix-based deletion. Follows the same authentication pattern as WasbOperator via the WASB hook."
+    },
+    "prefect_equivalent": {
+      "pattern": "AzureBlobStorageCredentials block with BlobServiceClient.delete_blob()",
+      "package": "prefect-azure[blob_storage]",
+      "import": "from prefect import task\nfrom prefect_azure import AzureBlobStorageCredentials",
+      "description": "Use AzureBlobStorageCredentials block from prefect_azure with the Azure BlobServiceClient for deletion. See the WasbOperator section for credential block setup — the same AzureBlobStorageCredentials block applies here."
+    },
+    "translation_rules": [
+      "Use AzureBlobStorageCredentials.load(...) for the same credentials as WasbOperator",
+      "credentials.get_client() returns an azure.storage.blob.BlobServiceClient",
+      "blob_service_client.get_container_client(container).delete_blob(blob) performs the delete",
+      "delete_blob is idempotent — catch ResourceNotFoundError if you want to suppress 'already deleted' errors",
+      "For prefix-based deletion: use container_client.list_blobs(name_starts_with=prefix) and delete each blob individually",
+      "Install: uv pip install 'prefect-azure[blob_storage]'"
+    ],
+    "notes": [
+      "See WasbOperator section above for credential block setup — same AzureBlobStorageCredentials block applies",
+      "credentials.get_client() returns an azure.storage.blob.BlobServiceClient — use the standard Azure SDK for delete operations",
+      "For prefix-based deletion, use container_client.list_blobs(name_starts_with=prefix) and delete each blob individually",
+      "delete_blob is idempotent if the blob no longer exists — catch ResourceNotFoundError if you want to suppress 'already deleted' errors"
+    ],
+    "example": {
+      "before": "from airflow.providers.microsoft.azure.operators.wasb_delete import WasbDeleteOperator\n\ndelete_temp = WasbDeleteOperator(\n    task_id='delete_temp_blob',\n    wasb_conn_id='azure_wasb_default',\n    container_name='my-container',\n    blob_name='temp/processing_artifact.parquet',\n)",
+      "after": "from prefect import task\nfrom prefect_azure import AzureBlobStorageCredentials\n\n@task\ndef delete_blob(container: str, blob: str) -> None:\n    credentials = AzureBlobStorageCredentials.load('my-azure-blob-credentials')\n    blob_service_client = credentials.get_client()\n    container_client = blob_service_client.get_container_client(container)\n    container_client.delete_blob(blob)"
+    },
+    "related_concepts": ["prefect-azure-credentials", "wasb-operator"]
+  }
+}

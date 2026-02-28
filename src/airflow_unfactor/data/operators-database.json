@@ -1,0 +1,78 @@
+{
+  "PostgresOperator": {
+    "operator": "PostgresOperator",
+    "module": "airflow.providers.postgres.operators.postgres",
+    "source_context": "Executes SQL against a PostgreSQL database using psycopg2. Supports parameterized queries.",
+    "prefect_pattern": "SqlAlchemyConnector query execution",
+    "prefect_package": "prefect-sqlalchemy",
+    "prefect_import": "from prefect_sqlalchemy import SqlAlchemyConnector",
+    "example": {
+      "before": "```python\nquery = PostgresOperator(\n    task_id=\"create_table\",\n    postgres_conn_id=\"postgres_default\",\n    sql=\"CREATE TABLE IF NOT EXISTS results (id SERIAL, value TEXT)\",\n)\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\nfrom sqlalchemy import text\n\n@task\ndef create_table():\n    connector = SqlAlchemyConnector.load(\"postgres-default\")\n    with connector.get_connection() as conn:\n        conn.execute(text(\"CREATE TABLE IF NOT EXISTS results (id SERIAL, value TEXT)\"))\n```"
+    }
+  },
+  "MySqlOperator": {
+    "operator": "MySqlOperator",
+    "module": "airflow.providers.mysql.operators.mysql",
+    "source_context": "Executes SQL against a MySQL database.",
+    "prefect_pattern": "SqlAlchemyConnector with MySQL driver",
+    "prefect_package": "prefect-sqlalchemy",
+    "prefect_import": "from prefect_sqlalchemy import SqlAlchemyConnector",
+    "example": {
+      "before": "```python\nquery = MySqlOperator(\n    task_id=\"insert_data\",\n    mysql_conn_id=\"mysql_default\",\n    sql=\"INSERT INTO logs (message) VALUES ('pipeline complete')\",\n)\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\nfrom sqlalchemy import text\n\n@task\ndef insert_data():\n    connector = SqlAlchemyConnector.load(\"mysql-default\")\n    with connector.get_connection() as conn:\n        conn.execute(text(\"INSERT INTO logs (message) VALUES ('pipeline complete')\"))\n```"
+    }
+  },
+  "MsSqlOperator": {
+    "operator": "MsSqlOperator",
+    "module": "airflow.providers.microsoft.mssql.operators.mssql",
+    "source_context": "Executes SQL against Microsoft SQL Server.",
+    "prefect_pattern": "SqlAlchemyConnector with MSSQL driver",
+    "prefect_package": "prefect-sqlalchemy",
+    "prefect_import": "from prefect_sqlalchemy import SqlAlchemyConnector",
+    "example": {
+      "before": "```python\nquery = MsSqlOperator(\n    task_id=\"run_sproc\",\n    mssql_conn_id=\"mssql_default\",\n    sql=\"EXEC dbo.my_procedure @param1='value'\",\n)\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\nfrom sqlalchemy import text\n\n@task\ndef run_sproc():\n    connector = SqlAlchemyConnector.load(\"mssql-default\")\n    with connector.get_connection() as conn:\n        conn.execute(text(\"EXEC dbo.my_procedure @param1='value'\"))\n```"
+    }
+  },
+  "SQLExecuteQueryOperator": {
+    "operator": "SQLExecuteQueryOperator",
+    "module": "airflow.providers.common.sql.operators.sql",
+    "source_context": "Generic SQL execution operator that works with any DB via hook. Replaces deprecated operator-specific SQL operators.",
+    "prefect_pattern": "SqlAlchemyConnector with appropriate driver",
+    "prefect_package": "prefect-sqlalchemy",
+    "prefect_import": "from prefect_sqlalchemy import SqlAlchemyConnector",
+    "example": {
+      "before": "```python\nquery = SQLExecuteQueryOperator(\n    task_id=\"run_query\",\n    conn_id=\"my_database\",\n    sql=\"SELECT COUNT(*) FROM events WHERE date = '{{ ds }}'\",\n)\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\nfrom sqlalchemy import text\n\n@task\ndef run_query(date: str):\n    connector = SqlAlchemyConnector.load(\"my-database\")\n    with connector.get_connection() as conn:\n        result = conn.execute(text(\"SELECT COUNT(*) FROM events WHERE date = :d\"), {\"d\": date})\n        return result.scalar()\n```"
+    },
+    "notes": [
+      "Jinja templates in SQL must be replaced with parameterized queries",
+      "conn_id maps to the block name"
+    ]
+  },
+  "SnowflakeOperator": {
+    "operator": "SnowflakeOperator",
+    "module": "airflow.providers.snowflake.operators.snowflake",
+    "source_context": "Executes SQL on Snowflake. Uses snowflake-connector-python.",
+    "prefect_pattern": "SnowflakeConnector query execution",
+    "prefect_package": "prefect-snowflake",
+    "prefect_import": "from prefect_snowflake import SnowflakeConnector",
+    "example": {
+      "before": "```python\nquery = SnowflakeOperator(\n    task_id=\"snowflake_query\",\n    snowflake_conn_id=\"snowflake_default\",\n    sql=\"COPY INTO my_table FROM @my_stage\",\n    warehouse=\"compute_wh\",\n)\n```",
+      "after": "```python\nfrom prefect_snowflake import SnowflakeConnector\n\n@task\ndef snowflake_query(sql: str):\n    connector = SnowflakeConnector.load(\"snowflake-default\")\n    connector.execute(sql)\n```"
+    }
+  },
+  "SqliteOperator": {
+    "operator": "SqliteOperator",
+    "module": "airflow.providers.sqlite.operators.sqlite",
+    "source_context": "Executes SQL against a SQLite database.",
+    "prefect_pattern": "sqlite3 standard library or SqlAlchemyConnector",
+    "prefect_package": "prefect (core)",
+    "prefect_import": "import sqlite3",
+    "example": {
+      "before": "```python\nquery = SqliteOperator(\n    task_id=\"query_local\",\n    sqlite_conn_id=\"sqlite_default\",\n    sql=\"SELECT * FROM metadata\",\n)\n```",
+      "after": "```python\nimport sqlite3\n\n@task\ndef query_local(db_path: str, sql: str):\n    conn = sqlite3.connect(db_path)\n    result = conn.execute(sql).fetchall()\n    conn.close()\n    return result\n```"
+    }
+  }
+}

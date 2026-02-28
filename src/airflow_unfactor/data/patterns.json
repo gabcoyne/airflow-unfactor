@@ -1,0 +1,236 @@
+{
+  "taskgroup-to-subflow": {
+    "id": "taskgroup-to-subflow",
+    "airflow_pattern": "TaskGroup \u2014 groups tasks visually and logically in the DAG UI.",
+    "prefect_pattern": "Subflow \u2014 a nested `@flow` function that contains related tasks.",
+    "rules": [
+      "Replace `with TaskGroup(\"group_name\") as group:` with a `@flow`-decorated function",
+      "Tasks inside the group become `@task` calls within the subflow",
+      "TaskGroup prefix behavior (e.g., `group.task_id`) is not needed in Prefect",
+      "Nested TaskGroups become nested subflows"
+    ],
+    "example": {
+      "before": "```python\nwith TaskGroup(\"transform\") as transform_group:\n    clean = PythonOperator(task_id=\"clean\", ...)\n    validate = PythonOperator(task_id=\"validate\", ...)\n    clean >> validate\n```",
+      "after": "```python\n@flow\ndef transform():\n    cleaned = clean()\n    validate(cleaned)\n```"
+    }
+  },
+  "trigger-rule-to-state": {
+    "id": "trigger-rule-to-state",
+    "airflow_pattern": "trigger_rule \u2014 controls when a task runs based on upstream task states (all_success, all_failed, one_success, etc.).",
+    "prefect_pattern": "State inspection with `return_state=True` \u2014 check upstream task states explicitly in Python.",
+    "rules": [
+      "`all_success` (default): no change needed, Prefect tasks fail on upstream failure by default",
+      "`all_failed`: use `return_state=True` on upstream tasks, check `state.is_failed()`",
+      "`one_success`: run tasks concurrently, check results with `any()`",
+      "`all_done`: use `return_state=True` to always get a result regardless of state",
+      "`none_failed`: check `not state.is_failed()` for each upstream",
+      "Complex trigger rules: use explicit Python if/else with state inspection"
+    ],
+    "example": {
+      "before": "```python\ncleanup = PythonOperator(\n    task_id=\"cleanup\",\n    trigger_rule=\"all_done\",\n    python_callable=cleanup_fn,\n)\n```",
+      "after": "```python\n@task\ndef cleanup():\n    cleanup_fn()\n\n@flow\ndef pipeline():\n    result = process.submit(return_state=True)\n    # cleanup runs regardless of process state\n    cleanup()\n```"
+    }
+  },
+  "jinja-ds-to-runtime": {
+    "id": "jinja-ds-to-runtime",
+    "airflow_pattern": "`{{ ds }}`, `{{ ds_nodash }}`, `{{ execution_date }}` \u2014 Jinja template variables for execution date.",
+    "prefect_pattern": "`runtime.flow_run.scheduled_start_time` \u2014 access scheduled time from Prefect runtime context.",
+    "rules": [
+      "`{{ ds }}` \u2192 `runtime.flow_run.scheduled_start_time.strftime(\"%Y-%m-%d\")`",
+      "`{{ ds_nodash }}` \u2192 `runtime.flow_run.scheduled_start_time.strftime(\"%Y%m%d\")`",
+      "`{{ execution_date }}` \u2192 `runtime.flow_run.scheduled_start_time`",
+      "`{{ next_ds }}` \u2192 compute from scheduled_start_time + interval",
+      "`{{ prev_ds }}` \u2192 compute from scheduled_start_time - interval",
+      "Import: `from prefect import runtime`"
+    ],
+    "example": {
+      "before": "```python\nBashOperator(\n    task_id=\"export\",\n    bash_command=\"dump_db --date {{ ds }}\",\n)\n```",
+      "after": "```python\nfrom prefect import task, runtime\n\n@task\ndef export():\n    ds = runtime.flow_run.scheduled_start_time.strftime(\"%Y-%m-%d\")\n    subprocess.run([\"dump_db\", \"--date\", ds])\n```"
+    }
+  },
+  "jinja-params-to-flow-params": {
+    "id": "jinja-params-to-flow-params",
+    "airflow_pattern": "`{{ params.x }}` \u2014 Jinja template variable for DAG params.",
+    "prefect_pattern": "Flow function parameters with type annotations.",
+    "rules": [
+      "`{{ params.x }}` \u2192 flow function parameter `x`",
+      "DAG `params={\"x\": \"default\"}` \u2192 function default `def flow(x: str = \"default\")`",
+      "Params are passed at deployment trigger time or via `flow.serve()` API"
+    ],
+    "example": {
+      "before": "```python\ndag = DAG(\"pipeline\", params={\"env\": \"prod\", \"limit\": 1000})\ntask = BashOperator(\n    bash_command=\"run --env {{ params.env }} --limit {{ params.limit }}\",\n)\n```",
+      "after": "```python\n@flow\ndef pipeline(env: str = \"prod\", limit: int = 1000):\n    run(env=env, limit=limit)\n```"
+    }
+  },
+  "dynamic-mapping": {
+    "id": "dynamic-mapping",
+    "airflow_pattern": "`.expand()` \u2014 dynamic task mapping that creates task instances at runtime based on input.",
+    "prefect_pattern": "`.map()` \u2014 maps a task over an iterable, creating concurrent task runs.",
+    "rules": [
+      "`task.expand(arg=values)` \u2192 `task.map(values)`",
+      "`task.expand(arg1=v1, arg2=v2)` \u2192 `task.map(v1, v2)` (parallel iteration)",
+      "`partial(fixed=val).expand(varying=list)` \u2192 use `functools.partial` or pass fixed args",
+      "Mapped task results are a list that can be passed to downstream tasks",
+      "Use `.submit()` for concurrent execution with futures"
+    ],
+    "example": {
+      "before": "```python\nprocess = PythonOperator.partial(task_id=\"process\", python_callable=process_fn)\nprocess.expand(op_args=[[1], [2], [3]])\n```",
+      "after": "```python\n@task\ndef process(item):\n    return process_fn(item)\n\n@flow\ndef pipeline():\n    results = process.map([1, 2, 3])\n```"
+    }
+  },
+  "branch-to-conditional": {
+    "id": "branch-to-conditional",
+    "airflow_pattern": "BranchPythonOperator \u2014 conditionally selects which downstream task(s) to execute.",
+    "prefect_pattern": "Python if/else \u2014 use standard control flow in the flow function.",
+    "rules": [
+      "Replace BranchPythonOperator with a plain Python function that returns the branch decision",
+      "Use if/else in the flow to call the appropriate tasks",
+      "No need for skip semantics \u2014 just don't call the unused branch",
+      "For complex branching: use a task that returns a decision value"
+    ],
+    "example": {
+      "before": "```python\ndef choose_branch(**context):\n    if context['params']['env'] == 'prod':\n        return 'deploy_prod'\n    return 'deploy_staging'\n\nbranch = BranchPythonOperator(task_id=\"branch\", python_callable=choose_branch)\n```",
+      "after": "```python\n@flow\ndef pipeline(env: str = \"staging\"):\n    if env == \"prod\":\n        deploy_prod()\n    else:\n        deploy_staging()\n```"
+    }
+  },
+  "short-circuit-to-early-return": {
+    "id": "short-circuit-to-early-return",
+    "airflow_pattern": "ShortCircuitOperator \u2014 skips all downstream tasks if condition is False.",
+    "prefect_pattern": "Early return from the flow function.",
+    "rules": [
+      "Replace ShortCircuitOperator with a conditional check + `return` in the flow",
+      "If condition is False, return early from the flow",
+      "No skip semantics needed \u2014 the flow simply ends"
+    ],
+    "example": {
+      "before": "```python\ncheck = ShortCircuitOperator(\n    task_id=\"check_data\",\n    python_callable=lambda: has_new_data(),\n)\ncheck >> process >> load\n```",
+      "after": "```python\n@flow\ndef pipeline():\n    if not has_new_data():\n        return  # short-circuit\n    data = process()\n    load(data)\n```"
+    }
+  },
+  "trigger-dag-to-run-deployment": {
+    "id": "trigger-dag-to-run-deployment",
+    "airflow_pattern": "TriggerDagRunOperator \u2014 triggers another DAG run, optionally passing configuration.",
+    "prefect_pattern": "`run_deployment()` \u2014 triggers a deployed flow, or call a subflow directly.",
+    "rules": [
+      "If the target DAG is in the same codebase: call it as a subflow",
+      "If the target DAG is a separate deployment: use `run_deployment()`",
+      "`conf` parameter \u2192 deployment parameters",
+      "`wait_for_completion=True` \u2192 `run_deployment(..., timeout=N)`"
+    ],
+    "example": {
+      "before": "```python\ntrigger = TriggerDagRunOperator(\n    task_id=\"trigger_downstream\",\n    trigger_dag_id=\"downstream_pipeline\",\n    conf={\"date\": \"{{ ds }}\"},\n    wait_for_completion=True,\n)\n```",
+      "after": "```python\nfrom prefect.deployments import run_deployment\n\n@task\ndef trigger_downstream(date: str):\n    run_deployment(\n        name=\"downstream-pipeline/default\",\n        parameters={\"date\": date},\n        timeout=3600,\n    )\n```"
+    }
+  },
+  "default-args-to-task-defaults": {
+    "id": "default-args-to-task-defaults",
+    "airflow_pattern": "`default_args` \u2014 dict of default parameters applied to all operators in a DAG.",
+    "prefect_pattern": "Shared `@task` decorator defaults or a custom task decorator.",
+    "rules": [
+      "`retries` \u2192 `@task(retries=N)` on each task, or create a custom decorator",
+      "`retry_delay` \u2192 `@task(retry_delay_seconds=N)`",
+      "`email_on_failure` \u2192 use `on_failure` hooks or automations",
+      "`owner` \u2192 use tags or flow metadata",
+      "`depends_on_past` \u2192 no direct equivalent; use state inspection if needed",
+      "Create a reusable task decorator for shared defaults"
+    ],
+    "example": {
+      "before": "```python\ndefault_args = {\n    \"owner\": \"data-team\",\n    \"retries\": 3,\n    \"retry_delay\": timedelta(minutes=5),\n    \"email_on_failure\": True,\n}\ndag = DAG(\"pipeline\", default_args=default_args)\n```",
+      "after": "```python\nfrom functools import partial\nfrom prefect import task\n\n# Shared defaults via partial\netl_task = partial(task, retries=3, retry_delay_seconds=300)\n\n@etl_task\ndef extract(): ...\n\n@etl_task\ndef transform(): ...\n```"
+    }
+  },
+  "callbacks-to-hooks": {
+    "id": "callbacks-to-hooks",
+    "airflow_pattern": "`on_success_callback`, `on_failure_callback`, `sla_miss_callback` \u2014 functions called on state changes.",
+    "prefect_pattern": "State change hooks and automations.",
+    "rules": [
+      "`on_failure_callback` \u2192 `@flow(on_failure=[handler])` or `@task(on_failure=[handler])`",
+      "`on_success_callback` \u2192 `@flow(on_completion=[handler])` (check state)",
+      "`sla_miss_callback` \u2192 Prefect automations with SLA-type triggers",
+      "Hook signature: `def hook(flow, flow_run, state)` for flows, `def hook(task, task_run, state)` for tasks",
+      "For complex alerting: use Prefect automations (UI/API configured)"
+    ],
+    "example": {
+      "before": "```python\ndef notify_failure(context):\n    send_alert(f\"Task {context['task_instance'].task_id} failed\")\n\ndag = DAG(\"pipeline\", on_failure_callback=notify_failure)\n```",
+      "after": "```python\ndef notify_failure(flow, flow_run, state):\n    send_alert(f\"Flow {flow_run.name} failed: {state.message}\")\n\n@flow(on_failure=[notify_failure])\ndef pipeline():\n    ...\n```"
+    }
+  },
+  "var_value": {
+    "id": "var_value",
+    "concept_type": "jinja-variable",
+    "airflow_pattern": "{{ var.value.key }} — Jinja template variable for globally stored configuration values via Airflow Variables.",
+    "prefect_pattern": "Variable.get(\"key\") from prefect.variables",
+    "rules": [
+      "{{ var.value.my_key }} \u2192 Variable.get(\"my_key\") from prefect.variables",
+      "{{ var.json.my_key }} \u2192 json.loads(Variable.get(\"my_key\"))",
+      "Import: from prefect.variables import Variable",
+      "Set variables via CLI: prefect variable set my_key=value"
+    ]
+  },
+  "ds_add": {
+    "id": "ds_add",
+    "concept_type": "jinja-macro",
+    "airflow_pattern": "macros.ds_add(ds, N) — Jinja macro that adds N days to a date string.",
+    "prefect_pattern": "(datetime.strptime(ds, \"%Y-%m-%d\") + timedelta(days=N)).strftime(\"%Y-%m-%d\")",
+    "rules": [
+      "{{ macros.ds_add(ds, 5) }} \u2192 (datetime.strptime(ds, \"%Y-%m-%d\") + timedelta(days=5)).strftime(\"%Y-%m-%d\")",
+      "Import: from datetime import datetime, timedelta",
+      "ds comes from runtime.flow_run.scheduled_start_time.strftime(\"%Y-%m-%d\")"
+    ]
+  },
+  "ds_format": {
+    "id": "ds_format",
+    "concept_type": "jinja-macro",
+    "airflow_pattern": "macros.ds_format(ds, input_format, output_format) — Jinja macro that reformats a date string.",
+    "prefect_pattern": "datetime.strptime(ds, input_format).strftime(output_format)",
+    "rules": [
+      "{{ macros.ds_format(ds, \"%Y-%m-%d\", \"%d/%m/%Y\") }} \u2192 datetime.strptime(ds, \"%Y-%m-%d\").strftime(\"%d/%m/%Y\")",
+      "Import: from datetime import datetime"
+    ]
+  },
+  "dag_run.conf": {
+    "id": "dag_run.conf",
+    "concept_type": "jinja-variable",
+    "airflow_pattern": "{{ dag_run.conf }} — Jinja template variable for runtime configuration passed when triggering the DAG.",
+    "prefect_pattern": "Flow function parameters (typed). Pass configuration as typed flow parameters at trigger time.",
+    "rules": [
+      "{{ dag_run.conf.key }} \u2192 flow parameter key: str",
+      "DAG params with defaults \u2192 def my_flow(key: str = 'default')",
+      "Configuration is passed at deployment trigger time or via flow.serve() API"
+    ]
+  },
+  "jinja-template-variables": {
+    "id": "jinja-template-variables",
+    "airflow_pattern": "Jinja2 template variables rendered by Airflow's template engine at task execution time. Operators accept template fields where {{ variable }} syntax is evaluated before the operator runs.",
+    "prefect_pattern": "Pure Python via prefect.runtime module, flow parameters, and prefect.variables. No template engine — write Python directly. Import from prefect import runtime and access the runtime context as a regular object.",
+    "rules": [
+      "{{ ds }} \u2192 runtime.flow_run.scheduled_start_time.strftime(\"%Y-%m-%d\")",
+      "{{ ts }} \u2192 runtime.flow_run.scheduled_start_time.isoformat()",
+      "{{ execution_date }} \u2192 runtime.flow_run.scheduled_start_time",
+      "{{ ds_nodash }} \u2192 runtime.flow_run.scheduled_start_time.strftime(\"%Y%m%d\")",
+      "{{ run_id }} \u2192 runtime.flow_run.name or str(runtime.flow_run.id)",
+      "{{ dag_run.conf }} \u2192 flow function parameters (typed)",
+      "{{ params.x }} \u2192 flow function parameter x",
+      "{{ var.value.x }} \u2192 Variable.get(\"x\") from prefect.variables",
+      "{{ macros.ds_add(ds, N) }} \u2192 (datetime.strptime(ds, \"%Y-%m-%d\") + timedelta(days=N)).strftime(\"%Y-%m-%d\")",
+      "{{ macros.ds_format(ds, input_format, output_format) }} \u2192 datetime.strptime(ds, input_format).strftime(output_format)",
+      "{{ macros.datetime }} \u2192 from datetime import datetime",
+      "{{ macros.timedelta }} \u2192 from datetime import timedelta",
+      "{{ task_instance.task_id }} \u2192 runtime.task_run.task_name (within a @task)",
+      "{{ next_ds }} and {{ prev_ds }} \u2014 PARADIGM SHIFT: Prefect flows do not own their schedule. Compute from scheduled_start_time and interval parameter."
+    ],
+    "macros": {
+      "ds_add": "add N days to a date string using timedelta",
+      "ds_format": "reformat a date string using datetime.strptime + strftime",
+      "datetime": "Python datetime class \u2014 use directly",
+      "timedelta": "Python timedelta class \u2014 use directly",
+      "ds_add_description": "{{ macros.ds_add(ds, 5) }} adds 5 days to the execution date string",
+      "dag_run_conf": "{{ dag_run.conf }} becomes typed flow parameters",
+      "var_value": "{{ var.value.my_key }} becomes Variable.get(\"my_key\")"
+    },
+    "example": {
+      "before": "```python\ndef process(**context):\n    ds = context[\"ds\"]\n    ds_nodash = context[\"ds_nodash\"]\n    run_id = context[\"run_id\"]\n    env = context[\"params\"][\"env\"]\n    api_key = Variable.get(\"api_key\")\n    next_date = macros.ds_add(ds, 7)\n```",
+      "after": "```python\nfrom datetime import datetime, timedelta\nfrom prefect import flow, task, runtime\nfrom prefect.variables import Variable\n\n@task\ndef process(env: str, api_key: str):\n    ds = runtime.flow_run.scheduled_start_time.strftime(\"%Y-%m-%d\")\n    ds_nodash = runtime.flow_run.scheduled_start_time.strftime(\"%Y%m%d\")\n    run_id = runtime.flow_run.name\n    next_date = (datetime.strptime(ds, \"%Y-%m-%d\") + timedelta(days=7)).strftime(\"%Y-%m-%d\")\n```"
+    }
+  }
+}

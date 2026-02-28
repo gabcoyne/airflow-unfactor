@@ -1,160 +1,83 @@
-# airflow-unfactor 🛫➡️🌊
-
-> *"Airflow is for airports. Welcome to modern orchestration."*
+# airflow-unfactor
 
 [![Tests](https://github.com/gabcoyne/airflow-unfactor/actions/workflows/test.yml/badge.svg)](https://github.com/gabcoyne/airflow-unfactor/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/airflow-unfactor)](https://pypi.org/project/airflow-unfactor/)
 [![License](https://img.shields.io/github/license/gabcoyne/airflow-unfactor)](LICENSE)
 
-An MCP server that refactors Apache Airflow DAG code into Prefect flow code with AI assistance. Built with [FastMCP](https://github.com/jlowin/fastmcp).
+An MCP server that converts Apache Airflow DAGs into Prefect flows. Point it at a DAG, and the LLM generates idiomatic Prefect code. Not a template with TODOs — working code. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
-## Features
+## How It Works
 
-- 🔄 **Refactor-Focused** — Translates Airflow DAG patterns into maintainable Prefect flow patterns
-- 📚 **Educational** — Comments explain *why* Prefect does it better
-- ✅ **Test Generation** — Every converted flow comes with pytest tests
-- 🤖 **AI-Assisted** — Smart analysis of complex DAG patterns
-- 📦 **Batch Support** — Refactor entire DAG projects at once
-- 🧙 **Visual Wizard** — Step-by-step UI for guided migrations
+The server exposes five tools over MCP. The LLM reads raw DAG source code, looks up translation knowledge, and generates the Prefect flow.
+
+| Tool | What It Does |
+|------|-------------|
+| `read_dag` | Returns raw DAG source code with metadata (path, size, line count) |
+| `lookup_concept` | Airflow→Prefect translation knowledge — operators, patterns, connections |
+| `validate` | Syntax-checks generated code and returns both sources for comparison |
+| `search_prefect_docs` | Searches live Prefect docs for anything not in the pre-compiled knowledge |
+| `scaffold` | Creates a Prefect project directory structure (not code) |
+
+No AST parsing. No template engine. The LLM reads the code directly, just like a developer would.
 
 ## Installation
 
 ```bash
-# Using uv (recommended)
-uv pip install airflow-unfactor
-
-# Using pip
+# From PyPI
 pip install airflow-unfactor
 
-# From source (for development)
-git clone https://github.com/gabcoyne/airflow-unfactor.git
-cd airflow-unfactor
-uv pip install -e ".[dev]"
-```
-
-## Quick Start
-
-### Use with Claude Desktop
-
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "airflow-unfactor": {
-      "command": "uvx",
-      "args": ["airflow-unfactor"]
-    }
-  }
-}
-```
-
-Then ask Claude:
-> "Refactor the DAG in `dags/my_etl.py` into a Prefect flow"
-
-### Use with Cursor
-
-Add to your Cursor MCP config:
-
-```json
-{
-  "mcpServers": {
-    "airflow-unfactor": {
-      "command": "uvx",
-      "args": ["airflow-unfactor"]
-    }
-  }
-}
-```
-
-### Run Standalone
-
-```bash
-# Start the MCP server
-airflow-unfactor
-
 # Or with uv
-uvx airflow-unfactor
+uv pip install airflow-unfactor
 ```
 
-### Visual Wizard
+## Configuration
 
-For a guided, step-by-step migration experience:
+### Claude Desktop
 
-```bash
-# Install with UI support
-pip install airflow-unfactor[ui]
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
-# Start the wizard
-airflow-unfactor --ui
-
-# Open in browser
-open http://localhost:8765
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
 ```
 
-The wizard provides:
-- Visual DAG analysis with complexity scoring
-- Live preview of converted flows
-- Validation with confidence scores
-- Complete project export as ZIP
+### Claude Code
 
-## MCP Tools
+Add to `.mcp.json` in your project:
 
-| Tool | Description |
-|------|-------------|
-| `analyze` | Analyze a DAG's structure, operators, and complexity |
-| `convert` | Refactor a DAG into a Prefect flow with tests |
-| `validate` | Verify refactoring maintains behavioral equivalence |
-| `explain` | Learn Airflow concepts and Prefect equivalents |
-| `batch` | Refactor multiple DAGs at once |
-| `scaffold` | Generate a complete Prefect project from DAG directory |
-
-### Validating Conversions
-
-The `validate` tool compares your original DAG with the converted flow to ensure behavioral equivalence:
-
-```python
-# Via MCP
-result = await validate(
-    original_dag="path/to/dag.py",
-    converted_flow="path/to/flow.py"
-)
-
-# Returns JSON with:
-# - is_valid: Overall pass/fail
-# - task_count_match: Whether task counts match
-# - dependency_preserved: Whether dependencies are preserved
-# - confidence_score: 0-100 confidence rating
-# - issues: Specific mismatches found
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
 ```
 
-The validator:
-- Extracts task graphs from both files
-- Ignores DummyOperator/EmptyOperator (not needed in Prefect)
-- Detects XCom patterns and verifies they're converted to return values
-- Reports actionable issues when mismatches are found
+### Cursor
 
-## Recommended Target Layout (New Prefect Project)
+Add to your Cursor MCP settings:
 
-When refactoring Airflow DAGs into a new codebase, keep generated output organized instead of dropping files into a single folder.
-
-Suggested structure (inspired by `prefecthq/flows` style):
-
-```text
-your-project/
-  flows/                  # Prefect flow entrypoints
-  tasks/                  # Reusable task functions
-  deployments/            # deployment.yaml / deployment scripts
-  infrastructure/         # work pool / worker config helpers
-  tests/
-    flows/
-    tasks/
-  migration/
-    airflow_sources/      # original DAGs kept read-only for reference
-    conversion_notes/     # runbook outputs and manual TODOs
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
 ```
 
-This helps keep migration work auditable and reduces long-term repo clutter.
+Then ask your LLM: *"Convert the DAG in `dags/my_etl.py` to a Prefect flow."*
 
 ## Example
 
@@ -176,12 +99,9 @@ with DAG("my_etl", ...) as dag:
     t1 >> t2
 ```
 
-**Converted Prefect Flow:**
+**Generated Prefect flow:**
 ```python
 from prefect import flow, task
-
-# ✨ Prefect Advantage: Direct Data Passing
-# No XCom push/pull - data flows in-memory between tasks.
 
 @task
 def extract():
@@ -193,45 +113,40 @@ def transform(data):
 
 @flow(name="my_etl")
 def my_etl():
-    data = extract()  # Direct return
-    result = transform(data)  # Direct parameter
+    data = extract()
+    result = transform(data)
     return result
 ```
 
-**Plus generated tests!** See [Testing](https://gabcoyne.github.io/airflow-unfactor/testing/) for details.
+The `>>` dependency chain becomes explicit data passing through return values. XCom is gone. It's just Python.
+
+## Translation Knowledge
+
+The server ships with 78 pre-compiled Airflow→Prefect translation entries covering operators, patterns, connections, and core concepts. These are compiled by Colin from live Airflow source and Prefect documentation.
+
+When the pre-compiled knowledge doesn't cover something, `search_prefect_docs` queries the Prefect documentation MCP server at docs.prefect.io in real time.
 
 ## Documentation
 
-Full documentation: [gabcoyne.github.io/airflow-unfactor](https://gabcoyne.github.io/airflow-unfactor)
-
-- [Getting Started](https://gabcoyne.github.io/airflow-unfactor/getting-started/)
-- [Examples](https://gabcoyne.github.io/airflow-unfactor/examples/)
-- [Operator Mapping](https://gabcoyne.github.io/airflow-unfactor/operator-mapping/)
-- [Testing](https://gabcoyne.github.io/airflow-unfactor/testing/)
+Full docs: [gabcoyne.github.io/airflow-unfactor](https://gabcoyne.github.io/airflow-unfactor)
 
 ## Development
 
 ```bash
-# Clone and install
 git clone https://github.com/gabcoyne/airflow-unfactor.git
 cd airflow-unfactor
-uv pip install -e ".[dev]"
+uv sync
 
 # Run tests
-pytest
+uv run pytest
 
-# Task tracking with Beads
-bd ready
+# Lint
+uv run ruff check --fix
+
+# Compile translation knowledge
+cd colin && colin run
 ```
-
-## Contributing
-
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
-
----
-
-Made with 💙 by [Prefect](https://prefect.io)
+MIT — see [LICENSE](LICENSE).

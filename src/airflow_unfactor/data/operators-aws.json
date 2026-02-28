@@ -1,0 +1,142 @@
+{
+  "S3CreateObjectOperator": {
+    "operator": "S3CreateObjectOperator",
+    "module": "airflow.providers.amazon.aws.operators.s3",
+    "source_context": "Creates an object in S3 with provided data. Uses boto3 `put_object`.",
+    "prefect_pattern": "S3Bucket.upload_from_path or write_path",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import S3Bucket",
+    "example": {
+      "before": "```python\nupload = S3CreateObjectOperator(\n    task_id=\"upload\",\n    s3_bucket=\"my-bucket\",\n    s3_key=\"output/data.json\",\n    data='{\"result\": \"ok\"}',\n)\n```",
+      "after": "```python\nfrom prefect_aws import S3Bucket\n\n@task\ndef upload(key: str, data: str):\n    bucket = S3Bucket.load(\"my-bucket\")\n    bucket.write_path(key, content=data.encode())\n```"
+    },
+    "notes": [
+      "For file uploads, use upload_from_path",
+      "For in-memory data, use write_path"
+    ]
+  },
+  "S3CopyObjectOperator": {
+    "operator": "S3CopyObjectOperator",
+    "module": "airflow.providers.amazon.aws.operators.s3",
+    "source_context": "Copies an S3 object from one key to another. Uses boto3 `copy_object`.",
+    "prefect_pattern": "S3Bucket.copy_object or boto3 directly",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import S3Bucket",
+    "example": {
+      "before": "```python\ncopy = S3CopyObjectOperator(\n    task_id=\"copy\",\n    source_bucket_key=\"s3://src/data.csv\",\n    dest_bucket_key=\"s3://dst/data.csv\",\n)\n```",
+      "after": "```python\nfrom prefect_aws import S3Bucket\n\n@task\ndef copy_s3(source_key: str, dest_key: str):\n    bucket = S3Bucket.load(\"my-bucket\")\n    bucket.copy_object(source_path=source_key, to_path=dest_key)\n```"
+    }
+  },
+  "S3DeleteObjectsOperator": {
+    "operator": "S3DeleteObjectsOperator",
+    "module": "airflow.providers.amazon.aws.operators.s3",
+    "source_context": "Deletes objects from S3. Supports single key or list of keys.",
+    "prefect_pattern": "boto3 delete_objects via AwsCredentials",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\ndelete = S3DeleteObjectsOperator(\n    task_id=\"cleanup\",\n    bucket=\"my-bucket\",\n    keys=[\"tmp/file1.csv\", \"tmp/file2.csv\"],\n)\n```",
+      "after": "```python\nfrom prefect_aws import AwsCredentials\n\n@task\ndef cleanup_s3(bucket: str, keys: list[str]):\n    creds = AwsCredentials.load(\"aws-default\")\n    s3 = creds.get_boto3_session().client(\"s3\")\n    s3.delete_objects(Bucket=bucket, Delete={\"Objects\": [{\"Key\": k} for k in keys]})\n```"
+    }
+  },
+  "LambdaInvokeFunctionOperator": {
+    "operator": "LambdaInvokeFunctionOperator",
+    "module": "airflow.providers.amazon.aws.operators.lambda_function",
+    "source_context": "Invokes an AWS Lambda function. Supports sync and async invocation.",
+    "prefect_pattern": "boto3 Lambda invoke via AwsCredentials",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\ninvoke = LambdaInvokeFunctionOperator(\n    task_id=\"invoke_lambda\",\n    function_name=\"my-function\",\n    payload='{\"key\": \"value\"}',\n)\n```",
+      "after": "```python\nimport json\nfrom prefect_aws import AwsCredentials\n\n@task\ndef invoke_lambda(function_name: str, payload: dict):\n    creds = AwsCredentials.load(\"aws-default\")\n    client = creds.get_boto3_session().client(\"lambda\")\n    response = client.invoke(\n        FunctionName=function_name,\n        Payload=json.dumps(payload),\n    )\n    return json.loads(response[\"Payload\"].read())\n```"
+    }
+  },
+  "GlueJobOperator": {
+    "operator": "GlueJobOperator",
+    "module": "airflow.providers.amazon.aws.operators.glue",
+    "source_context": "Starts and monitors an AWS Glue ETL job. Waits for completion by default.",
+    "prefect_pattern": "boto3 Glue start_job_run via AwsCredentials",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\nglue = GlueJobOperator(\n    task_id=\"run_glue\",\n    job_name=\"my-etl-job\",\n    script_args={\"--input\": \"s3://bucket/input\"},\n)\n```",
+      "after": "```python\nimport time\nfrom prefect_aws import AwsCredentials\n\n@task\ndef run_glue(job_name: str, script_args: dict):\n    creds = AwsCredentials.load(\"aws-default\")\n    glue = creds.get_boto3_session().client(\"glue\")\n    run = glue.start_job_run(JobName=job_name, Arguments=script_args)\n    run_id = run[\"JobRunId\"]\n    while True:\n        status = glue.get_job_run(JobName=job_name, RunId=run_id)\n        state = status[\"JobRun\"][\"JobRunState\"]\n        if state in (\"SUCCEEDED\",):\n            return run_id\n        if state in (\"FAILED\", \"ERROR\", \"TIMEOUT\"):\n            raise Exception(f\"Glue job {state}\")\n        time.sleep(30)\n```"
+    }
+  },
+  "EcsRunTaskOperator": {
+    "operator": "EcsRunTaskOperator",
+    "module": "airflow.providers.amazon.aws.operators.ecs",
+    "source_context": "Runs a task on AWS ECS. Creates or uses existing task definition, starts task, and optionally waits for completion.",
+    "prefect_pattern": "ECSTask work pool or boto3 directly",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\necs = EcsRunTaskOperator(\n    task_id=\"run_ecs\",\n    task_definition=\"my-task\",\n    cluster=\"my-cluster\",\n    overrides={\"containerOverrides\": [{\"name\": \"app\", \"command\": [\"python\", \"run.py\"]}]},\n)\n```",
+      "after": "```python\n# Option 1: Use ECS work pool (preferred for deployment)\n# Option 2: Direct boto3\nfrom prefect_aws import AwsCredentials\n\n@task\ndef run_ecs(task_def: str, cluster: str, command: list[str]):\n    creds = AwsCredentials.load(\"aws-default\")\n    ecs = creds.get_boto3_session().client(\"ecs\")\n    response = ecs.run_task(\n        cluster=cluster,\n        taskDefinition=task_def,\n        overrides={\"containerOverrides\": [{\"name\": \"app\", \"command\": command}]},\n    )\n    return response[\"tasks\"][0][\"taskArn\"]\n```"
+    },
+    "notes": [
+      "For production: use an ECS work pool to run entire flows on ECS",
+      "For one-off tasks: use boto3 directly"
+    ]
+  },
+  "SageMakerTrainingOperator": {
+    "operator": "SageMakerTrainingOperator",
+    "module": "airflow.providers.amazon.aws.operators.sagemaker",
+    "source_context": "Creates and monitors a SageMaker training job. Configures algorithm, input/output, and instance settings.",
+    "prefect_pattern": "boto3 SageMaker create_training_job",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\ntrain = SageMakerTrainingOperator(\n    task_id=\"train_model\",\n    config={\n        \"TrainingJobName\": \"my-job\",\n        \"AlgorithmSpecification\": {...},\n        \"InputDataConfig\": [...],\n        \"OutputDataConfig\": {...},\n    },\n)\n```",
+      "after": "```python\nfrom prefect_aws import AwsCredentials\n\n@task\ndef train_model(config: dict):\n    creds = AwsCredentials.load(\"aws-default\")\n    sm = creds.get_boto3_session().client(\"sagemaker\")\n    sm.create_training_job(**config)\n    # Poll for completion...\n```"
+    }
+  },
+  "StepFunctionStartExecutionOperator": {
+    "operator": "StepFunctionStartExecutionOperator",
+    "module": "airflow.providers.amazon.aws.operators.step_function",
+    "source_context": "Starts an AWS Step Functions state machine execution and optionally waits for completion.",
+    "prefect_pattern": "boto3 stepfunctions start_execution",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\nstep = StepFunctionStartExecutionOperator(\n    task_id=\"start_workflow\",\n    state_machine_arn=\"arn:aws:states:...\",\n    input='{\"key\": \"value\"}',\n)\n```",
+      "after": "```python\nimport json\nfrom prefect_aws import AwsCredentials\n\n@task\ndef start_step_function(state_machine_arn: str, input_data: dict):\n    creds = AwsCredentials.load(\"aws-default\")\n    sfn = creds.get_boto3_session().client(\"stepfunctions\")\n    response = sfn.start_execution(\n        stateMachineArn=state_machine_arn,\n        input=json.dumps(input_data),\n    )\n    return response[\"executionArn\"]\n```"
+    }
+  },
+  "AthenaOperator": {
+    "operator": "AthenaOperator",
+    "module": "airflow.providers.amazon.aws.operators.athena",
+    "source_context": "Runs an Amazon Athena query and waits for results.",
+    "prefect_pattern": "boto3 Athena start_query_execution",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\nquery = AthenaOperator(\n    task_id=\"athena_query\",\n    query=\"SELECT * FROM my_table WHERE date = '{{ ds }}'\",\n    database=\"my_database\",\n    output_location=\"s3://bucket/athena-results/\",\n)\n```",
+      "after": "```python\nfrom prefect_aws import AwsCredentials\n\n@task\ndef athena_query(query: str, database: str, output_location: str):\n    creds = AwsCredentials.load(\"aws-default\")\n    athena = creds.get_boto3_session().client(\"athena\")\n    response = athena.start_query_execution(\n        QueryString=query,\n        QueryExecutionContext={\"Database\": database},\n        ResultConfiguration={\"OutputLocation\": output_location},\n    )\n    return response[\"QueryExecutionId\"]\n```"
+    }
+  },
+  "RedshiftSQLOperator": {
+    "operator": "RedshiftSQLOperator",
+    "module": "airflow.providers.amazon.aws.operators.redshift_sql",
+    "source_context": "Executes SQL on Amazon Redshift using redshift_connector.",
+    "prefect_pattern": "SqlAlchemyConnector with Redshift driver",
+    "prefect_package": "prefect-sqlalchemy",
+    "prefect_import": "from prefect_sqlalchemy import SqlAlchemyConnector",
+    "example": {
+      "before": "```python\nquery = RedshiftSQLOperator(\n    task_id=\"redshift_query\",\n    sql=\"COPY table FROM 's3://bucket/data' IAM_ROLE '{{ var.value.role }}'\",\n    redshift_conn_id=\"redshift_default\",\n)\n```",
+      "after": "```python\nfrom prefect_sqlalchemy import SqlAlchemyConnector\n\n@task\ndef redshift_query(sql: str):\n    connector = SqlAlchemyConnector.load(\"redshift-default\")\n    with connector.get_connection() as conn:\n        conn.execute(text(sql))\n```"
+    }
+  },
+  "SnsPublishOperator": {
+    "operator": "SnsPublishOperator",
+    "module": "airflow.providers.amazon.aws.operators.sns",
+    "source_context": "Publishes a message to an Amazon SNS topic.",
+    "prefect_pattern": "boto3 SNS publish",
+    "prefect_package": "prefect-aws",
+    "prefect_import": "from prefect_aws import AwsCredentials",
+    "example": {
+      "before": "```python\nnotify = SnsPublishOperator(\n    task_id=\"notify\",\n    target_arn=\"arn:aws:sns:us-east-1:123:my-topic\",\n    message=\"Pipeline complete\",\n)\n```",
+      "after": "```python\nfrom prefect_aws import AwsCredentials\n\n@task\ndef notify(topic_arn: str, message: str):\n    creds = AwsCredentials.load(\"aws-default\")\n    sns = creds.get_boto3_session().client(\"sns\")\n    sns.publish(TopicArn=topic_arn, Message=message)\n```"
+    }
+  }
+}
