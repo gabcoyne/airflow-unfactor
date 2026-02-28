@@ -74,6 +74,14 @@ We intentionally **do not parse DAGs into AST structures**. LLMs are better at r
 1. **lookup_concept** — Pre-compiled, instant, works offline. 78 entries covering common operators, patterns, and connections. Compiled from live Airflow source and Prefect docs via Colin.
 2. **search_prefect_docs** — Live, comprehensive, requires network. Queries the real Prefect documentation for anything not pre-compiled.
 
+### What Is Colin?
+
+Colin is the build-time tool that compiles translation knowledge from live sources. It reads Airflow operator source code and Prefect documentation, summarizes the mappings with an LLM, and outputs JSON files that `lookup_concept` serves at runtime.
+
+The compiled knowledge ships with the PyPI package — you don't need to run Colin yourself. If you're developing locally and want to recompile after upstream changes, run `cd colin && colin run`.
+
+When you see `"source": "colin"` in a `lookup_concept` response, it means the answer came from pre-compiled knowledge. `"source": "fallback"` means Colin output wasn't available and the server used its minimal built-in mappings.
+
 ### Why Not Generate Code?
 
 The tools provide knowledge, not code. The LLM does the generation:
