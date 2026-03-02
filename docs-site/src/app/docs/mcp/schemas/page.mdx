@@ -200,6 +200,77 @@ Generate a Prefect project directory structure.
 }
 ```
 
+### generate_deployment
+
+Write a `prefect.yaml` deployment configuration from DAG metadata.
+
+**Input:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "output_directory": { "type": "string", "description": "Directory to write prefect.yaml into" },
+    "flows": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "List of flow dicts, each with flow_name and entrypoint"
+    },
+    "workspace": { "type": "string", "default": "default", "description": "Workspace name" }
+  },
+  "required": ["output_directory", "flows"]
+}
+```
+
+**Output:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "created_file": { "type": "string" },
+    "deployment_names": { "type": "array", "items": { "type": "string" } },
+    "next_steps": { "type": "array", "items": { "type": "string" } }
+  }
+}
+```
+
+### generate_migration_report
+
+Write `MIGRATION.md` — a human-readable record of a DAG conversion.
+
+**Input:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "output_directory": { "type": "string", "description": "Directory to write MIGRATION.md into" },
+    "dag_path": { "type": "string", "description": "Path to the original Airflow DAG file" },
+    "flow_path": { "type": "string", "description": "Path to the generated Prefect flow file" },
+    "decisions": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "List of dicts with component, outcome, rationale, manual_action"
+    },
+    "manual_actions": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Top-level action types not tied to a specific component"
+    }
+  },
+  "required": ["output_directory", "dag_path", "flow_path", "decisions"]
+}
+```
+
+**Output:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "created_file": { "type": "string" },
+    "checklist_items_count": { "type": "integer" }
+  }
+}
+```
+
 ## Error Conventions
 
 All tools use the same error pattern — a JSON object with an `error` key:

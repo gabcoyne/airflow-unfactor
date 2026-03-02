@@ -87,7 +87,7 @@ class TestToolNamesMatch:
 
 
 class TestToolCount:
-    """Install docs say '5 tools listed' — the server must have exactly 5."""
+    """Install docs say 'N tools listed' — the server must have exactly N."""
 
     def test_install_docs_tool_count(self, live_tools):
         install_text = DOCS_INSTALL.read_text()
@@ -98,13 +98,13 @@ class TestToolCount:
             f"Install docs claim {claimed} tools, server has {len(live_tools)}"
         )
 
-    def test_readme_says_five_tools(self, live_tools):
+    def test_readme_says_seven_tools(self, live_tools):
         readme_text = README.read_text()
-        assert "five tools" in readme_text.lower(), (
-            "README should mention 'five tools'"
+        assert "seven tools" in readme_text.lower(), (
+            "README should mention 'seven tools'"
         )
-        assert len(live_tools) == 5, (
-            f"README says five tools, server has {len(live_tools)}"
+        assert len(live_tools) == 7, (
+            f"README says seven tools, server has {len(live_tools)}"
         )
 
 

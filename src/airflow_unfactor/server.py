@@ -9,6 +9,10 @@ Built with FastMCP.
 
 from fastmcp import FastMCP
 
+from airflow_unfactor.tools.generate_deployment import generate_deployment as _generate_deployment
+from airflow_unfactor.tools.generate_migration_report import (
+    generate_migration_report as _generate_migration_report,
+)
 from airflow_unfactor.tools.lookup import lookup_concept as _lookup_concept
 from airflow_unfactor.tools.read_dag import read_dag as _read_dag
 from airflow_unfactor.tools.scaffold import scaffold_project
@@ -34,6 +38,11 @@ directly and generate complete Prefect flows.
 5. **validate** — Compare original DAG and generated flow (syntax check on the
    generated code + both sources returned for your structural comparison)
 6. **scaffold** — Create Prefect project directory structure (optional)
+7. **generate_deployment** — Write prefect.yaml deployment configuration from DAG metadata
+   (schedule, parameters, dataset triggers, tags)
+8. **generate_migration_report** — Write MIGRATION.md with conversion
+   decisions table, before-production checklist, and Prefect MCP server
+   suggestion
 
 ## Key principles
 
@@ -156,6 +165,70 @@ async def scaffold(
         include_docker=include_docker,
         include_github_actions=include_github_actions,
         schedule_interval=schedule_interval,
+    )
+
+
+@mcp.tool
+async def generate_deployment(
+    output_directory: str,
+    flows: list[dict],
+    workspace: str = "default",
+) -> str:
+    """Write prefect.yaml deployment configuration from DAG metadata.
+
+    Call after generating flow.py. Produces a complete prefect.yaml
+    with YAML anchors, schedule config, parameter defaults, and TODO
+    stubs for work pool and pull step configuration.
+
+    Args:
+        output_directory: Directory to write prefect.yaml into.
+        flows: List of flow dicts. Each requires flow_name and entrypoint.
+            Optional fields: schedule (cron/interval/None), parameters
+            (dict of name→default), description, tags, dataset_triggers.
+        workspace: Workspace name (default: "default").
+
+    Returns:
+        JSON with created_file, deployment_names, next_steps.
+    """
+    return await _generate_deployment(
+        output_directory=output_directory,
+        flows=flows,
+        workspace=workspace,
+    )
+
+
+@mcp.tool
+async def generate_migration_report(
+    output_directory: str,
+    dag_path: str,
+    flow_path: str,
+    decisions: list[dict],
+    manual_actions: list[str] | None = None,
+) -> str:
+    """Write MIGRATION.md — human-readable record of a DAG conversion.
+
+    Call as the final step after generate_deployment. Documents every
+    conversion decision, produces a before-production checklist with
+    Prefect doc links, and suggests adding the Prefect MCP server.
+
+    Args:
+        output_directory: Directory to write MIGRATION.md into.
+        dag_path: Path to the original Airflow DAG file.
+        flow_path: Path to the generated Prefect flow file.
+        decisions: List of dicts, each with: component, outcome,
+            rationale (optional), manual_action (optional).
+        manual_actions: Top-level action types not tied to a specific
+            component (e.g. "setup_work_pool", "migrate_connections").
+
+    Returns:
+        JSON with created_file, checklist_items_count.
+    """
+    return await _generate_migration_report(
+        output_directory=output_directory,
+        dag_path=dag_path,
+        flow_path=flow_path,
+        decisions=decisions,
+        manual_actions=manual_actions,
     )
 
 

@@ -33,3 +33,8 @@ class TestStartupWarning:
             mock_mcp.run.return_value = None
             main()
         assert "colin run" not in caplog.text
+
+
+def test_new_tools_registered(live_tool_names):
+    assert "generate_deployment" in live_tool_names
+    assert "generate_migration_report" in live_tool_names

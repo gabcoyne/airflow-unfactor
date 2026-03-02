@@ -8,7 +8,7 @@ An MCP server that converts Apache Airflow DAGs into Prefect flows. Point it at 
 
 ## How It Works
 
-The server exposes five tools over MCP. The LLM reads raw DAG source code, looks up translation knowledge, and generates the Prefect flow.
+The server exposes seven tools over MCP. The LLM reads raw DAG source code, looks up translation knowledge, and generates the Prefect flow.
 
 | Tool | What It Does |
 |------|-------------|
@@ -17,6 +17,8 @@ The server exposes five tools over MCP. The LLM reads raw DAG source code, looks
 | `validate` | Syntax-checks generated code and returns both sources for comparison |
 | `search_prefect_docs` | Searches live Prefect docs for anything not in the pre-compiled knowledge |
 | `scaffold` | Creates a Prefect project directory structure (not code) |
+| `generate_deployment` | Writes prefect.yaml deployment configuration from DAG metadata |
+| `generate_migration_report` | Writes MIGRATION.md with conversion decisions and a before-production checklist |
 
 No AST parsing. No template engine. The LLM reads the code directly, just like a developer would.
 

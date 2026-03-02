@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -41,3 +42,12 @@ def pytest_addoption(parser):
 def snapshot_update(request):
     """Check if snapshot update mode is enabled."""
     return request.config.getoption("--snapshot-update", default=False)
+
+
+@pytest.fixture
+def live_tool_names():
+    """Return the set of tool names registered on the MCP server."""
+    from airflow_unfactor.server import mcp
+
+    tools = asyncio.run(mcp.list_tools())
+    return {t.name for t in tools}

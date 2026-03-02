@@ -107,6 +107,52 @@ Generate a Prefect project directory structure following `prefecthq/flows` conve
 
 **Output:** Created directories, files, prefect.yaml template, and next steps.
 
+### `generate_deployment`
+
+Write a `prefect.yaml` deployment configuration from DAG metadata. Call after generating `flow.py`. Produces a complete `prefect.yaml` with YAML anchors, schedule config, parameter defaults, and TODO stubs for work pool and pull step configuration.
+
+**Input:**
+```json
+{
+  "output_directory": "/path/to/project",
+  "flows": [
+    {
+      "flow_name": "my_flow",
+      "entrypoint": "deployments/default/my_flow/flow.py:my_flow",
+      "schedule": "0 6 * * *",
+      "parameters": {"date": null},
+      "tags": ["etl"]
+    }
+  ],
+  "workspace": "default"
+}
+```
+
+**Output:** JSON with `created_file`, `deployment_names`, and `next_steps`.
+
+### `generate_migration_report`
+
+Write `MIGRATION.md` — a human-readable record of a DAG conversion. Call as the final step after `generate_deployment`. Documents every conversion decision, produces a before-production checklist with Prefect doc links, and suggests adding the Prefect MCP server.
+
+**Input:**
+```json
+{
+  "output_directory": "/path/to/project",
+  "dag_path": "dags/etl_pipeline.py",
+  "flow_path": "deployments/default/my_flow/flow.py",
+  "decisions": [
+    {
+      "component": "PythonOperator",
+      "outcome": "converted",
+      "rationale": "Mapped to @task decorator"
+    }
+  ],
+  "manual_actions": ["setup_work_pool", "migrate_connections"]
+}
+```
+
+**Output:** JSON with `created_file` and `checklist_items_count`.
+
 ## External MCP Integration
 
 The `search_prefect_docs` tool connects to the Prefect MCP server via FastMCP Client:
