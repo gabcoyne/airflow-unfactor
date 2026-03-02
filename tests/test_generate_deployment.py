@@ -60,8 +60,17 @@ class TestFlowToDeploymentYaml:
             entrypoint="deployments/default/etl/flow.py:etl",
             tags=["etl", "daily"],
         )
-        assert "tags:" in yaml
-        assert "etl" in yaml
+        assert 'tags: ["etl", "daily"]' in yaml
+
+    def test_tags_with_spaces_are_quoted(self):
+        """Tags containing spaces or colons must be quoted to produce valid YAML."""
+        yaml = _flow_to_deployment_yaml(
+            flow_name="etl",
+            entrypoint="deployments/default/etl/flow.py:etl",
+            tags=["my tag", "env:prod"],
+        )
+        assert '"my tag"' in yaml
+        assert '"env:prod"' in yaml
 
     def test_description(self):
         yaml = _flow_to_deployment_yaml(
@@ -126,6 +135,14 @@ class TestBuildPrefectYaml:
             flows=[{"flow_name": "f", "entrypoint": "deployments/default/f/flow.py:f"}],
         )
         assert "# pull:" in content or "pull:" not in content
+
+    def test_empty_flows_emits_empty_list(self):
+        """Empty flows list must produce 'deployments: []' not 'deployments: null'."""
+        content = _build_prefect_yaml(project_name="proj", flows=[])
+        assert "deployments: []" in content
+        assert "deployments: null" not in content
+        # prefect.yaml header should still be present
+        assert "name: proj" in content
 
 
 class TestGenerateDeploymentTool:

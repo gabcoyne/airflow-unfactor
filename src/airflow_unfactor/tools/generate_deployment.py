@@ -4,6 +4,16 @@ import json
 from pathlib import Path
 from typing import Any
 
+# Airflow preset schedule names → cron equivalents (matches scaffold.py)
+_PRESET_CRON: dict[str, str] = {
+    "@daily": "0 0 * * *",
+    "@hourly": "0 * * * *",
+    "@weekly": "0 0 * * 0",
+    "@monthly": "0 0 1 * *",
+    "@yearly": "0 0 1 1 *",
+    "@annually": "0 0 1 1 *",
+}
+
 
 def _slugify(name: str) -> str:
     """Convert snake_case or any name to kebab-case slug."""
@@ -29,7 +39,8 @@ def _flow_to_deployment_yaml(
     lines.append(f"    entrypoint: {entrypoint}")
 
     if tags:
-        lines.append(f"    tags: [{', '.join(tags)}]")
+        quoted_tags = ", ".join('"' + t + '"' for t in tags)
+        lines.append(f"    tags: [{quoted_tags}]")
 
     if parameters:
         lines.append("    parameters:")
@@ -41,13 +52,6 @@ def _flow_to_deployment_yaml(
 
     if schedule:
         schedule = schedule.strip()
-        _PRESET_CRON = {
-            "@daily": "0 0 * * *",
-            "@hourly": "0 * * * *",
-            "@weekly": "0 0 * * 0",
-            "@monthly": "0 0 1 * *",
-            "@yearly": "0 0 1 1 *",
-        }
         if schedule in _PRESET_CRON:
             cron = _PRESET_CRON[schedule]
             lines.append(f'    schedules:\n      - cron: "{cron}"')
@@ -72,10 +76,13 @@ def _build_prefect_yaml(
     flows: list[dict[str, Any]],
 ) -> str:
     """Build the full prefect.yaml document."""
-    deployments = "\n".join(
-        _flow_to_deployment_yaml(**{k: v for k, v in f.items()})
-        for f in flows
-    )
+    if flows:
+        deployments_section = "deployments:\n" + "\n".join(
+            _flow_to_deployment_yaml(**{k: v for k, v in f.items()})
+            for f in flows
+        ) + "\n"
+    else:
+        deployments_section = "deployments: []\n"
 
     return f"""# Prefect deployment configuration
 # See: https://docs.prefect.io/concepts/deployments/
@@ -102,9 +109,7 @@ definitions:
     daily: &daily
       cron: "0 0 * * *"
 
-deployments:
-{deployments}
-"""
+{deployments_section}"""
 
 
 async def generate_deployment(
