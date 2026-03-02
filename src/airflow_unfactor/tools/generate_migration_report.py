@@ -15,7 +15,7 @@ PREFECT_DOC_LINKS: dict[str, str] = {
     "configure_snowflake_block": "https://prefecthq.github.io/prefect-snowflake/",
     "configure_sqlalchemy_block": "https://prefecthq.github.io/prefect-sqlalchemy/",
     "configure_azure_block": "https://prefecthq.github.io/prefect-azure/",
-    "migrate_connections": "https://docs.prefect.io/concepts/blocks",
+    "migrate_connections": "https://docs.prefect.io/guides/migrate-from-airflow",
     "create_automation": "https://docs.prefect.io/concepts/automations",
     "configure_webhook": "https://docs.prefect.io/concepts/webhooks",
     "configure_kubernetes": "https://docs.prefect.io/concepts/infrastructure",
@@ -52,15 +52,15 @@ def _render_decisions_table(decisions: list[dict[str, Any]]) -> str:
     if not decisions:
         return "_No conversion decisions recorded._\n"
 
-    rows = ["| Component | Airflow Pattern | Outcome | Rationale | Action Required |",
-            "|-----------|-----------------|---------|-----------|-----------------|"]
+    rows = ["| Component | Outcome | Rationale | Action Required |",
+            "|-----------|---------|-----------|-----------------|"]
     for d in decisions:
         component = d.get("component", "")
         outcome = d.get("outcome", "")
         rationale = d.get("rationale", "")
         action = d.get("manual_action", "")
         action_cell = f"⚠ `{action}`" if action else "—"
-        rows.append(f"| {component} | | {outcome} | {rationale} | {action_cell} |")
+        rows.append(f"| {component} | {outcome} | {rationale} | {action_cell} |")
 
     return "\n".join(rows) + "\n"
 
