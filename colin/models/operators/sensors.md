@@ -96,7 +96,8 @@ def wait_for_s3(key: str) -> str:
 
 ## notes
 - wildcard_match in S3KeySensor: use prefix listing in Prefect
-- For event-driven: use S3 event notifications → Prefect automation
+- poke_interval maps to retry_delay_seconds; timeout / poke_interval ≈ retries count
+- Event-driven alternative (preferred for long waits): configure S3 Event Notifications to POST to a Prefect Webhook; create an Automation to trigger the deployment — no worker held during the wait
 {% endsection %}
 
 {% section HttpSensor %}
@@ -145,6 +146,7 @@ def wait_for_api(url: str) -> bool:
 ## notes
 - response_check callable becomes the conditional in the task
 - http_conn_id credentials: store in a Secret block
+- Event-driven alternative: if the API supports webhooks, configure it to POST to a Prefect Webhook when ready; create an Automation to trigger the deployment — eliminates polling entirely
 {% endsection %}
 
 {% section SqlSensor %}
@@ -284,4 +286,8 @@ def wait_for_gcs(blob_name: str) -> str:
         raise FileNotFoundError(f"GCS object {blob_name} not found")
     return blob_name
 ```
+
+## notes
+- poke_interval maps to retry_delay_seconds; timeout / poke_interval ≈ retries count
+- Event-driven alternative (preferred for long waits): configure GCS Pub/Sub notifications on the bucket; route to a Prefect Webhook via a Cloud Function or direct Pub/Sub push; create an Automation to trigger the deployment — no worker held during the wait
 {% endsection %}

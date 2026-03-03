@@ -354,6 +354,25 @@ class TestPhase3Integration:
             "deferrable entry must reference Prefect Automations as alternative"
         )
 
+    def test_sensor_to_polling_has_three_patterns(self):
+        """sensor-to-polling entry must describe all three conversion patterns."""
+        knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
+        result = lookup("sensor", knowledge)
+        assert result["status"] == "found"
+        result_str = json.dumps(result)
+        assert "webhook" in result_str.lower() or "Webhook" in result_str, (
+            "sensor entry must reference Prefect Webhooks as an event-driven alternative"
+        )
+        assert "automation" in result_str.lower(), (
+            "sensor entry must reference Prefect Automations as an event-driven alternative"
+        )
+        assert "retries" in result_str, (
+            "sensor entry must cover polling-retries pattern"
+        )
+        assert "reschedule" in result_str, (
+            "sensor entry must address mode='reschedule' sensors"
+        )
+
     def test_phase3_source_is_colin(self):
         """All Phase 3 entries should be sourced from Colin output, not fallback."""
         knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)

@@ -294,13 +294,31 @@ prefect
 from prefect import task
 
 ## rules
-- Simple sensors: convert to a `@task` with a polling loop and `time.sleep()`
-- `poke_interval` becomes the sleep duration in the polling loop
-- `timeout` becomes task timeout or max retries
-- `mode='reschedule'` sensors: use `@task(retries=N, retry_delay_seconds=M)`
-- For file sensors: use `pathlib.Path.exists()` in a polling task
-- For external trigger sensors: use Prefect events + automations
-- S3/GCS sensors: use integration packages with polling
+There are three patterns for converting sensors. Choose based on wait duration and whether the external system can push events.
+
+**Pattern 1: Polling retries** — use when waits are short (seconds to a few minutes) or the external system cannot push events.
+- Convert to `@task(retries=N, retry_delay_seconds=M)`
+- `poke_interval` → `retry_delay_seconds`
+- `timeout / poke_interval` ≈ `retries` count
+- Raise an exception when the condition is not yet met; Prefect retries on exception
+- Worker holds the thread between retries — acceptable for short waits
+
+**Pattern 2: Webhooks + Automations** — use when waits are long (minutes to hours) or the external system can push events (S3 event notifications, API callbacks, database triggers, CI/CD webhooks).
+- Configure the external system to POST to a Prefect webhook when the condition is met
+- Create a Prefect Automation: trigger a deployment run when the webhook event fires
+- No polling, no worker resource held — pure event-driven architecture
+- This most closely matches `mode='reschedule'` and `deferrable=True` sensors
+
+**Pattern 3: `pause_until` / `wait_for_input`** — use when a human or external signal is needed mid-flow (Prefect 3+).
+- `await flow.pause_until(some_condition)` suspends the flow run without holding a worker slot
+- Suitable for approval gates or long synchronization waits with human-in-the-loop
+
+**Specific rules:**
+- `mode='poke'` sensors → Pattern 1 (polling retries)
+- `mode='reschedule'` or `deferrable=True` sensors → Pattern 2 (webhooks + automations) for resource efficiency, or Pattern 1 if simplicity matters more
+- `ExternalTaskSensor` → Pattern 2 (automation on upstream flow completion event) or `run_deployment()` with awaited result
+- S3/GCS/file sensors → Pattern 1 if polling is acceptable; Pattern 2 if the cloud storage system has event notifications configured
+- `HttpSensor` → Pattern 1 for simple status checks; Pattern 2 if the API supports webhooks
 
 ## example
 ### before
@@ -312,14 +330,25 @@ wait_for_file = FileSensor(
     timeout=3600,
 )
 ```
-### after
+### after (Pattern 1 — polling)
 ```python
 @task(retries=60, retry_delay_seconds=60)
-def wait_for_file(filepath: str):
+def wait_for_file(filepath: str) -> str:
     from pathlib import Path
     if not Path(filepath).exists():
-        raise Exception(f"File {filepath} not found, retrying...")
+        raise FileNotFoundError(f"{filepath} not yet available")
     return filepath
+```
+### after (Pattern 2 — event-driven)
+```python
+# No polling task needed.
+# 1. Configure a Prefect Webhook to receive events:
+#    POST /webhooks/<id>  →  emits event "file.arrived" with resource {"path": filepath}
+# 2. Create an Automation:
+#    Trigger: event "file.arrived" matches resource {"path": filepath}
+#    Action: run deployment "my-flow/production"
+# 3. Your filesystem watcher / external process calls the webhook when the file appears.
+#    Prefect triggers the next flow run automatically — no worker slot held.
 ```
 {% endsection %}
 
