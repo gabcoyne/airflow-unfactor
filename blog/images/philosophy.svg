@@ -89,8 +89,8 @@
     <circle cx="132" cy="456" r="2" fill="#ef4444" opacity="0.6"/>
   </g>
 
-  <!-- RIGHT SIDE: LLMs Are Adaptive -->
-  <text x="900" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#10b981" text-anchor="middle" font-weight="700" opacity="0.9">LLMs Are Adaptive</text>
+  <!-- RIGHT SIDE: LLM + MCP tools adapt -->
+  <text x="900" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#10b981" text-anchor="middle" font-weight="700" opacity="0.9">LLMs + MCP Tools Adapt</text>
 
   <!-- Neural network pathways -->
   <g filter="url(#ph-glow)">
@@ -164,9 +164,9 @@
 
   <!-- Right bullet points -->
   <g font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#737373">
-    <text x="760" y="420">Rich context enables adaptive generation</text>
+    <text x="760" y="420">Structured tools provide reliable context</text>
     <text x="760" y="440">Idiomatic code tailored to each DAG</text>
-    <text x="760" y="460">Continuous improvement with model updates</text>
+    <text x="760" y="460">Scaffold + validate tighten the migration loop</text>
     <circle cx="752" cy="416" r="2" fill="#10b981" opacity="0.6"/>
     <circle cx="752" cy="436" r="2" fill="#10b981" opacity="0.6"/>
     <circle cx="752" cy="456" r="2" fill="#10b981" opacity="0.6"/>

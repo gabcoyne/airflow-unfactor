@@ -17,7 +17,7 @@
   <rect width="1200" height="320" fill="url(#wf-bg)" rx="16"/>
 
   <!-- Step 1: Read DAG -->
-  <g transform="translate(100, 100)">
+  <g transform="translate(80, 100)">
     <circle cx="0" cy="0" r="44" fill="#f59e0b" opacity="0.1" filter="url(#wf-glow)"/>
     <circle cx="0" cy="0" r="34" fill="#f59e0b" opacity="0.15"/>
     <circle cx="0" cy="0" r="28" fill="#f59e0b" opacity="0.9"/>
@@ -28,13 +28,13 @@
   </g>
 
   <!-- Arrow 1→2 -->
-  <g transform="translate(155, 100)" opacity="0.4">
-    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
-    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  <g transform="translate(130, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="95" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="91,-4 99,0 91,4" fill="#525252"/>
   </g>
 
   <!-- Step 2: Lookup -->
-  <g transform="translate(340, 100)">
+  <g transform="translate(270, 100)">
     <circle cx="0" cy="0" r="44" fill="#3b82f6" opacity="0.1" filter="url(#wf-glow)"/>
     <circle cx="0" cy="0" r="34" fill="#3b82f6" opacity="0.15"/>
     <circle cx="0" cy="0" r="28" fill="#3b82f6" opacity="0.9"/>
@@ -45,13 +45,13 @@
   </g>
 
   <!-- Arrow 2→3 -->
-  <g transform="translate(395, 100)" opacity="0.4">
-    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
-    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  <g transform="translate(320, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="95" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="91,-4 99,0 91,4" fill="#525252"/>
   </g>
 
   <!-- Step 3: Search Docs -->
-  <g transform="translate(580, 100)">
+  <g transform="translate(460, 100)">
     <circle cx="0" cy="0" r="44" fill="#8b5cf6" opacity="0.1" filter="url(#wf-glow)"/>
     <circle cx="0" cy="0" r="34" fill="#8b5cf6" opacity="0.15"/>
     <circle cx="0" cy="0" r="28" fill="#8b5cf6" opacity="0.9"/>
@@ -64,18 +64,36 @@
   </g>
 
   <!-- Arrow 3→4 -->
-  <g transform="translate(635, 100)" opacity="0.4">
-    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
-    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  <g transform="translate(510, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="95" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="91,-4 99,0 91,4" fill="#525252"/>
   </g>
 
-  <!-- Step 4: LLM Generates (highlighted) -->
-  <g transform="translate(820, 100)">
+  <!-- Step 4: Scaffold (optional) -->
+  <g transform="translate(650, 100)">
+    <circle cx="0" cy="0" r="44" fill="#14b8a6" opacity="0.1" filter="url(#wf-glow)"/>
+    <circle cx="0" cy="0" r="34" fill="#14b8a6" opacity="0.15"/>
+    <circle cx="0" cy="0" r="28" fill="#14b8a6" opacity="0.9"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#000" text-anchor="middle" font-weight="700">4</text>
+    <text x="0" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">Scaffold</text>
+    <text x="0" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#a3a3a3" text-anchor="middle">scaffold</text>
+    <text x="0" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Project structure</text>
+    <rect x="-28" y="-50" width="56" height="16" rx="8" fill="#14b8a6" opacity="0.2"/>
+    <text x="0" y="-38" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#2dd4bf" text-anchor="middle" font-weight="500" letter-spacing="1">OPTIONAL</text>
+  </g>
+
+  <!-- Arrow 4→5 -->
+  <g transform="translate(700, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="95" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="91,-4 99,0 91,4" fill="#525252"/>
+  </g>
+
+  <!-- Step 5: LLM Generates (highlighted) -->
+  <g transform="translate(840, 100)">
     <circle cx="0" cy="0" r="52" fill="#10b981" opacity="0.08" filter="url(#wf-glow)"/>
     <circle cx="0" cy="0" r="42" fill="#10b981" opacity="0.12"/>
     <circle cx="0" cy="0" r="34" fill="#10b981" opacity="0.9"/>
-    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#000" text-anchor="middle" font-weight="700">4</text>
-    <!-- Sparkle accent -->
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#000" text-anchor="middle" font-weight="700">5</text>
     <g transform="translate(22, -22)" fill="#10b981" opacity="0.6">
       <polygon points="0,-6 1.5,-1.5 6,0 1.5,1.5 0,6 -1.5,1.5 -6,0 -1.5,-1.5"/>
     </g>
@@ -83,18 +101,18 @@
     <text x="0" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Complete Prefect flow</text>
   </g>
 
-  <!-- Arrow 4→5 -->
-  <g transform="translate(880, 100)" opacity="0.4">
-    <line x1="0" y1="0" x2="80" y2="0" stroke="#525252" stroke-width="1.5"/>
-    <polygon points="76,-4 84,0 76,4" fill="#525252"/>
+  <!-- Arrow 5→6 -->
+  <g transform="translate(895, 100)" opacity="0.4">
+    <line x1="0" y1="0" x2="95" y2="0" stroke="#525252" stroke-width="1.5"/>
+    <polygon points="91,-4 99,0 91,4" fill="#525252"/>
   </g>
 
-  <!-- Step 5: Validate -->
-  <g transform="translate(1060, 100)">
+  <!-- Step 6: Validate -->
+  <g transform="translate(1030, 100)">
     <circle cx="0" cy="0" r="44" fill="#f43f5e" opacity="0.1" filter="url(#wf-glow)"/>
     <circle cx="0" cy="0" r="34" fill="#f43f5e" opacity="0.15"/>
     <circle cx="0" cy="0" r="28" fill="#f43f5e" opacity="0.9"/>
-    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">5</text>
+    <text x="0" y="6" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">6</text>
     <text x="0" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#e5e5e5" text-anchor="middle" font-weight="600">Validate</text>
     <text x="0" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#a3a3a3" text-anchor="middle">validate</text>
     <text x="0" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#737373" text-anchor="middle">Syntax + comparison</text>

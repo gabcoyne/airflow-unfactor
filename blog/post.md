@@ -20,21 +20,23 @@ We took a different approach.
 
 LLMs are exceptional at reading code, understanding intent, and generating idiomatic output in a target framework. What they need is context — the right knowledge at the right time.
 
-That's what airflow-unfactor provides: an MCP server with five tools that give LLMs everything they need to convert any Airflow DAG into a clean Prefect flow.
+That's what airflow-unfactor provides: an MCP server with five tools that give LLMs everything they need to convert Airflow DAGs into clean Prefect flows and scaffold deployment-ready project structure.
 
-![The five-step conversion workflow](images/workflow.svg)
+![The conversion workflow](images/workflow.svg)
 
-The workflow is simple:
+The workflow is simple. Five MCP tools plus one generation step:
 
 1. **Read the DAG** — `read_dag` returns the raw source code. No AST parsing, no structural extraction. The LLM reads the code directly, just like a developer would.
 
-2. **Look up translation knowledge** — `lookup_concept` provides pre-compiled Airflow-to-Prefect mappings. We built a knowledge base called Colin with 78 translation entries covering operators, patterns, connections, sensors, and architectural concepts. Ask for "PythonOperator" and get the `@task` decorator equivalent with conversion rules.
+2. **Look up translation knowledge** — `lookup_concept` provides pre-compiled Airflow-to-Prefect mappings. We built a knowledge base called Colin with 97 translation entries covering operators, patterns, connections, sensors, and architectural concepts. Ask for "PythonOperator" and get the `@task` decorator equivalent with conversion rules.
 
 3. **Search live Prefect docs** — `search_prefect_docs` queries the Prefect documentation MCP server at docs.prefect.io for anything not covered by the pre-compiled knowledge. Task caching? Concurrency limits? Work pools? It's all there, live.
 
-4. **The LLM generates** — With the source code and translation knowledge in hand, the LLM produces complete, idiomatic Prefect flow code. Not a scaffold. Not a template with TODOs. Working code.
+4. **Optionally scaffold the project** — `scaffold` creates a Prefect project directory structure (`deployments/`, `tests/`, `prefect.yaml`, optional Docker/CI files). It scaffolds structure, not flow code.
 
-5. **Validate** — `validate` syntax-checks the generated code and returns both source files side-by-side with a comparison checklist. Did every task make it? Are dependencies preserved? Is XCom replaced with return values?
+5. **The LLM generates** — With the source code and translation knowledge in hand, the LLM produces complete, idiomatic Prefect flow code. Not a template with TODOs. Working code.
+
+6. **Validate** — `validate` syntax-checks the generated code and returns both source files side-by-side with a comparison checklist. Did every task make it? Are dependencies preserved? Is XCom replaced with return values?
 
 That's it. Five tools. No AST pipeline. No template engine. No brittle heuristics.
 
@@ -42,9 +44,9 @@ That's it. Five tools. No AST pipeline. No template engine. No brittle heuristic
 
 Here's what a real conversion session looks like. You open Claude Code (or any MCP client), point it at an Airflow DAG, and say "convert this to Prefect."
 
-The LLM calls `read_dag` to get the source. It scans the imports and patterns, then calls `lookup_concept` for each one — PythonOperator, BashOperator, the connection patterns, the schedule. For anything unusual, it calls `search_prefect_docs`.
+The LLM calls `read_dag` to get the source. It scans the imports and patterns, then calls `lookup_concept` for each one — PythonOperator, BashOperator, connection patterns, schedule handling. For anything unusual, it calls `search_prefect_docs`.
 
-Then it writes the Prefect flow. Complete. With `@flow` and `@task` decorators, proper return-value data passing instead of XCom, Prefect blocks instead of Airflow connections, and a `prefect.yaml` deployment configuration.
+If you need a project skeleton, it can call `scaffold` to create deployment structure and a starter `prefect.yaml`. Then it writes the Prefect flow: complete `@flow` and `@task` code with return-value data passing instead of XCom and Prefect blocks instead of Airflow connections.
 
 Finally, it calls `validate` to confirm the generated code is syntactically valid and structurally faithful to the original.
 

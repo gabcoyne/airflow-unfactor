@@ -150,8 +150,8 @@
 
   <!-- Labels -->
   <text x="200" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#f59e0b" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">AIRFLOW DAGS</text>
-  <text x="600" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#10b981" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">AI + MCP</text>
-  <text x="920" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#6366f1" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">PREFECT FLOWS</text>
+  <text x="600" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#10b981" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">5 MCP TOOLS + LLM</text>
+  <text x="920" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#6366f1" opacity="0.6" text-anchor="middle" font-weight="500" letter-spacing="2">PREFECT FLOWS + SCAFFOLD</text>
 
   <!-- Subtle arrows showing flow direction -->
   <g stroke="#ffffff" stroke-width="1" opacity="0.15" fill="none">
