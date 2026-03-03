@@ -1,73 +1,115 @@
-# Sensors → Event-Driven Patterns
+# Sensors → Prefect Patterns
 
-Airflow sensors block task slots while waiting. Prefect offers more efficient alternatives: polling tasks with retries, or event-driven triggers.
+Airflow sensors wait for a condition to be met before proceeding. The right Prefect equivalent depends on two factors: how long the wait is, and whether the external system can push events.
 
-## Conversion Strategies
+## Three Patterns
 
-| Strategy | Best For | Pros | Cons |
-|----------|----------|------|------|
-| Polling task | Simple waits, file checks | Easy to implement | Uses task slots |
-| Event trigger | External systems with webhooks | Efficient, no polling | Requires event source |
-| Scheduled retry | Periodic checks | No blocking | May miss exact timing |
+| Pattern | When to use | Worker held? |
+|---------|-------------|--------------|
+| **Polling retries** | Short waits (seconds–minutes), or system can't push | Yes |
+| **Webhooks + Automations** | Long waits, or system supports event notifications | No |
+| **`pause_until`** | Human-in-the-loop, mid-flow approval gates (Prefect 3+) | No |
 
-## Common Sensor Conversions
+### Pattern 1: Polling Retries
 
-### S3KeySensor → Polling Task
+Convert the sensor to a `@task` that raises an exception when the condition is not yet met. Prefect retries on exception.
 
-**Airflow:**
 ```python
-from airflow.sensors.s3_key_sensor import S3KeySensor
-
-wait_for_file = S3KeySensor(
-    task_id="wait_for_file",
-    bucket_name="my-bucket",
-    bucket_key="data/*.csv",
-    aws_conn_id="aws_default",
-    timeout=3600,
-    poke_interval=60,
-    mode="poke"
-)
-```
-
-**Prefect (Polling Task):**
-```python
-from prefect import task, flow
-from prefect_aws import AwsCredentials
-import boto3
-
 @task(retries=60, retry_delay_seconds=60)
-def wait_for_s3_file(bucket: str, prefix: str) -> str:
-    """Poll S3 until file exists, then return the key."""
-    aws_creds = AwsCredentials.load("aws-prod")
-    s3 = boto3.client("s3", **aws_creds.get_boto3_session().get_credentials())
-
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    if response.get("Contents"):
-        return response["Contents"][0]["Key"]
-
-    raise Exception(f"No files found matching {prefix}")
-
-@flow
-def process_new_data():
-    file_key = wait_for_s3_file("my-bucket", "data/")
-    process_file(file_key)
+def wait_for_file(filepath: str) -> str:
+    from pathlib import Path
+    if not Path(filepath).exists():
+        raise FileNotFoundError(f"{filepath} not yet available")
+    return filepath
 ```
 
-**Prefect (Event Trigger):**
+**Parameter mapping:**
+- `poke_interval` → `retry_delay_seconds`
+- `timeout / poke_interval` ≈ `retries` count
+- `mode="poke"` → this pattern
+
+### Pattern 2: Webhooks + Automations
+
+Configure the external system to POST to a Prefect Webhook when the condition is met. Create an Automation to trigger the deployment when the event fires. No worker is held during the wait.
+
+This is the resource-efficient equivalent of `mode="reschedule"` and `deferrable=True`.
+
 ```yaml
-# prefect.yaml - S3 event trigger
+# prefect.yaml
 deployments:
-  - name: process-s3-upload
-    entrypoint: flows/process.py:process_new_data
+  - name: process-on-arrival
+    entrypoint: flows/process.py:process_flow
     triggers:
       - type: event
         match:
-          prefect.resource.id: "s3://my-bucket/*"
+          prefect.resource.id: "webhook.*"
         expect:
-          - s3.object.created
+          - file.arrived
 ```
 
-### ExternalTaskSensor → Event-Based Coordination
+The external system (a cron job, a cloud function, a CI pipeline) calls the Prefect Webhook URL when ready. Prefect emits the event and the Automation fires the deployment.
+
+**When to use:**
+- `mode="reschedule"` sensors — don't poll, let the system notify you
+- `deferrable=True` sensors — same intent, no Triggerer component needed
+- Cloud storage events (S3, GCS) with event notification configured
+- APIs that support outbound webhooks
+- Any wait measured in hours rather than minutes
+
+### Pattern 3: `pause_until` (Prefect 3+)
+
+Suspends the flow run without holding a worker slot. Best for human approval gates or long synchronization waits with a defined completion signal.
+
+```python
+from prefect import flow, pause_flow_run
+
+@flow
+def approval_workflow():
+    result = prepare_report()
+    await pause_flow_run(timeout=86400)  # wait up to 24h
+    publish_report(result)
+```
+
+---
+
+## Common Sensor Conversions
+
+### S3KeySensor
+
+**Airflow:**
+```python
+from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
+
+wait = S3KeySensor(
+    task_id="wait_for_s3",
+    bucket_key="s3://my-bucket/data/output.parquet",
+    aws_conn_id="aws_default",
+    poke_interval=300,
+    timeout=7200,
+)
+```
+
+**Prefect (Pattern 1 — polling):**
+```python
+from prefect_aws import S3Bucket
+from prefect import task
+
+@task(retries=24, retry_delay_seconds=300)
+def wait_for_s3(key: str) -> str:
+    bucket = S3Bucket.load("my-bucket")
+    objects = bucket.list_objects(folder=key.rsplit("/", 1)[0])
+    if not any(key in str(o) for o in objects):
+        raise FileNotFoundError(f"S3 key {key} not yet available")
+    return key
+```
+
+**Prefect (Pattern 2 — event-driven):**
+
+Configure S3 Event Notifications on your bucket to POST to a Prefect Webhook. Create an Automation: trigger your deployment when the webhook event fires. No task needed — the flow starts automatically when the object arrives.
+
+---
+
+### ExternalTaskSensor
 
 **Airflow:**
 ```python
@@ -77,21 +119,18 @@ wait_for_upstream = ExternalTaskSensor(
     task_id="wait_for_upstream",
     external_dag_id="upstream_dag",
     external_task_id="final_task",
-    execution_date_fn=lambda dt: dt,
-    timeout=7200
+    timeout=7200,
 )
 ```
 
-**Prefect (Event Trigger):**
+**Prefect (Automation on flow completion):**
 ```yaml
-# prefect.yaml - trigger on upstream flow completion
+# prefect.yaml
 deployments:
   - name: downstream-flow
     entrypoint: flows/downstream.py:downstream_flow
     triggers:
       - type: event
-        match:
-          prefect.resource.id: "prefect.flow-run.*"
         match_related:
           - prefect.resource.role: flow
             prefect.resource.id: "prefect.flow.upstream-flow"
@@ -99,224 +138,209 @@ deployments:
           - prefect.flow-run.Completed
 ```
 
-**Prefect (Emit Event from Upstream):**
+**Prefect (explicit dependency):**
 ```python
-from prefect import flow
-from prefect.events import emit_event
+from prefect.deployments import run_deployment
 
 @flow
-def upstream_flow():
-    result = do_work()
-
-    # Signal completion for downstream
-    emit_event(
-        event="upstream-flow.completed",
-        resource={"prefect.resource.id": "upstream-flow"}
-    )
-
-    return result
+def orchestrator():
+    upstream_result = run_deployment("upstream-flow/production", as_subflow=True)
+    downstream_flow(upstream_result)
 ```
 
-### HttpSensor → Polling or Webhook
+---
+
+### HttpSensor
 
 **Airflow:**
 ```python
-from airflow.sensors.http_sensor import HttpSensor
+from airflow.providers.http.sensors.http import HttpSensor
 
-wait_for_api = HttpSensor(
+wait = HttpSensor(
     task_id="wait_for_api",
-    http_conn_id="api_default",
-    endpoint="/health",
-    response_check=lambda response: response.json()["status"] == "ready",
-    timeout=1800,
-    poke_interval=30
+    http_conn_id="api",
+    endpoint="status",
+    response_check=lambda r: r.json()["ready"],
+    poke_interval=30,
+    timeout=600,
 )
 ```
 
-**Prefect (Polling):**
+**Prefect (Pattern 1 — polling):**
 ```python
 import httpx
-from prefect import task, flow
+from prefect import task
 
-@task(retries=60, retry_delay_seconds=30)
-def wait_for_api_ready(url: str) -> bool:
-    """Poll API until ready."""
-    response = httpx.get(f"{url}/health")
-    response.raise_for_status()
-
-    if response.json()["status"] == "ready":
-        return True
-
-    raise Exception("API not ready yet")
-
-@flow
-def api_dependent_flow():
-    wait_for_api_ready("https://api.example.com")
-    call_api()
+@task(retries=20, retry_delay_seconds=30)
+def wait_for_api(url: str) -> bool:
+    resp = httpx.get(f"{url}/status")
+    if not resp.json().get("ready"):
+        raise Exception("API not ready")
+    return True
 ```
 
-**Prefect (Webhook Trigger):**
-```yaml
-# prefect.yaml - webhook trigger
-deployments:
-  - name: api-ready-handler
-    entrypoint: flows/api.py:api_dependent_flow
-    triggers:
-      - type: webhook
-        match:
-          api.status: ready
-```
+**Prefect (Pattern 2 — webhook):**
 
-### FileSensor → File Watcher
+If the API supports outbound webhooks, configure it to POST to a Prefect Webhook when it becomes ready. Create an Automation to trigger the deployment — no polling task needed.
+
+---
+
+### FileSensor
 
 **Airflow:**
 ```python
 from airflow.sensors.filesystem import FileSensor
 
-wait_for_file = FileSensor(
+wait = FileSensor(
     task_id="wait_for_file",
-    filepath="/data/input/*.csv",
-    fs_conn_id="fs_default",
-    timeout=3600
+    filepath="/data/input.csv",
+    poke_interval=60,
+    timeout=3600,
 )
 ```
 
 **Prefect:**
 ```python
 from pathlib import Path
-from prefect import task, flow
+from prefect import task
 
 @task(retries=60, retry_delay_seconds=60)
-def wait_for_local_file(pattern: str) -> Path:
-    """Wait for file matching pattern to appear."""
-    matches = list(Path("/data/input").glob("*.csv"))
-    if matches:
-        return matches[0]
-
-    raise Exception(f"No files matching {pattern}")
-
-@flow
-def process_local_file():
-    file_path = wait_for_local_file("*.csv")
-    process(file_path)
+def wait_for_file(filepath: str) -> str:
+    if not Path(filepath).exists():
+        raise FileNotFoundError(f"{filepath} not yet available")
+    return filepath
 ```
 
-### DateTimeSensor → Scheduled Deployment
+For glob patterns, use `Path.glob()` inside the task.
+
+---
+
+### SqlSensor
+
+**Airflow:**
+```python
+from airflow.sensors.sql import SqlSensor
+
+wait = SqlSensor(
+    task_id="wait_for_data",
+    conn_id="postgres_default",
+    sql="SELECT COUNT(*) FROM staging WHERE date = '{{ ds }}'",
+    poke_interval=120,
+    timeout=3600,
+)
+```
+
+**Prefect:**
+```python
+from prefect_sqlalchemy import SqlAlchemyConnector
+from sqlalchemy import text
+from prefect import task
+
+@task(retries=30, retry_delay_seconds=120)
+def wait_for_data(date: str) -> bool:
+    connector = SqlAlchemyConnector.load("postgres-default")
+    with connector.get_connection() as conn:
+        result = conn.execute(
+            text("SELECT COUNT(*) FROM staging WHERE date = :d"),
+            {"d": date}
+        ).scalar()
+    if not result:
+        raise Exception(f"No data for {date} yet")
+    return True
+```
+
+Jinja templates in SQL (`{{ ds }}`) must be replaced with parameterized queries.
+
+---
+
+### DateTimeSensor
 
 **Airflow:**
 ```python
 from airflow.sensors.date_time import DateTimeSensor
 
-wait_until = DateTimeSensor(
-    task_id="wait_until_2pm",
-    target_time="14:00:00"
+wait = DateTimeSensor(
+    task_id="wait_until_noon",
+    target_time="{{ execution_date.replace(hour=12) }}",
 )
 ```
 
-**Prefect:**
-```yaml
-# Simply schedule the deployment for the desired time
-deployments:
-  - name: afternoon-job
-    entrypoint: flows/job.py:afternoon_job
-    schedules:
-      - cron: "0 14 * * *"  # Run at 2 PM daily
-        timezone: "America/New_York"
-```
-
-## Sensor Mode Equivalents
-
-### Poke Mode → Retry with Delay
-
-**Airflow poke mode** (blocks worker):
+**Prefect (short waits):**
 ```python
-sensor = S3KeySensor(mode="poke", poke_interval=60)
-```
-
-**Prefect equivalent:**
-```python
-@task(retries=60, retry_delay_seconds=60)
-def check_condition():
-    if not condition_met():
-        raise Exception("Not ready")
-    return result
-```
-
-### Reschedule Mode → Scheduled Subflow
-
-**Airflow reschedule mode** (releases worker between checks):
-```python
-sensor = S3KeySensor(mode="reschedule", poke_interval=300)
-```
-
-**Prefect equivalent** (trigger separate runs):
-```python
-@task
-def check_and_trigger():
-    if condition_met():
-        return process_data()
-    else:
-        # Schedule retry as new flow run
-        create_flow_run(
-            flow_name="check_condition",
-            scheduled_time=datetime.now() + timedelta(minutes=5)
-        )
-```
-
-## Advanced Patterns
-
-### Smart Retry with Backoff
-
-```python
+from datetime import datetime
+import time
 from prefect import task
-from prefect.tasks import exponential_backoff
 
-@task(
-    retries=10,
-    retry_delay_seconds=exponential_backoff(backoff_factor=2),
-    retry_jitter_factor=0.1
+@task
+def wait_until(target: datetime) -> None:
+    now = datetime.now(target.tzinfo)
+    if now < target:
+        time.sleep((target - now).total_seconds())
+```
+
+**Prefect (long waits — preferred):**
+
+Schedule the deployment to run at the target time. Use a cron schedule in `prefect.yaml` rather than sleeping inside a flow.
+
+---
+
+### GCSObjectExistenceSensor
+
+**Airflow:**
+```python
+from airflow.providers.google.cloud.sensors.gcs import GCSObjectExistenceSensor
+
+wait = GCSObjectExistenceSensor(
+    task_id="wait_for_gcs",
+    bucket="my-bucket",
+    object="data/output.parquet",
+    poke_interval=300,
 )
-def wait_with_backoff():
-    """Exponential backoff: 2s, 4s, 8s, 16s..."""
-    check_condition()
 ```
 
-### Timeout Handling
-
+**Prefect (Pattern 1 — polling):**
 ```python
-@task(timeout_seconds=3600)  # 1 hour total
-def wait_with_timeout():
-    """Fails if condition not met within timeout."""
-    while True:
-        if condition_met():
-            return result
-        time.sleep(60)
+from prefect_gcp import GcsBucket
+from prefect import task
+
+@task(retries=24, retry_delay_seconds=300)
+def wait_for_gcs(blob_name: str) -> str:
+    bucket = GcsBucket.load("my-gcs-bucket")
+    blobs = bucket.list_blobs(folder=blob_name.rsplit("/", 1)[0])
+    if not any(blob_name in b for b in blobs):
+        raise FileNotFoundError(f"GCS object {blob_name} not found")
+    return blob_name
 ```
 
-### Multiple Conditions
+**Prefect (Pattern 2 — event-driven):**
 
-```python
-from prefect import task, flow, unmapped
+Configure GCS Pub/Sub notifications on the bucket. Route to a Prefect Webhook via a Cloud Function or direct Pub/Sub push. Create an Automation to trigger the deployment — no worker held during the wait.
 
-@task(retries=30, retry_delay_seconds=60)
-def wait_for_file(path: str) -> str:
-    if Path(path).exists():
-        return path
-    raise Exception(f"{path} not ready")
+---
 
-@flow
-def wait_for_all_files():
-    paths = ["/data/a.csv", "/data/b.csv", "/data/c.csv"]
-    # Wait for all files in parallel
-    ready_files = wait_for_file.map(paths)
-    process_all(ready_files)
+## Deferrable Operators
+
+Airflow's `deferrable=True` suspends the operator and frees the worker slot by handing off to the Triggerer service. Prefect has no Triggerer component.
+
+The equivalent architecture is Pattern 2 (Webhooks + Automations): configure the external system to fire an event when ready, and let the Automation trigger the deployment. This achieves the same resource efficiency — no worker held — without requiring special infrastructure.
+
+For cases where the wait is internal to the flow (not driven by an external event), use `pause_until` (Pattern 3).
+
+---
+
+## Decision Guide
+
 ```
+Is the wait seconds to a few minutes?
+  YES → Pattern 1 (polling retries)
 
-## Best Practices
+Can the external system send a webhook or event notification?
+  YES → Pattern 2 (webhooks + automations) — preferred for efficiency
+  NO  → Pattern 1 (polling retries)
 
-1. **Prefer events over polling**: More efficient and scalable
-2. **Set reasonable retry limits**: Avoid infinite polling
-3. **Use exponential backoff**: Reduce load on external systems
-4. **Add jitter**: Prevent thundering herd
-5. **Monitor sensor tasks**: Track wait times in Prefect UI
-6. **Consider timeouts**: Fail fast if condition won't be met
+Is this a human approval gate or mid-flow suspension?
+  YES → Pattern 3 (pause_until)
+
+Was the Airflow sensor using mode='reschedule' or deferrable=True?
+  → Pattern 2 is the correct architectural match
+```

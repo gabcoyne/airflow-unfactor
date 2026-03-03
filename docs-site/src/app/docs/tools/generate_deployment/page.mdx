@@ -1,0 +1,151 @@
+# generate_deployment
+
+Write a `prefect.yaml` deployment configuration from DAG metadata extracted during conversion.
+
+## Overview
+
+Call this tool after generating `flow.py`. It produces a complete `prefect.yaml` with:
+
+- A deployment entry for each flow, including schedule, parameters, tags, and description
+- YAML anchors for work pool and schedule patterns (reusable across multiple flows)
+- A `# TODO` stub for the work pool name (Airflow has no equivalent concept)
+- A commented-out `pull` step template for git clone configuration
+- Comment blocks for any dataset triggers that require Prefect Automations
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `output_directory` | string | Yes | Directory to write `prefect.yaml` into |
+| `flows` | array | Yes | List of flow objects (see below) |
+| `workspace` | string | No | Workspace name (default: `"default"`) |
+
+### Flow object fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `flow_name` | Yes | Python function name of the flow (underscores → hyphens in deployment name) |
+| `entrypoint` | Yes | Path to the flow file and function, e.g. `deployments/default/my-flow/flow.py:my_flow` |
+| `schedule` | No | Cron string (`"0 6 * * *"`), interval in seconds (`"3600"`), or preset (`@daily`) |
+| `parameters` | No | Dict of parameter name → default value |
+| `description` | No | Human-readable description (from DAG `doc_md` or `description`) |
+| `tags` | No | List of tag strings |
+| `dataset_triggers` | No | List of dataset URIs that need Prefect Automations (cannot be represented in `prefect.yaml`) |
+
+## Output
+
+Returns JSON:
+
+```json
+{
+  "created_file": "/path/to/project/prefect.yaml",
+  "deployment_names": ["etl-pipeline"],
+  "next_steps": [
+    "Set up a work pool: uv run prefect work-pool create <name> --type process",
+    "Update the work_pool name in prefect.yaml",
+    "Configure the pull step in prefect.yaml with your git repository",
+    "Deploy: uv run prefect deploy --all"
+  ]
+}
+```
+
+When `dataset_triggers` are present, `next_steps` includes a link to the Automations docs.
+
+## Example
+
+### Single flow with schedule and parameters
+
+```json
+{
+  "tool": "generate_deployment",
+  "args": {
+    "output_directory": "/projects/my-etl",
+    "flows": [
+      {
+        "flow_name": "etl_pipeline",
+        "entrypoint": "deployments/default/etl-pipeline/flow.py:etl_pipeline",
+        "schedule": "0 6 * * *",
+        "parameters": { "date": "2024-01-01", "env": "prod" },
+        "description": "Converted from etl_dag",
+        "tags": ["etl", "daily"]
+      }
+    ]
+  }
+}
+```
+
+**Generated `prefect.yaml`:**
+```yaml
+name: my-etl
+prefect-version: 3.0.0
+
+# Configure your repository pull step:
+# pull:
+#   - prefect.deployments.steps.git_clone:
+#       repository: https://github.com/org/my-etl
+#       branch: main
+
+definitions:
+  work_pools:
+    default: &default_pool
+      name: default  # TODO: set your work pool name
+      job_variables:
+        image: "{{ image }}"
+
+  schedules:
+    hourly: &hourly
+      cron: "0 * * * *"
+    daily: &daily
+      cron: "0 0 * * *"
+
+deployments:
+  - name: etl-pipeline
+    description: Converted from etl_dag
+    entrypoint: deployments/default/etl-pipeline/flow.py:etl_pipeline
+    tags: ["etl", "daily"]
+    parameters:
+      date: "2024-01-01"
+      env: "prod"
+    schedules:
+      - cron: "0 6 * * *"
+    work_pool: *default_pool
+```
+
+### Multiple flows
+
+```json
+{
+  "tool": "generate_deployment",
+  "args": {
+    "output_directory": "/projects/my-etl",
+    "flows": [
+      {
+        "flow_name": "ingest_flow",
+        "entrypoint": "deployments/default/ingest-flow/flow.py:ingest_flow",
+        "schedule": "0 5 * * *"
+      },
+      {
+        "flow_name": "report_flow",
+        "entrypoint": "deployments/default/report-flow/flow.py:report_flow",
+        "schedule": "0 8 * * *",
+        "dataset_triggers": ["snowflake://sales_reports_table"]
+      }
+    ]
+  }
+}
+```
+
+The `dataset_triggers` entry for `report_flow` emits a comment block in the YAML explaining that an Automation is required, with a link to the Automations docs.
+
+## Dataset Triggers
+
+Airflow's `DatasetOrTimeSchedule` (and `Dataset` scheduling) has no direct representation in `prefect.yaml`. Pass any dataset URIs as `dataset_triggers` — the tool emits a comment block, and `next_steps` includes the Automations setup link.
+
+To complete the event-driven pattern, create a Prefect Automation that triggers the deployment when an upstream flow emits a completion event. See the [Automations docs](https://docs.prefect.io/concepts/automations) and the [sensors conversion guide](/docs/conversion/sensors).
+
+## What to Do After
+
+1. Open `prefect.yaml` and set the work pool name (`# TODO` comment)
+2. Uncomment and configure the `pull` step with your git repository
+3. Create any Automations for dataset triggers
+4. Run `uv run prefect deploy --all` to register the deployments

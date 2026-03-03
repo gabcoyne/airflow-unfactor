@@ -1,0 +1,182 @@
+# generate_migration_report
+
+Write `MIGRATION.md` — a human-readable record of a DAG conversion, including conversion decisions, a before-production checklist, and Prefect documentation links.
+
+## Overview
+
+Call this as the final step in a conversion, after `generate_deployment`. It produces a `MIGRATION.md` file that:
+
+- Summarizes what was converted and when
+- Documents each conversion decision made during the translation (which pattern was chosen and why)
+- Produces a deduplicated, ordered before-production checklist with links to the relevant Prefect docs for each manual action
+- Suggests adding the Prefect MCP server for interactive documentation in Claude Code
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `output_directory` | string | Yes | Directory to write `MIGRATION.md` into |
+| `dag_path` | string | Yes | Path to the original Airflow DAG file |
+| `flow_path` | string | Yes | Path to the generated Prefect flow file |
+| `decisions` | array | Yes | List of conversion decision objects (see below) |
+| `manual_actions` | array | No | Top-level action types not tied to a specific component |
+
+### Decision object fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `component` | Yes | The Airflow thing that was converted (e.g. `"S3KeySensor"`, `"PythonOperator"`) |
+| `outcome` | Yes | The Prefect pattern chosen (e.g. `"polling @task with retries"`) |
+| `rationale` | No | Why this pattern was chosen over alternatives |
+| `manual_action` | No | Action type the operator must complete before going to production (see known types below) |
+
+### Known manual action types
+
+These map automatically to Prefect documentation links:
+
+| Action type | Links to |
+|-------------|---------|
+| `setup_work_pool` | Work Pools docs |
+| `configure_pull_step` | Deployments pull action docs |
+| `configure_block` | Blocks docs |
+| `configure_s3_block` | prefect-aws |
+| `configure_gcs_block` | prefect-gcp |
+| `configure_snowflake_block` | prefect-snowflake |
+| `configure_sqlalchemy_block` | prefect-sqlalchemy |
+| `configure_azure_block` | prefect-azure |
+| `configure_dbt_block` | prefect-dbt |
+| `configure_databricks_block` | prefect-databricks |
+| `migrate_connections` | Airflow migration guide |
+| `create_automation` | Automations docs |
+| `configure_webhook` | Webhooks docs |
+| `configure_kubernetes` | Infrastructure docs |
+
+Unknown action types still appear in the checklist — they just won't have a link.
+
+## Output
+
+Returns JSON:
+
+```json
+{
+  "created_file": "/path/to/project/MIGRATION.md",
+  "checklist_items_count": 4
+}
+```
+
+## Example
+
+```json
+{
+  "tool": "generate_migration_report",
+  "args": {
+    "output_directory": "/projects/my-etl",
+    "dag_path": "dags/etl_dag.py",
+    "flow_path": "deployments/default/etl-pipeline/flow.py",
+    "decisions": [
+      {
+        "component": "S3KeySensor",
+        "outcome": "polling @task with retries",
+        "rationale": "Short wait expected; S3 event notifications not configured",
+        "manual_action": "configure_s3_block"
+      },
+      {
+        "component": "DatasetOrTimeSchedule",
+        "outcome": "cron schedule in prefect.yaml + Automation required",
+        "rationale": "Cron half represented in deployment; dataset trigger needs an Automation",
+        "manual_action": "create_automation"
+      },
+      {
+        "component": "SnowflakeOperator",
+        "outcome": "SnowflakeConnector block via prefect-snowflake",
+        "manual_action": "configure_snowflake_block"
+      }
+    ],
+    "manual_actions": ["setup_work_pool", "configure_pull_step"]
+  }
+}
+```
+
+**Generated `MIGRATION.md`:**
+
+```markdown
+# Migration Report
+
+## Summary
+
+| Field | Value |
+|-------|-------|
+| Original DAG | `dags/etl_dag.py` |
+| Generated flow | `deployments/default/etl-pipeline/flow.py` |
+| Conversion date | 2026-03-02 |
+
+---
+
+## Conversion Decisions
+
+| Component | Outcome | Rationale | Action Required |
+|-----------|---------|-----------|-----------------|
+| S3KeySensor | polling @task with retries | Short wait expected; S3 event notifications not configured | ⚠ `configure_s3_block` |
+| DatasetOrTimeSchedule | cron schedule in prefect.yaml + Automation required | Cron half represented in deployment; dataset trigger needs an Automation | ⚠ `create_automation` |
+| SnowflakeOperator | SnowflakeConnector block via prefect-snowflake | | ⚠ `configure_snowflake_block` |
+
+---
+
+## Before Production
+
+- [ ] Setup Work Pool (`setup_work_pool`): [https://docs.prefect.io/concepts/work-pools](...)
+- [ ] Configure Pull Step (`configure_pull_step`): [https://docs.prefect.io/concepts/deployments/#the-pull-action](...)
+- [ ] Configure S3 Block (`configure_s3_block`): [https://prefecthq.github.io/prefect-aws/](...)
+- [ ] Configure Snowflake Block (`configure_snowflake_block`): [https://prefecthq.github.io/prefect-snowflake/](...)
+- [ ] Create Automation (`create_automation`): [https://docs.prefect.io/concepts/automations](...)
+
+---
+
+### Prefect MCP Server (Optional)
+
+Add the Prefect docs MCP server to your Claude Code session for interactive documentation queries:
+...
+```
+
+## Checklist Ordering
+
+The checklist is deduplicated and ordered:
+
+1. **Infrastructure first** — work pool, pull step, Kubernetes
+2. **Blocks and connections** — credential blocks for external systems
+3. **Other** — any remaining actions
+4. **Automations and webhooks** — event-driven infrastructure
+
+If the same action type appears in multiple decisions and in `manual_actions`, it appears once.
+
+## Prefect MCP Server Detection
+
+When `.claude/mcp.json` exists in `output_directory` and does not already include the Prefect MCP server, the report adds a prominent callout at the top directing the operator to add it. This appears before the summary so it's not missed.
+
+When no `.claude/mcp.json` exists, the MCP server suggestion still appears at the bottom of the report as an optional step.
+
+The MCP server snippet is always included:
+
+```json
+{
+  "mcpServers": {
+    "prefect": {
+      "type": "http",
+      "url": "https://docs.prefect.io/mcp"
+    }
+  }
+}
+```
+
+The tool never writes to `.claude/mcp.json` automatically.
+
+## Full Conversion Workflow
+
+```
+read_dag
+  → lookup_concept (×N)
+  → [LLM generates flow.py]
+  → validate
+  → generate_deployment
+  → generate_migration_report   ← this tool
+```
