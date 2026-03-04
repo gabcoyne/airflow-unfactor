@@ -21,7 +21,6 @@ class TestMCPScaffoldScheduleForwarding:
         result_json = asyncio.run(
             scaffold(output_directory=str(output_dir), schedule_interval="0 6 * * *")
         )
-        result = json.loads(result_json)
 
         assert result_json  # non-empty response
         prefect_yaml = (output_dir / "prefect.yaml").read_text()
@@ -32,7 +31,6 @@ class TestMCPScaffoldScheduleForwarding:
         output_dir = tmp_path / "output"
 
         result_json = asyncio.run(scaffold(output_directory=str(output_dir)))
-        result = json.loads(result_json)
 
         assert result_json  # non-empty response
         prefect_yaml = (output_dir / "prefect.yaml").read_text()

@@ -3,14 +3,11 @@
 
 import asyncio
 import json
-from pathlib import Path
-
-import pytest
 
 from airflow_unfactor.tools.generate_deployment import (
-    generate_deployment,
-    _flow_to_deployment_yaml,
     _build_prefect_yaml,
+    _flow_to_deployment_yaml,
+    generate_deployment,
 )
 
 
@@ -197,7 +194,7 @@ class TestGenerateDeploymentTool:
 
     def test_flow_name_slugified(self, tmp_path):
         """flow_name with underscores → slug with hyphens in deployment name."""
-        result_json = asyncio.run(
+        asyncio.run(
             generate_deployment(
                 output_directory=str(tmp_path),
                 flows=[{"flow_name": "my_etl_flow", "entrypoint": "f.py:my_etl_flow"}],

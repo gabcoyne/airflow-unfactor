@@ -284,7 +284,7 @@ class TestScheduleTranslation:
         assert 'cron: "0 6 * * *"' in content
         # Should be under deployments section (real entry, not commented)
         lines = content.splitlines()
-        cron_line = next((i for i, l in enumerate(lines) if 'cron: "0 6 * * *"' in l), None)
+        cron_line = next((i for i, line in enumerate(lines) if 'cron: "0 6 * * *"' in line), None)
         assert cron_line is not None, "cron line not found"
         # Verify it's not commented out
         assert not lines[cron_line].lstrip().startswith("#")

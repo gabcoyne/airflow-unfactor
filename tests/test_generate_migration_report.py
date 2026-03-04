@@ -3,15 +3,12 @@
 
 import asyncio
 import json
-from pathlib import Path
-
-import pytest
 
 from airflow_unfactor.tools.generate_migration_report import (
-    generate_migration_report,
-    _render_decisions_table,
-    _render_checklist,
     PREFECT_DOC_LINKS,
+    _render_checklist,
+    _render_decisions_table,
+    generate_migration_report,
 )
 
 
