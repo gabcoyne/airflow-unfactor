@@ -239,7 +239,7 @@ def normalize_query(query: str) -> str:
         q = match.group(1)
     # Strip macros. prefix
     if q.startswith("macros."):
-        q = q[len("macros."):]
+        q = q[len("macros.") :]
     # Normalize var.value. prefix — map to canonical "var_value" key
     # Stripping to just the key name (e.g., "my_key") would lose all context;
     # mapping to "var_value" routes to the Variable.get() translation entry.
@@ -309,10 +309,7 @@ def load_knowledge(colin_output_dir: str | None = None) -> dict[str, Any]:
                         if isinstance(value, dict):
                             knowledge[key] = value
         except (json.JSONDecodeError, KeyError) as e:
-            logger.warning(
-                "Failed to parse %s: %s: %s",
-                json_file.name, type(e).__name__, e
-            )
+            logger.warning("Failed to parse %s: %s: %s", json_file.name, type(e).__name__, e)
             continue
 
     return knowledge

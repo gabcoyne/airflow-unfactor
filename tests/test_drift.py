@@ -100,12 +100,8 @@ class TestToolCount:
 
     def test_readme_says_seven_tools(self, live_tools):
         readme_text = README.read_text()
-        assert "seven tools" in readme_text.lower(), (
-            "README should mention 'seven tools'"
-        )
-        assert len(live_tools) == 7, (
-            f"README says seven tools, server has {len(live_tools)}"
-        )
+        assert "seven tools" in readme_text.lower(), "README should mention 'seven tools'"
+        assert len(live_tools) == 7, f"README says seven tools, server has {len(live_tools)}"
 
 
 # ---------------------------------------------------------------------------

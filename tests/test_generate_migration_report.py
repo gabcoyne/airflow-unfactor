@@ -16,7 +16,12 @@ class TestDocLinks:
     """The doc links map must cover core action types."""
 
     def test_core_action_types_have_links(self):
-        for key in ["setup_work_pool", "configure_block", "migrate_connections", "create_automation"]:
+        for key in [
+            "setup_work_pool",
+            "configure_block",
+            "migrate_connections",
+            "create_automation",
+        ]:
             assert key in PREFECT_DOC_LINKS, f"Missing doc link for {key}"
             assert PREFECT_DOC_LINKS[key].startswith("http"), f"Bad URL for {key}"
 
@@ -25,28 +30,34 @@ class TestDecisionsTable:
     """Markdown table rendering for conversion decisions."""
 
     def test_table_has_headers(self):
-        table = _render_decisions_table([
-            {"component": "S3KeySensor", "outcome": "polling @task", "rationale": "short wait"},
-        ])
+        table = _render_decisions_table(
+            [
+                {"component": "S3KeySensor", "outcome": "polling @task", "rationale": "short wait"},
+            ]
+        )
         assert "Component" in table
         assert "Outcome" in table
         assert "Rationale" in table
 
     def test_decision_appears_in_table(self):
-        table = _render_decisions_table([
-            {"component": "S3KeySensor", "outcome": "polling @task", "rationale": "short wait"},
-        ])
+        table = _render_decisions_table(
+            [
+                {"component": "S3KeySensor", "outcome": "polling @task", "rationale": "short wait"},
+            ]
+        )
         assert "S3KeySensor" in table
         assert "polling @task" in table
 
     def test_manual_action_flagged(self):
-        table = _render_decisions_table([
-            {
-                "component": "S3KeySensor",
-                "outcome": "polling @task",
-                "manual_action": "configure_s3_block",
-            }
-        ])
+        table = _render_decisions_table(
+            [
+                {
+                    "component": "S3KeySensor",
+                    "outcome": "polling @task",
+                    "manual_action": "configure_s3_block",
+                }
+            ]
+        )
         assert "⚠" in table or "manual" in table.lower() or "action" in table.lower()
 
     def test_empty_decisions(self):
@@ -99,8 +110,11 @@ class TestGenerateMigrationReport:
                 dag_path="dags/etl_dag.py",
                 flow_path="deployments/default/etl/flow.py",
                 decisions=[
-                    {"component": "S3KeySensor", "outcome": "polling @task",
-                     "manual_action": "configure_s3_block"},
+                    {
+                        "component": "S3KeySensor",
+                        "outcome": "polling @task",
+                        "manual_action": "configure_s3_block",
+                    },
                 ],
                 manual_actions=["setup_work_pool"],
             )

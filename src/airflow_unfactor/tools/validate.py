@@ -72,8 +72,7 @@ async def validate_conversion(
         )
 
     if any(
-        x in original_source
-        for x in ("DatabricksSubmitRunOperator", "DatabricksRunNowOperator")
+        x in original_source for x in ("DatabricksSubmitRunOperator", "DatabricksRunNowOperator")
     ):
         extras.append(
             "Databricks: verify prefect-databricks is installed,"

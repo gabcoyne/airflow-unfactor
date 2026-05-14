@@ -71,18 +71,6 @@ uv run airflow-unfactor
 cd colin && colin run
 ```
 
-## Task Tracking
-
-Use beads (`bd`) for issue tracking:
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View details
-bd update <id> --status in_progress
-bd close <id>         # Complete work
-bd sync               # Sync with git
-```
-
 ## Key Files
 
 | Path | Description |

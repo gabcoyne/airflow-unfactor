@@ -94,8 +94,7 @@ class TestPhase4Validation:
         result = json.loads(asyncio.run(validate_conversion(dag_source, flow_stub)))
         guidance = result["comparison_guidance"]
         assert expected_fragment in guidance, (
-            f"Expected '{expected_fragment}' in guidance for {fixture_name};\n"
-            f"Got: {guidance}"
+            f"Expected '{expected_fragment}' in guidance for {fixture_name};\nGot: {guidance}"
         )
 
     def test_base_guidance_unchanged_for_plain_dag(self):

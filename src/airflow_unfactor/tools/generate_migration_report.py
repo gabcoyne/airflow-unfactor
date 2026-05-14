@@ -52,8 +52,10 @@ def _render_decisions_table(decisions: list[dict[str, Any]]) -> str:
     if not decisions:
         return "_No conversion decisions recorded._\n"
 
-    rows = ["| Component | Outcome | Rationale | Action Required |",
-            "|-----------|---------|-----------|-----------------|"]
+    rows = [
+        "| Component | Outcome | Rationale | Action Required |",
+        "|-----------|---------|-----------|-----------------|",
+    ]
     for d in decisions:
         component = d.get("component", "")
         outcome = d.get("outcome", "")
@@ -119,8 +121,9 @@ def _mcp_is_configured(output_directory: Path) -> bool:
     try:
         data = json.loads(mcp_json.read_text())
         servers = data.get("mcpServers", {})
-        return any("prefect" in k.lower() or "docs.prefect.io" in str(v)
-                   for k, v in servers.items())
+        return any(
+            "prefect" in k.lower() or "docs.prefect.io" in str(v) for k, v in servers.items()
+        )
     except (json.JSONDecodeError, AttributeError):
         return False
 

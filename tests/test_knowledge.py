@@ -137,20 +137,25 @@ class TestPhase1Operators:
 
     COLIN_OUTPUT_DIR = str(Path(__file__).parent.parent / "colin" / "output")
 
-    @pytest.mark.parametrize("operator_name", [
-        "KubernetesPodOperator",       # KNOW-01
-        "DatabricksSubmitRunOperator",  # KNOW-02
-        "DatabricksRunNowOperator",     # KNOW-03
-        "SparkSubmitOperator",          # KNOW-04
-        "SimpleHttpOperator",           # KNOW-05
-        "SSHOperator",                  # KNOW-06
-    ])
+    @pytest.mark.parametrize(
+        "operator_name",
+        [
+            "KubernetesPodOperator",  # KNOW-01
+            "DatabricksSubmitRunOperator",  # KNOW-02
+            "DatabricksRunNowOperator",  # KNOW-03
+            "SparkSubmitOperator",  # KNOW-04
+            "SimpleHttpOperator",  # KNOW-05
+            "SSHOperator",  # KNOW-06
+        ],
+    )
     def test_operator_found_in_colin_output(self, operator_name):
         """Each Phase 1 operator is found via lookup with source: colin."""
         knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
         result = lookup(operator_name, knowledge)
         assert result["status"] == "found", f"{operator_name} not found in Colin output"
-        assert result["source"] == "colin", f"{operator_name} found but source is {result['source']}, expected colin"
+        assert result["source"] == "colin", (
+            f"{operator_name} found but source is {result['source']}, expected colin"
+        )
 
 
 class TestNormalizeQuery:
@@ -223,7 +228,9 @@ class TestParseErrorLogging:
     def test_continues_loading_after_bad_file(self, tmp_path, caplog):
         """Valid files still load when a corrupt file is present."""
         (tmp_path / "corrupt.json").write_text("NOT JSON AT ALL")
-        (tmp_path / "valid.json").write_text(json.dumps({"MyOperator": {"concept_type": "operator"}}))
+        (tmp_path / "valid.json").write_text(
+            json.dumps({"MyOperator": {"concept_type": "operator"}})
+        )
         with caplog.at_level(logging.WARNING):
             result = load_knowledge(str(tmp_path))
         assert "MyOperator" in result
@@ -235,12 +242,16 @@ class TestSuggestionsFuzzy:
 
     def test_fuzzy_typo_match(self):
         """Fuzzy match returns KubernetesPodOperator for a close typo."""
-        result = suggestions("KubernetesPodOp", {"KubernetesPodOperator": {"concept_type": "operator"}})
+        result = suggestions(
+            "KubernetesPodOp", {"KubernetesPodOperator": {"concept_type": "operator"}}
+        )
         assert "KubernetesPodOperator" in result, f"Expected KubernetesPodOperator in {result}"
 
     def test_fuzzy_case_insensitive(self):
         """Case-insensitive fuzzy match works despite mixed case query."""
-        result = suggestions("kubernetesPodOp", {"KubernetesPodOperator": {"concept_type": "operator"}})
+        result = suggestions(
+            "kubernetesPodOp", {"KubernetesPodOperator": {"concept_type": "operator"}}
+        )
         assert "KubernetesPodOperator" in result, f"Expected KubernetesPodOperator in {result}"
 
     def test_fuzzy_no_false_positives(self):
@@ -267,11 +278,17 @@ class TestPhase3Integration:
 
     COLIN_OUTPUT_DIR = str(Path(__file__).parent.parent / "colin" / "output")
 
-    @pytest.mark.parametrize("operator_name,expected_content", [
-        ("AzureDataFactoryRunPipelineOperator", "ARCHITECTURE SHIFT"),  # KNOW-07
-        ("WasbOperator", "AzureBlobStorageCredentials"),                # KNOW-07
-        ("DbtCloudRunJobOperator", "trigger_dbt_cloud_job_run_and_wait_for_completion"),  # KNOW-08
-    ])
+    @pytest.mark.parametrize(
+        "operator_name,expected_content",
+        [
+            ("AzureDataFactoryRunPipelineOperator", "ARCHITECTURE SHIFT"),  # KNOW-07
+            ("WasbOperator", "AzureBlobStorageCredentials"),  # KNOW-07
+            (
+                "DbtCloudRunJobOperator",
+                "trigger_dbt_cloud_job_run_and_wait_for_completion",
+            ),  # KNOW-08
+        ],
+    )
     def test_phase3_operator_lookup(self, operator_name, expected_content):
         """Phase 3 operators are findable via lookup with expected content."""
         knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
@@ -282,10 +299,13 @@ class TestPhase3Integration:
             f"Expected '{expected_content}' in {operator_name} result"
         )
 
-    @pytest.mark.parametrize("concept,expected_in_result", [
-        ("depends_on_past", "no direct equivalent"),  # KNOW-10
-        ("deferrable", "Automations"),                # KNOW-11
-    ])
+    @pytest.mark.parametrize(
+        "concept,expected_in_result",
+        [
+            ("depends_on_past", "no direct equivalent"),  # KNOW-10
+            ("deferrable", "Automations"),  # KNOW-11
+        ],
+    )
     def test_phase3_concept_lookup(self, concept, expected_in_result):
         """Phase 3 concepts are findable via lookup with expected guidance."""
         knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
@@ -296,13 +316,16 @@ class TestPhase3Integration:
             f"Expected '{expected_in_result}' in result for '{concept}'"
         )
 
-    @pytest.mark.parametrize("query", [
-        "macros.ds_add",                  # KNOW-09: macros prefix stripped
-        "{{ macros.ds_add(ds, 5) }}",     # KNOW-09: Jinja wrapper + macros prefix stripped
-        "dag_run.conf",                   # KNOW-09: dag_run.conf variable
-        "{{ dag_run.conf }}",             # KNOW-09: Jinja-wrapped dag_run.conf
-        "var.value.my_key",               # KNOW-09: var.value prefix normalized to var_value
-    ])
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "macros.ds_add",  # KNOW-09: macros prefix stripped
+            "{{ macros.ds_add(ds, 5) }}",  # KNOW-09: Jinja wrapper + macros prefix stripped
+            "dag_run.conf",  # KNOW-09: dag_run.conf variable
+            "{{ dag_run.conf }}",  # KNOW-09: Jinja-wrapped dag_run.conf
+            "var.value.my_key",  # KNOW-09: var.value prefix normalized to var_value
+        ],
+    )
     def test_phase3_jinja_macro_lookup(self, query):
         """Jinja macro queries are findable after normalization (KNOW-09)."""
         knowledge = load_knowledge(self.COLIN_OUTPUT_DIR)
@@ -366,12 +389,8 @@ class TestPhase3Integration:
         assert "automation" in result_str.lower(), (
             "sensor entry must reference Prefect Automations as an event-driven alternative"
         )
-        assert "retries" in result_str, (
-            "sensor entry must cover polling-retries pattern"
-        )
-        assert "reschedule" in result_str, (
-            "sensor entry must address mode='reschedule' sensors"
-        )
+        assert "retries" in result_str, "sensor entry must cover polling-retries pattern"
+        assert "reschedule" in result_str, "sensor entry must address mode='reschedule' sensors"
 
     def test_phase3_source_is_colin(self):
         """All Phase 3 entries should be sourced from Colin output, not fallback."""

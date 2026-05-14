@@ -360,8 +360,6 @@ class TestScheduleTranslation:
     def test_scaffold_report_schedule_none(self, tmp_path):
         """scaffold_project result JSON has schedule: null when not provided."""
         output_dir = tmp_path / "output"
-        result_json = asyncio.run(
-            scaffold_project(output_directory=str(output_dir))
-        )
+        result_json = asyncio.run(scaffold_project(output_directory=str(output_dir)))
         result = json.loads(result_json)
         assert result["schedule"] is None

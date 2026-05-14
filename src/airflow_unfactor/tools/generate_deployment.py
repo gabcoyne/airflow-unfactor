@@ -61,7 +61,9 @@ def _flow_to_deployment_yaml(
             lines.append(f'    schedules:\n      - cron: "{schedule}"')
 
     if dataset_triggers:
-        lines.append("    # Dataset triggers require Prefect Automations (not representable in prefect.yaml).")
+        lines.append(
+            "    # Dataset triggers require Prefect Automations (not representable in prefect.yaml)."
+        )
         lines.append("    # Create an Automation for each dataset trigger below:")
         for ds in dataset_triggers:
             lines.append(f"    #   - trigger: event on dataset '{ds}' → run this deployment")
@@ -77,10 +79,11 @@ def _build_prefect_yaml(
 ) -> str:
     """Build the full prefect.yaml document."""
     if flows:
-        deployments_section = "deployments:\n" + "\n".join(
-            _flow_to_deployment_yaml(**{k: v for k, v in f.items()})
-            for f in flows
-        ) + "\n"
+        deployments_section = (
+            "deployments:\n"
+            + "\n".join(_flow_to_deployment_yaml(**{k: v for k, v in f.items()}) for f in flows)
+            + "\n"
+        )
     else:
         deployments_section = "deployments: []\n"
 
