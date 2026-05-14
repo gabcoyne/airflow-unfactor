@@ -6,6 +6,21 @@
 
 An MCP server that converts Apache Airflow DAGs into Prefect flows. Point it at a DAG, and the LLM generates idiomatic Prefect code. Not a template with TODOs — working code. Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
+## Install
+
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=airflow-unfactor&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJhaXJmbG93LXVuZmFjdG9yIl19)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=airflow-unfactor&config=%7B%22name%22%3A%22airflow-unfactor%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22airflow-unfactor%22%5D%7D)
+
+**Claude Code** — one line:
+
+```bash
+claude mcp add airflow-unfactor -- uvx airflow-unfactor
+```
+
+**Claude Desktop** and other clients — see [manual config](#manual-config) below.
+
+Then ask your LLM: *"Convert the DAG in `dags/my_etl.py` to a Prefect flow."*
+
 ## How It Works
 
 The server exposes seven tools over MCP. The LLM reads raw DAG source code, looks up translation knowledge, and generates the Prefect flow.
@@ -22,21 +37,12 @@ The server exposes seven tools over MCP. The LLM reads raw DAG source code, look
 
 No AST parsing. No template engine. The LLM reads the code directly, just like a developer would.
 
-## Installation
+## Manual config
 
-```bash
-# From PyPI
-pip install airflow-unfactor
+The buttons above and the `claude mcp add` command both register the server with `uvx`, which downloads it on first run — no separate `pip install` needed. To install the package directly anyway: `pip install airflow-unfactor` or `uv pip install airflow-unfactor`.
 
-# Or with uv
-uv pip install airflow-unfactor
-```
-
-## Configuration
-
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+<details>
+<summary><strong>Claude Desktop</strong> — <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></summary>
 
 ```json
 {
@@ -48,25 +54,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+</details>
 
-### Claude Code
-
-Add to `.mcp.json` in your project:
-
-```json
-{
-  "mcpServers": {
-    "airflow-unfactor": {
-      "command": "uvx",
-      "args": ["airflow-unfactor"]
-    }
-  }
-}
-```
-
-### Cursor
-
-Add to your Cursor MCP settings:
+<details>
+<summary><strong>Claude Code</strong> — <code>.mcp.json</code> in your project</summary>
 
 ```json
 {
@@ -78,8 +69,22 @@ Add to your Cursor MCP settings:
   }
 }
 ```
+</details>
 
-Then ask your LLM: *"Convert the DAG in `dags/my_etl.py` to a Prefect flow."*
+<details>
+<summary><strong>Cursor</strong> — MCP settings</summary>
+
+```json
+{
+  "mcpServers": {
+    "airflow-unfactor": {
+      "command": "uvx",
+      "args": ["airflow-unfactor"]
+    }
+  }
+}
+```
+</details>
 
 ## Example
 
